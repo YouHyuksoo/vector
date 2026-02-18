@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(docker:*)",
+      "Bash(wsl --status:*)",
+      "Bash(\"C:/Redis/redis-cli.exe\" info server)",
+      "Bash(where:*)",
+      "Bash(netstat:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(/c/Project/vector/vector-bin/bin/vector.exe:*)",
+      "Bash(EQUIPMENT_ID=EQ-TEST-001 /c/Project/vector/vector-bin/bin/vector.exe:*)",
+      "Bash(start:*)",
+      "Bash(git init:*)"
+    ]
+  }
+}

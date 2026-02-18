@@ -1,0 +1,49 @@
+/**
+ * @file src/config/env.ts
+ * @description 환경 변수 검증 및 타입 안전한 설정 관리
+ *
+ * 초보자 가이드:
+ * 1. **주요 개념**: zod 스키마로 .env 파일의 값을 검증하고 타입을 부여
+ * 2. **사용 방법**: `import { env } from './config/env.js'` 후 `env.PORT` 등으로 접근
+ * 3. **환경 변수 추가**: envSchema에 필드 추가 → .env.example 업데이트
+ */
+
+import { z } from 'zod';
+import { config } from 'dotenv';
+
+config();
+
+const envSchema = z.object({
+  PORT: z.coerce.number().default(3100),
+  HOST: z.string().default('0.0.0.0'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+
+  ORACLE_USER: z.string(),
+  ORACLE_PASSWORD: z.string(),
+  ORACLE_CONNECT_STRING: z.string(),
+  ORACLE_POOL_MIN: z.coerce.number().default(4),
+  ORACLE_POOL_MAX: z.coerce.number().default(20),
+
+  REDIS_HOST: z.string().default('127.0.0.1'),
+  REDIS_PORT: z.coerce.number().default(6379),
+  REDIS_PASSWORD: z.string().default(''),
+
+  RAW_LOG_BASE_PATH: z.string().default('C:\\data\\raw-logs'),
+
+  QUEUE_CONCURRENCY: z.coerce.number().default(5),
+  BATCH_SIZE: z.coerce.number().default(100),
+  BATCH_TIMEOUT_MS: z.coerce.number().default(5000),
+
+  HEARTBEAT_TTL_SECONDS: z.coerce.number().default(60),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+const parsed = envSchema.safeParse(process.env);
+
+if (!parsed.success) {
+  console.error('Invalid environment variables:', parsed.error.flatten().fieldErrors);
+  process.exit(1);
+}
+
+export const env = parsed.data;

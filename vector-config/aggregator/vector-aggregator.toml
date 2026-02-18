@@ -1,0 +1,133 @@
+# =============================================================================
+# Vector Aggregator - 중앙 서버에서 실행
+# Agent 데이터 수신 → VRL 파싱 → raw 파일 저장 + HTTP API 전송
+#
+# 초보자 가이드:
+# 1. 중앙 서버에 Vector 설치 후 이 설정 파일로 실행
+# 2. 로그 형식은 예시 포맷으로 구현됨 (실제 로그 확정 시 VRL 파싱 로직 조정)
+# 3. Node.js API 서버(port 3100)가 먼저 실행 중이어야 함
+#
+# 실행: vector --config vector-aggregator.toml
+# =============================================================================
+
+data_dir = "C:\\Project\\vector\\vector-data"
+
+[api]
+enabled = true
+address = "0.0.0.0:8687"
+
+# =============================================================================
+# Source: Agent들로부터 수신
+# =============================================================================
+
+[sources.from_agents]
+type = "vector"
+address = "0.0.0.0:6000"
+
+# =============================================================================
+# Transforms: VRL 파싱 및 태깅
+# log_type별 예시 포맷으로 파싱 (실제 로그 형식 확정 시 조정)
+# =============================================================================
+
+[transforms.parse_logs]
+type = "remap"
+inputs = ["from_agents"]
+source = '''
+# 원본 메시지 보존 (raw 저장용)
+.raw_message = .message
+
+# log_type별 파싱
+if .log_type == "INSPECTION" {
+  # 파이프 구분 형식: timestamp|item|value|unit|result
+  parts = split!(.message, "|")
+  if length(parts) >= 5 {
+    .data.INSPECT_TIMESTAMP = get!(parts, [0])
+    .data.INSPECT_ITEM = get!(parts, [1])
+    .data.INSPECT_VALUE = get!(parts, [2])
+    .data.INSPECT_UNIT = get!(parts, [3])
+    .data.INSPECT_RESULT = get!(parts, [4])
+  }
+} else if .log_type == "ALARM" {
+  # JSON 형식 알람
+  parsed, err = parse_json(.message)
+  if err == null {
+    .data.ALARM_CODE = to_string!(parsed.code)
+    .data.ALARM_LEVEL = to_string!(parsed.level)
+    .data.ALARM_MESSAGE = to_string!(parsed.message)
+    .data.OCCURRED_AT = to_string!(parsed.timestamp)
+  }
+} else if .log_type == "PROCESS" {
+  # CSV 형식: step,status,start_time,end_time,duration
+  parts = split!(.message, ",")
+  if length(parts) >= 5 {
+    .data.PROCESS_STEP = get!(parts, [0])
+    .data.STEP_STATUS = get!(parts, [1])
+    .data.START_TIME = get!(parts, [2])
+    .data.END_TIME = get!(parts, [3])
+    .data.DURATION_MS = get!(parts, [4])
+  }
+} else {
+  log("Unknown log_type: " + to_string!(.log_type), level: "warn")
+}
+
+# 타임스탬프 보장
+.timestamp = now()
+'''
+
+[transforms.format_for_api]
+type = "remap"
+inputs = ["parse_logs"]
+source = '''
+# HTTP API용 구조로 변환
+. = {
+  "equipment_id": .equipment_id,
+  "log_type": .log_type,
+  "target_table": .target_table,
+  "timestamp": to_string!(.timestamp),
+  "data": .data
+}
+'''
+
+# =============================================================================
+# Sinks
+# =============================================================================
+
+# 1. Raw 로그 파일 저장 (원본 보관)
+[sinks.raw_file]
+type = "file"
+inputs = ["parse_logs"]
+path = "C:\\data\\raw-logs\\{{ equipment_id }}\\%Y\\%m\\%d\\raw.log"
+
+[sinks.raw_file.encoding]
+codec = "json"
+
+[sinks.raw_file.buffer]
+type = "disk"
+max_size = 536870912  # 512MB
+when_full = "block"
+
+# 2. 파싱된 데이터 → Node.js API 서버로 전송
+[sinks.to_api]
+type = "http"
+inputs = ["format_for_api"]
+uri = "http://127.0.0.1:3100/api/logs"
+method = "post"
+
+[sinks.to_api.encoding]
+codec = "json"
+
+[sinks.to_api.batch]
+max_events = 100
+timeout_secs = 5
+
+[sinks.to_api.buffer]
+type = "disk"
+max_size = 536870912  # 512MB
+when_full = "block"
+
+[sinks.to_api.request]
+retry_initial_backoff_secs = 1
+retry_max_duration_secs = 30
+
+[sinks.to_api.request.headers]
+Content-Type = "application/json"

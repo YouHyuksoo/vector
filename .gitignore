@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.log
+*.tsbuildinfo
+.DS_Store
+coverage/
+
+# Vector binary & runtime data
+vector-bin/
+vector-data/
+vector-data-agent/
