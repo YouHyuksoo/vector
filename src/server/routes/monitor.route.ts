@@ -1,46 +1,74 @@
 /**
  * @file src/server/routes/monitor.route.ts
- * @description 모니터링 대시보드 API + HTML 페이지 서빙
+ * @description 모니터링 대시보드 API 엔드포인트
  *
  * 초보자 가이드:
  * 1. **주요 개념**: 시스템 상태를 한눈에 볼 수 있는 모니터링 엔드포인트
- * 2. **GET /monitor**: 대시보드 HTML 페이지 반환
+ * 2. **프론트엔드**: frontend/ Next.js 앱에서 이 API를 호출
  * 3. **GET /api/monitor/overview**: 큐, DB, 장비 상태 등 통합 JSON
  */
 
 import { FastifyPluginAsync } from 'fastify';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync, mkdirSync, statSync, copyFileSync } from 'fs';
+import { join, dirname, basename } from 'path';
+import { tmpdir } from 'os';
+import { spawn } from 'child_process';
 import { getQueue } from '../../queue/queue.manager.js';
 import { QUEUE_NAMES } from '../../config/constants.js';
 import { heartbeatService } from '../../redis/heartbeat.service.js';
 import { getConnection } from '../../database/oracle.pool.js';
 import { getRedisClient } from '../../redis/redis.client.js';
 import { logger } from '../../utils/logger.js';
-
-let dashboardHtml: string;
-
-try {
-  dashboardHtml = readFileSync(join(process.cwd(), 'public/monitor.html'), 'utf-8');
-} catch {
-  dashboardHtml = '<h1>Dashboard file not found</h1>';
-}
+import { env, updateEnvValue } from '../../config/env.js';
+import type { Env } from '../../config/env.js';
+import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AGENT_CONFIG_DIR } from '../../services/vector-process.service.js';
+import {
+  readRegistry, setTableColumns, getRegisteredTableNames,
+  setProcedure, getProcedure, deleteTarget, getRegisteredProcedureKeys,
+  isProcedureEntry, type RegistryColumn, type ProcedureEntry, type ProcedureParam,
+} from '../../config/local-registry.js';
+import { readParseFields, setFieldsByEquipment, deleteFieldsByEquipment, writeParseFields, type ParseField } from '../../config/local-parse-fields.js';
 
 export const monitorRoute: FastifyPluginAsync = async (app) => {
-  /** 대시보드 HTML 페이지 */
-  app.get('/monitor', async (_request, reply) => {
-    reply.type('text/html').send(dashboardHtml);
-  });
+
+  // ─── TOML 백업 유틸 ───
+
+  const BACKUP_DIR = join(dirname(VECTOR_CONFIG), 'backups');
+  const MAX_BACKUPS = 20;
+
+  /** 타임스탬프 기반 백업 생성 (source: 변경 출처) */
+  function createTomlBackup(source: string): string {
+    if (!existsSync(BACKUP_DIR)) mkdirSync(BACKUP_DIR, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+    const backupName = `vector-aggregator_${ts}_${source}.toml`;
+    const backupPath = join(BACKUP_DIR, backupName);
+    copyFileSync(VECTOR_CONFIG, backupPath);
+
+    // 기존 .bak 호환 유지
+    writeFileSync(VECTOR_CONFIG + '.bak', readFileSync(VECTOR_CONFIG, 'utf-8'), 'utf-8');
+
+    // 오래된 백업 정리 (MAX_BACKUPS 초과 시)
+    const files = readdirSync(BACKUP_DIR)
+      .filter(f => f.startsWith('vector-aggregator_') && f.endsWith('.toml'))
+      .sort().reverse();
+    for (let i = MAX_BACKUPS; i < files.length; i++) {
+      try { unlinkSync(join(BACKUP_DIR, files[i])); } catch { /* ignore */ }
+    }
+
+    logger.info({ backupName, source }, 'TOML backup created');
+    return backupName;
+  }
 
   /** 통합 모니터링 데이터 */
   app.get('/api/monitor/overview', async (_request, reply) => {
-    const [queueStats, equipments, tableStats, recentErrors, redisStatus] =
+    const [queueStats, equipments, tableStats, recentErrors, redisStatus, vectorStatus] =
       await Promise.allSettled([
         getQueueStats(),
         heartbeatService.getAllStatuses(),
         getTableStats(),
         getRecentErrors(),
         checkRedis(),
+        getVectorStatus(),
       ]);
 
     return reply.send({
@@ -51,6 +79,9 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         nodeEnv: process.env.NODE_ENV ?? 'development',
       },
       redis: redisStatus.status === 'fulfilled' ? redisStatus.value : { connected: false },
+      vector: vectorStatus.status === 'fulfilled'
+        ? vectorStatus.value
+        : { running: false, pid: null, apiReachable: false, uptime: null, version: null },
       queue: queueStats.status === 'fulfilled'
         ? queueStats.value
         : { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0, error: true },
@@ -59,7 +90,1170 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       recentErrors: recentErrors.status === 'fulfilled' ? recentErrors.value : [],
     });
   });
+
+  /** Vector aggregator 상태 조회 */
+  app.get('/api/monitor/vector', async (_request, reply) => {
+    const status = await getVectorStatus();
+    return reply.send(status);
+  });
+
+  /** Vector aggregator 시작 */
+  app.post('/api/monitor/vector/start', async (_request, reply) => {
+    const result = await startVector();
+    return reply.status(result.success ? 200 : 400).send(result);
+  });
+
+  /** Vector aggregator 중지 */
+  app.post('/api/monitor/vector/stop', async (_request, reply) => {
+    const result = await stopVector();
+    return reply.status(result.success ? 200 : 400).send(result);
+  });
+
+  /** Vector aggregator TOML 설정 조회 */
+  app.get('/api/monitor/aggregator/config', async (_request, reply) => {
+    try {
+      const content = readFileSync(VECTOR_CONFIG, 'utf-8');
+      return reply.send({ content, filePath: VECTOR_CONFIG });
+    } catch (err) {
+      logger.error(err, 'Failed to read aggregator config');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** Vector aggregator TOML 설정 저장 (백업 포함) */
+  app.put('/api/monitor/aggregator/config', async (request, reply) => {
+    const { content } = request.body as { content: string };
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return reply.status(400).send({ error: 'Invalid content' });
+    }
+    try {
+      const backupName = createTomlBackup('editor');
+      writeFileSync(VECTOR_CONFIG, content, 'utf-8');
+      logger.info('Aggregator config updated via API');
+      return reply.send({ success: true, message: 'Config saved', backupName });
+    } catch (err) {
+      logger.error(err, 'Failed to save aggregator config');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  // ─── TOML 백업 이력 API ───
+
+  /** 백업 이력 목록 조회 */
+  app.get('/api/monitor/aggregator/backups', async (_request, reply) => {
+    try {
+      if (!existsSync(BACKUP_DIR)) return reply.send({ backups: [] });
+      const files = readdirSync(BACKUP_DIR)
+        .filter(f => f.startsWith('vector-aggregator_') && f.endsWith('.toml'))
+        .sort().reverse();
+
+      const backups = files.map(f => {
+        const stat = statSync(join(BACKUP_DIR, f));
+        // vector-aggregator_2026-02-20_04-30-00_editor.toml → source 추출
+        const parts = f.replace('.toml', '').split('_');
+        const source = parts.length >= 4 ? parts.slice(3).join('_') : 'unknown';
+        return {
+          name: f,
+          size: stat.size,
+          createdAt: stat.mtime.toISOString(),
+          source,
+        };
+      });
+
+      return reply.send({ backups });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 특정 백업 내용 조회 */
+  app.get('/api/monitor/aggregator/backups/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    // 경로 조작 방지
+    if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+      return reply.status(400).send({ error: 'Invalid backup name' });
+    }
+    const filePath = join(BACKUP_DIR, name);
+    if (!existsSync(filePath)) {
+      return reply.status(404).send({ error: 'Backup not found' });
+    }
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return reply.send({ name, content });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 백업에서 복구 (현재 설정을 백업 후 교체) */
+  app.post('/api/monitor/aggregator/backups/:name/restore', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (name.includes('..') || name.includes('/') || name.includes('\\')) {
+      return reply.status(400).send({ error: 'Invalid backup name' });
+    }
+    const filePath = join(BACKUP_DIR, name);
+    if (!existsSync(filePath)) {
+      return reply.status(404).send({ error: 'Backup not found' });
+    }
+    try {
+      createTomlBackup('restore');
+      const backupContent = readFileSync(filePath, 'utf-8');
+      writeFileSync(VECTOR_CONFIG, backupContent, 'utf-8');
+      logger.info({ restoredFrom: name }, 'TOML restored from backup');
+      return reply.send({ success: true, restoredFrom: name });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  // ─── 다운로드 API ───
+
+  /** Vector 실행파일(zip) 다운로드 */
+  app.get('/api/monitor/download/vector-zip', async (_request, reply) => {
+    const zipPath = join(process.cwd(), 'vector-bin', 'vector.zip');
+    if (!existsSync(zipPath)) {
+      return reply.status(404).send({ error: 'vector.zip not found' });
+    }
+    try {
+      const buf = readFileSync(zipPath);
+      return reply
+        .header('Content-Type', 'application/zip')
+        .header('Content-Disposition', 'attachment; filename="vector.zip"')
+        .send(buf);
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 설비별 Agent TOML 다운로드 */
+  app.get('/api/monitor/download/agent/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (!/^[A-Za-z0-9_-]+$/.test(name)) {
+      return reply.status(400).send({ error: 'Invalid name' });
+    }
+    const filePath = join(AGENT_CONFIG_DIR, `${name}.toml`);
+    if (!existsSync(filePath)) {
+      return reply.status(404).send({ error: 'Not found' });
+    }
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return reply
+        .header('Content-Type', 'application/octet-stream')
+        .header('Content-Disposition', `attachment; filename="${name}.toml"`)
+        .send(content);
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  // ─── 설비별 Agent 설정 관리 API ───
+
+  /** 설비 이름 유효성 검사 (영문, 숫자, 하이픈, 언더스코어만 허용) */
+  const isValidAgentName = (name: string) => /^[A-Za-z0-9_-]+$/.test(name);
+  const agentPath = (name: string) => join(AGENT_CONFIG_DIR, `${name}.toml`);
+
+  /** 설비 목록 조회 */
+  app.get('/api/monitor/agent/configs', async (_request, reply) => {
+    try {
+      if (!existsSync(AGENT_CONFIG_DIR)) mkdirSync(AGENT_CONFIG_DIR, { recursive: true });
+      const files = readdirSync(AGENT_CONFIG_DIR)
+        .filter(f => f.endsWith('.toml') && !f.endsWith('.bak.toml'))
+        .map(f => f.replace('.toml', ''))
+        .sort();
+      return reply.send({ names: files });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 특정 설비 TOML 조회 */
+  app.get('/api/monitor/agent/config/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (!isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
+    const filePath = agentPath(name);
+    if (!existsSync(filePath)) return reply.status(404).send({ error: 'Not found' });
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return reply.send({ content, filePath, name });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 특정 설비 TOML 저장 (백업 포함) */
+  app.put('/api/monitor/agent/config/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const { content } = request.body as { content: string };
+    if (!isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return reply.status(400).send({ error: 'Invalid content' });
+    }
+    const filePath = agentPath(name);
+    try {
+      if (existsSync(filePath)) {
+        const original = readFileSync(filePath, 'utf-8');
+        writeFileSync(filePath + '.bak', original, 'utf-8');
+      }
+      writeFileSync(filePath, content, 'utf-8');
+      logger.info({ name }, 'Agent config updated, backup created');
+      return reply.send({ success: true, message: 'Config saved', backedUp: true });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 새 설비 생성 */
+  app.post('/api/monitor/agent/configs', async (request, reply) => {
+    const { name, content } = request.body as { name: string; content?: string };
+    if (!name || !isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
+    const filePath = agentPath(name);
+    if (existsSync(filePath)) return reply.status(409).send({ error: 'Already exists' });
+    try {
+      const defaultContent = content || getDefaultAgentToml(name);
+      writeFileSync(filePath, defaultContent, 'utf-8');
+      logger.info({ name }, 'New agent config created');
+      return reply.send({ success: true, name });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 설비 설정 삭제 */
+  app.delete('/api/monitor/agent/config/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (!isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
+    const filePath = agentPath(name);
+    if (!existsSync(filePath)) return reply.status(404).send({ error: 'Not found' });
+    try {
+      unlinkSync(filePath);
+      const bakPath = filePath + '.bak';
+      if (existsSync(bakPath)) unlinkSync(bakPath);
+      logger.info({ name }, 'Agent config deleted');
+      return reply.send({ success: true });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 설비 TOML 파일 다운로드 */
+  app.get('/api/monitor/agent/config/:name/download', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (!isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
+    const filePath = agentPath(name);
+    if (!existsSync(filePath)) return reply.status(404).send({ error: 'Not found' });
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return reply
+        .header('Content-Type', 'application/octet-stream')
+        .header('Content-Disposition', `attachment; filename="${name}.toml"`)
+        .send(content);
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 등록된 테이블 목록 (로컬 config/table-registry.json 기반, TABLE 타겟만) */
+  app.get('/api/monitor/tables/oracle', async (_request, reply) => {
+    try {
+      const registry = readRegistry();
+      const tables = Object.entries(registry)
+        .filter(([, entry]) => !isProcedureEntry(entry))
+        .map(([name, cols]) => ({
+          TABLE_NAME: name,
+          NUM_ROWS: null,
+          COLUMN_COUNT: Array.isArray(cols) ? cols.length : 0,
+        }));
+      tables.sort((a, b) => a.TABLE_NAME.localeCompare(b.TABLE_NAME));
+      return reply.send({ tables });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** Oracle 전체 테이블 목록 (USER_TABLES — 매핑 페이지용) */
+  app.get('/api/monitor/tables/oracle/all', async (_request, reply) => {
+    const conn = await getConnection();
+    try {
+      const result = await conn.execute(
+        `SELECT TABLE_NAME, NUM_ROWS FROM USER_TABLES ORDER BY TABLE_NAME`,
+      );
+      return reply.send({ tables: result.rows ?? [] });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  /** Oracle 테이블 컬럼 메타데이터 */
+  app.get('/api/monitor/tables/oracle/:tableName/columns', async (request, reply) => {
+    const { tableName } = request.params as { tableName: string };
+    if (!/^[A-Z_][A-Z0-9_]*$/i.test(tableName)) {
+      return reply.status(400).send({ error: 'Invalid table name' });
+    }
+    const conn = await getConnection();
+    try {
+      const result = await conn.execute(
+        `SELECT COLUMN_NAME, DATA_TYPE, NULLABLE, DATA_LENGTH, COLUMN_ID
+         FROM USER_TAB_COLUMNS WHERE TABLE_NAME = :t ORDER BY COLUMN_ID`,
+        { t: tableName.toUpperCase() },
+      );
+      return reply.send({ columns: result.rows ?? [] });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  /** 테이블 컬럼 레지스트리 조회 — TABLE 타겟만 (로컬 JSON) */
+  app.get('/api/monitor/registry', async (request, reply) => {
+    try {
+      const { table } = request.query as { table?: string };
+      const registry = readRegistry();
+      const rows: Array<Record<string, unknown>> = [];
+
+      const tables = table
+        ? { [table.toUpperCase()]: registry[table.toUpperCase()] ?? [] }
+        : registry;
+      for (const [tName, entry] of Object.entries(tables)) {
+        if (isProcedureEntry(entry)) continue;
+        for (const col of entry) {
+          rows.push({ TABLE_NAME: tName, ...col });
+        }
+      }
+      rows.sort((a, b) => {
+        const t = String(a.TABLE_NAME).localeCompare(String(b.TABLE_NAME));
+        return t !== 0 ? t : (Number(a.COLUMN_ORDER) - Number(b.COLUMN_ORDER));
+      });
+      return reply.send({ rows });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 테이블 컬럼 레지스트리 저장 — TABLE 타겟 (로컬 JSON) */
+  app.post('/api/monitor/registry', async (request, reply) => {
+    const body = request.body as {
+      table: string;
+      columns: Array<{
+        COLUMN_NAME: string;
+        DATA_TYPE: string;
+        SOURCE_FIELD: string;
+        IS_REQUIRED: string;
+        COLUMN_ORDER: number;
+      }>;
+    };
+
+    if (!body.table || !Array.isArray(body.columns)) {
+      return reply.status(400).send({ error: 'Invalid payload' });
+    }
+
+    try {
+      const columns: RegistryColumn[] = body.columns.map((col) => ({
+        COLUMN_NAME: col.COLUMN_NAME,
+        DATA_TYPE: col.DATA_TYPE,
+        SOURCE_FIELD: col.SOURCE_FIELD || null,
+        IS_REQUIRED: col.IS_REQUIRED || 'N',
+        COLUMN_ORDER: col.COLUMN_ORDER,
+      }));
+      setTableColumns(body.table, columns);
+      return reply.send({ success: true, count: columns.length });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 프로시져 목록 조회 */
+  app.get('/api/monitor/procedures', async (_request, reply) => {
+    try {
+      const keys = getRegisteredProcedureKeys();
+      const procedures = keys.map(key => {
+        const entry = getProcedure(key);
+        return { key, procedureName: entry?.procedureName ?? key, paramCount: entry?.params.length ?? 0 };
+      });
+      return reply.send({ procedures });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 프로시져 상세 조회 */
+  app.get('/api/monitor/procedures/:key', async (request, reply) => {
+    try {
+      const { key } = request.params as { key: string };
+      const entry = getProcedure(key);
+      if (!entry) return reply.status(404).send({ error: 'Not found' });
+      return reply.send(entry);
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 프로시져 저장 (생성/수정) */
+  app.post('/api/monitor/procedures', async (request, reply) => {
+    const body = request.body as {
+      key: string;
+      procedureName: string;
+      params: Array<{ PARAM_ORDER: number; SOURCE_FIELD: string; IS_REQUIRED: string }>;
+    };
+
+    if (!body.key || !body.procedureName) {
+      return reply.status(400).send({ error: 'key and procedureName are required' });
+    }
+
+    try {
+      const entry: ProcedureEntry = {
+        targetType: 'PROCEDURE',
+        procedureName: body.procedureName,
+        params: (body.params || []).map((p, i) => ({
+          PARAM_ORDER: p.PARAM_ORDER ?? i + 1,
+          SOURCE_FIELD: p.SOURCE_FIELD || '',
+          IS_REQUIRED: p.IS_REQUIRED || 'N',
+        })),
+      };
+      setProcedure(body.key, entry);
+      return reply.send({ success: true, count: entry.params.length });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 프로시져 삭제 */
+  app.delete('/api/monitor/procedures/:key', async (request, reply) => {
+    try {
+      const { key } = request.params as { key: string };
+      deleteTarget(key);
+      return reply.send({ success: true });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 로그 데이터 조회 */
+  app.get('/api/monitor/logs', async (request, reply) => {
+    const { table, limit: limitStr } = request.query as { table?: string; limit?: string };
+    if (!table || !/^[A-Z_][A-Z0-9_]*$/i.test(table)) {
+      return reply.status(400).send({ error: 'Invalid or missing table name' });
+    }
+    const rowLimit = Math.min(Number(limitStr) || 50, 500);
+    const tableName = table.toUpperCase();
+
+    const conn = await getConnection();
+    try {
+      // 컬럼 목록 조회
+      const colResult = await conn.execute<{ COLUMN_NAME: string }>(
+        `SELECT COLUMN_NAME FROM USER_TAB_COLUMNS
+         WHERE TABLE_NAME = :t ORDER BY COLUMN_ID`,
+        { t: tableName },
+      );
+      const columns = (colResult.rows ?? []).map((r: any) => r.COLUMN_NAME);
+      if (columns.length === 0) {
+        return reply.send({ columns: [], rows: [] });
+      }
+
+      // 데이터 조회 (최신순)
+      const sql = `SELECT ${columns.join(', ')} FROM ${tableName}
+                    ORDER BY CREATED_AT DESC FETCH FIRST :lim ROWS ONLY`;
+      const result = await conn.execute(sql, { lim: rowLimit });
+      return reply.send({ columns, rows: result.rows ?? [] });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  /** 오류 로그 전체 삭제 (LOG_ERROR 테이블) */
+  app.delete('/api/monitor/errors', async (_request, reply) => {
+    const conn = await getConnection();
+    try {
+      const result = await conn.execute('DELETE FROM LOG_ERROR');
+      await conn.commit();
+      const deleted = (result as any).rowsAffected ?? 0;
+      logger.info({ deleted }, 'Error logs deleted via API');
+      return reply.send({ success: true, deleted });
+    } catch (err) {
+      await conn.rollback();
+      return reply.status(500).send({ error: String(err) });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  // ─── VRL 파싱 룰 관리 API ───
+
+  /** 전체 파싱 룰 조회 (로컬 JSON — 설비 유형별 그룹핑) */
+  app.get('/api/monitor/parse-rules', async (_request, reply) => {
+    try {
+      const rules = readParseFields();
+      return reply.send({ rules });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 특정 설비 유형의 파싱 룰 저장 (로컬 JSON) */
+  app.post('/api/monitor/parse-rules', async (request, reply) => {
+    const body = request.body as {
+      equipmentType: string;
+      fields: Array<{ fieldName: string; fieldLabel?: string }>;
+    };
+    if (!body.equipmentType || !Array.isArray(body.fields)) {
+      return reply.status(400).send({ error: 'Invalid payload: equipmentType and fields required' });
+    }
+    const eqType = body.equipmentType.toUpperCase();
+
+    try {
+      const fields: ParseField[] = body.fields.map((f, i) => ({
+        fieldName: f.fieldName,
+        fieldLabel: f.fieldLabel || f.fieldName,
+        fieldOrder: i + 1,
+      }));
+      setFieldsByEquipment(eqType, fields);
+      logger.info({ equipmentType: eqType, count: fields.length }, 'Parse rules saved to local config');
+      return reply.send({ success: true, count: fields.length });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 특정 설비 유형의 모든 파싱 룰 삭제 (로컬 JSON) */
+  app.delete('/api/monitor/parse-rules/:equipmentType', async (request, reply) => {
+    const { equipmentType } = request.params as { equipmentType: string };
+    if (!equipmentType || !/^[A-Za-z0-9_-]+$/.test(equipmentType)) {
+      return reply.status(400).send({ error: 'Invalid equipment type' });
+    }
+    try {
+      const existed = deleteFieldsByEquipment(equipmentType);
+      logger.info({ equipmentType, existed }, 'Parse rules deleted from local config');
+      return reply.send({ success: true, deleted: existed ? 1 : 0 });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** VRL 코드에서 data.* 필드를 자동 추출하여 로컬 JSON에 동기화 */
+  app.post('/api/monitor/parse-rules/sync', async (_request, reply) => {
+    try {
+      const tomlContent = readFileSync(VECTOR_CONFIG, 'utf-8');
+      const extracted = extractVrlFields(tomlContent);
+
+      if (Object.keys(extracted).length === 0) {
+        return reply.send({ success: true, synced: {}, message: 'No data.* fields found in VRL' });
+      }
+
+      const allFields = readParseFields();
+      for (const [eqType, fields] of Object.entries(extracted)) {
+        allFields[eqType] = fields.map((f, i) => ({
+          fieldName: f,
+          fieldLabel: f,
+          fieldOrder: i + 1,
+        }));
+      }
+      writeParseFields(allFields);
+
+      const synced: Record<string, number> = {};
+      for (const [k, v] of Object.entries(extracted)) synced[k] = v.length;
+      logger.info({ synced }, 'Parse rules synced from VRL to local config');
+      return reply.send({ success: true, synced, details: extracted });
+    } catch (err) {
+      logger.error(err, 'Failed to sync parse rules from VRL');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  // ─── AI 모델 설정 API ───
+
+  const AI_CONFIG_PATH = join(process.cwd(), 'config', 'ai-config.json');
+
+  interface AiModelConfig {
+    apiKey: string;
+    model: string;
+    enabled: boolean;
+  }
+  interface AiConfig {
+    gemini: AiModelConfig;
+    mistral: AiModelConfig;
+    claude: AiModelConfig;
+  }
+
+  const DEFAULT_AI_CONFIG: AiConfig = {
+    gemini:  { apiKey: '', model: 'gemini-2.5-flash', enabled: false },
+    mistral: { apiKey: '', model: 'mistral-large-latest', enabled: false },
+    claude:  { apiKey: '', model: 'claude-sonnet-4-20250514', enabled: false },
+  };
+
+  function loadAiConfig(): AiConfig {
+    try {
+      if (existsSync(AI_CONFIG_PATH)) {
+        return { ...DEFAULT_AI_CONFIG, ...JSON.parse(readFileSync(AI_CONFIG_PATH, 'utf-8')) };
+      }
+    } catch { /* ignore */ }
+    return { ...DEFAULT_AI_CONFIG };
+  }
+
+  /** AI 모델 설정 조회 (API 키 마스킹) */
+  app.get('/api/monitor/ai/config', async (_request, reply) => {
+    const cfg = loadAiConfig();
+    const masked: Record<string, any> = {};
+    for (const [name, m] of Object.entries(cfg)) {
+      masked[name] = { ...m, apiKey: m.apiKey ? '••••••••' + m.apiKey.slice(-4) : '' };
+    }
+    return reply.send(masked);
+  });
+
+  /** AI 모델 설정 저장 */
+  app.put('/api/monitor/ai/config', async (request, reply) => {
+    const body = request.body as Record<string, Partial<AiModelConfig>>;
+    const current = loadAiConfig();
+
+    for (const [name, updates] of Object.entries(body)) {
+      if (name in current) {
+        const key = name as keyof AiConfig;
+        if (updates.model !== undefined) current[key].model = updates.model;
+        if (updates.enabled !== undefined) current[key].enabled = updates.enabled;
+        if (updates.apiKey !== undefined && !updates.apiKey.startsWith('••••')) {
+          current[key].apiKey = updates.apiKey;
+        }
+      }
+    }
+
+    writeFileSync(AI_CONFIG_PATH, JSON.stringify(current, null, 2), 'utf-8');
+    logger.info('AI config updated');
+    return reply.send({ success: true });
+  });
+
+  /** AI 모델 연결 테스트 — 간단한 프롬프트로 API 키 유효성 확인 */
+  app.post('/api/monitor/ai/test', async (request, reply) => {
+    const { provider } = request.body as { provider: string };
+    if (!provider) return reply.status(400).send({ error: 'provider is required' });
+
+    const cfg = loadAiConfig();
+    const modelCfg = cfg[provider as keyof AiConfig];
+    if (!modelCfg?.apiKey) {
+      return reply.send({ success: false, error: 'API key is not configured' });
+    }
+
+    const testPrompt = 'Say "Hello" in one word.';
+    const start = Date.now();
+
+    try {
+      let responseText = '';
+
+      if (provider === 'claude') {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': modelCfg.apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: modelCfg.model,
+            max_tokens: 32,
+            messages: [{ role: 'user', content: testPrompt }],
+          }),
+        });
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(json.error?.message || `Claude API ${res.status}`);
+        responseText = json.content?.[0]?.text || '';
+
+      } else if (provider === 'gemini') {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelCfg.model}:generateContent?key=${modelCfg.apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: testPrompt }] }],
+          }),
+        });
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(json.error?.message || `Gemini API ${res.status}`);
+        responseText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      } else if (provider === 'mistral') {
+        const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${modelCfg.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: modelCfg.model,
+            messages: [{ role: 'user', content: testPrompt }],
+            max_tokens: 32,
+          }),
+        });
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(json.message || json.detail || `Mistral API ${res.status}`);
+        responseText = json.choices?.[0]?.message?.content || '';
+
+      } else {
+        return reply.status(400).send({ success: false, error: `Unknown provider: ${provider}` });
+      }
+
+      const elapsed = Date.now() - start;
+      logger.info({ provider, elapsed }, 'AI model test succeeded');
+      return reply.send({
+        success: true,
+        response: responseText.trim(),
+        model: modelCfg.model,
+        latencyMs: elapsed,
+      });
+    } catch (err) {
+      const elapsed = Date.now() - start;
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ provider, err: msg }, 'AI model test failed');
+      return reply.send({ success: false, error: msg, latencyMs: elapsed });
+    }
+  });
+
+  /** 활성화된 AI 모델 목록 조회 */
+  app.get('/api/monitor/ai/models', async (_request, reply) => {
+    const cfg = loadAiConfig();
+    const models = Object.entries(cfg)
+      .filter(([, m]) => m.enabled && m.apiKey)
+      .map(([name, m]) => ({ name, model: m.model }));
+    return reply.send({ models });
+  });
+
+  /** AI로 VRL 코드 생성 */
+  app.post('/api/monitor/ai/generate-vrl', async (request, reply) => {
+    const { provider, sampleLog, equipmentType, userInstruction } = request.body as {
+      provider: string;
+      sampleLog: string;
+      equipmentType: string;
+      userInstruction?: string;
+    };
+
+    if (!provider || !sampleLog) {
+      return reply.status(400).send({ error: 'provider and sampleLog are required' });
+    }
+
+    const cfg = loadAiConfig();
+    const modelCfg = cfg[provider as keyof AiConfig];
+    if (!modelCfg?.apiKey || !modelCfg.enabled) {
+      return reply.status(400).send({ error: `AI model "${provider}" is not configured or disabled` });
+    }
+
+    const systemPrompt = `You are a VRL (Vector Remap Language) expert for the Vector log collection tool.
+Your task: parse a raw log into structured .data.FIELD fields.
+
+CRITICAL VRL syntax rules:
+- Input: .message contains the raw log string
+- ALL functions MUST use the infallible form with "!" suffix. This is mandatory.
+  split!(), get!(), strip_whitespace!(), to_string!(), to_int!(), to_float!(), parse_timestamp!()
+- Split: values = split!(.message, ",")
+- Get element: get!(values, [0])  — returns "any" type
+- To use string functions on get! results, wrap with to_string! first:
+  .data.FIELD = strip_whitespace!(to_string!(get!(values, [0])))
+- Convert numbers: to_int!(get!(values, [3]))  or  to_float!(get!(values, [5]))
+- Use UPPERCASE_SNAKE_CASE for field names
+- Only assign to .data.* fields
+- NEVER use non-! versions like strip_whitespace(), split(), get() — they cause compile errors
+
+Example pattern:
+  values = split!(.message, ",")
+  .data.NAME = strip_whitespace!(to_string!(get!(values, [0])))
+  .data.COUNT = to_int!(get!(values, [1]))
+
+IMPORTANT: Return ONLY the VRL code. No markdown, no explanations, no code fences.`;
+
+    const userPrompt = `Equipment type: ${equipmentType}
+Sample log:
+${sampleLog}
+${userInstruction ? `\nParsing instructions from user:\n${userInstruction}\n` : ''}
+Generate VRL parsing code for this log.`;
+
+    try {
+      let vrlCode: string;
+
+      if (provider === 'claude') {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': modelCfg.apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: modelCfg.model,
+            max_tokens: 2048,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userPrompt }],
+          }),
+        });
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(json.error?.message || `Claude API ${res.status}`);
+        vrlCode = json.content?.[0]?.text || '';
+
+      } else if (provider === 'gemini') {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelCfg.model}:generateContent?key=${modelCfg.apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ parts: [{ text: userPrompt }] }],
+          }),
+        });
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(json.error?.message || `Gemini API ${res.status}`);
+        vrlCode = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      } else if (provider === 'mistral') {
+        const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${modelCfg.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: modelCfg.model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+          }),
+        });
+        const json = await res.json() as any;
+        if (!res.ok) throw new Error(json.message || json.detail || `Mistral API ${res.status}`);
+        vrlCode = json.choices?.[0]?.message?.content || '';
+
+      } else {
+        return reply.status(400).send({ error: `Unknown provider: ${provider}` });
+      }
+
+      // 코드 펜스 제거 (AI가 넣을 수 있으므로)
+      vrlCode = vrlCode.replace(/^```[\w]*\n?/gm, '').replace(/\n?```$/gm, '').trim();
+
+      logger.info({ provider, equipmentType }, 'VRL code generated by AI');
+      return reply.send({ success: true, vrlCode });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ provider, err: msg }, 'AI VRL generation failed');
+      return reply.send({ success: false, error: msg });
+    }
+  });
+
+  // ─── VRL 시뮬레이터 API ───
+
+  /** 특정 설비 유형의 기존 VRL 코드 조회 */
+  app.get('/api/monitor/vrl/code/:equipmentType', async (request, reply) => {
+    const { equipmentType } = request.params as { equipmentType: string };
+    const eqType = equipmentType.toUpperCase();
+
+    try {
+      const tomlContent = readFileSync(VECTOR_CONFIG, 'utf-8');
+      const sourceMatch = tomlContent.match(
+        /\[transforms\.parse_logs\][\s\S]*?source\s*=\s*'''([\s\S]*?)'''/,
+      );
+      if (!sourceMatch) {
+        return reply.status(404).send({ error: 'parse_logs source block not found' });
+      }
+
+      const code = extractEquipmentBlock(sourceMatch[1], eqType);
+      if (code === null) {
+        return reply.send({ equipmentType: eqType, code: '' });
+      }
+      return reply.send({ equipmentType: eqType, code });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** VRL 코드 시뮬레이션 (vector.exe vrl 실행) */
+  app.post('/api/monitor/vrl/simulate', async (request, reply) => {
+    const { equipmentType, logType, sampleLog, vrlCode } = request.body as {
+      equipmentType: string;
+      logType: string;
+      sampleLog: string;
+      vrlCode: string;
+    };
+
+    if (!sampleLog || !vrlCode) {
+      return reply.status(400).send({ error: 'sampleLog and vrlCode are required' });
+    }
+
+    const ts = Date.now();
+    const inputFile = join(tmpdir(), `vrl-input-${ts}.json`);
+    const vrlFile = join(tmpdir(), `vrl-program-${ts}.vrl`);
+
+    try {
+      const inputData = JSON.stringify({
+        message: sampleLog.replace(/\r\n/g, '\n').replace(/\r/g, ''),
+        equipment_type: equipmentType || '',
+        log_type: logType || 'INSPECTION',
+      });
+      writeFileSync(inputFile, inputData, 'utf-8');
+      writeFileSync(vrlFile, vrlCode, 'utf-8');
+
+      const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+        const proc = spawn(VECTOR_BIN, [
+          'vrl', '--input', inputFile, '--program', vrlFile, '--print-object',
+        ]);
+        let stdout = '';
+        let stderr = '';
+        proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
+        proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
+        proc.on('close', (code) => {
+          if (code === 0) resolve({ stdout, stderr });
+          else {
+            // stderr에서 INFO/DEBUG 로그 줄 제거하여 실제 에러만 추출
+            const cleanErr = stderr.split('\n')
+              .filter(l => !l.match(/^\d{4}-\d{2}-\d{2}T.*\s+(INFO|DEBUG)\s+/))
+              .join('\n').trim();
+            reject(new Error(cleanErr || `Process exited with code ${code}`));
+          }
+        });
+        proc.on('error', reject);
+        const timer = setTimeout(() => { proc.kill(); reject(new Error('VRL execution timeout (10s)')); }, 10000);
+        proc.on('close', () => clearTimeout(timer));
+      });
+
+      // stdout에서 JSON 부분만 추출 (앞뒤 로그 텍스트 제거)
+      const raw = result.stdout.trim();
+      const jsonStart = raw.indexOf('{');
+      const jsonEnd = raw.lastIndexOf('}');
+      if (jsonStart === -1 || jsonEnd === -1) {
+        logger.warn({ stdout: raw.slice(0, 500), stderr: result.stderr.slice(0, 500) }, 'VRL produced no JSON output');
+        return reply.send({
+          success: false,
+          error: result.stderr.trim() || 'VRL produced no JSON output.\nstdout: ' + (raw.slice(0, 200) || '(empty)'),
+        });
+      }
+      const jsonStr = raw.slice(jsonStart, jsonEnd + 1);
+
+      let output: Record<string, unknown>;
+      try {
+        output = JSON.parse(jsonStr);
+      } catch {
+        return reply.send({ success: false, error: 'Failed to parse VRL output as JSON:\n' + jsonStr.slice(0, 300) });
+      }
+
+      const fields: Array<{ name: string; value: unknown }> = [];
+      if (output.data && typeof output.data === 'object') {
+        for (const [key, value] of Object.entries(output.data as Record<string, unknown>)) {
+          fields.push({ name: `data.${key}`, value });
+        }
+      }
+
+      return reply.send({ success: true, output, fields });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ err: msg }, 'VRL simulation failed');
+      return reply.send({ success: false, error: msg });
+    } finally {
+      try { if (existsSync(inputFile)) unlinkSync(inputFile); } catch { /* ignore */ }
+      try { if (existsSync(vrlFile)) unlinkSync(vrlFile); } catch { /* ignore */ }
+    }
+  });
+
+  /** VRL 코드를 aggregator TOML에 반영 + 파싱 룰 DB 동기화 */
+  app.post('/api/monitor/vrl/apply', async (request, reply) => {
+    const { equipmentType, vrlCode } = request.body as {
+      equipmentType: string;
+      vrlCode: string;
+    };
+
+    if (!equipmentType || !vrlCode) {
+      return reply.status(400).send({ error: 'equipmentType and vrlCode are required' });
+    }
+
+    try {
+      const tomlContent = readFileSync(VECTOR_CONFIG, 'utf-8');
+      const eqType = equipmentType.toUpperCase();
+
+      // source = ''' ... ''' 블록 내부의 VRL 코드 추출
+      const sourceMatch = tomlContent.match(
+        /(\[transforms\.parse_logs\][\s\S]*?source\s*=\s*''')([\s\S]*?)(''')/,
+      );
+      if (!sourceMatch) {
+        return reply.status(400).send({ error: 'parse_logs source block not found in TOML' });
+      }
+
+      const vrlSource = sourceMatch[2];
+      const updatedSource = replaceEquipmentBlock(vrlSource, eqType, vrlCode);
+      if (updatedSource === null) {
+        return reply.status(400).send({ error: `Equipment type "${eqType}" not found in VRL source` });
+      }
+
+      const newToml = tomlContent.replace(sourceMatch[2], updatedSource);
+
+      // 백업 + 저장
+      createTomlBackup('vrl-apply');
+      writeFileSync(VECTOR_CONFIG, newToml, 'utf-8');
+      logger.info({ equipmentType: eqType }, 'VRL code applied to aggregator TOML');
+
+      // 파싱 룰 로컬 파일 동기화
+      let syncCount = 0;
+      const extracted = extractVrlFields(newToml);
+      if (extracted[eqType] && extracted[eqType].length > 0) {
+        try {
+          const fields = extracted[eqType].map((fieldName: string, i: number) => ({
+            fieldName,
+            fieldLabel: fieldName,
+            fieldOrder: i + 1,
+          }));
+          setFieldsByEquipment(eqType, fields);
+          syncCount = fields.length;
+          logger.info({ equipmentType: eqType, syncCount }, 'Parse rules synced to local file after VRL apply');
+        } catch (syncErr) {
+          logger.warn({ err: syncErr }, 'Failed to sync parse rules to local file after VRL apply');
+        }
+      }
+
+      return reply.send({ success: true, message: 'VRL applied', syncCount });
+    } catch (err) {
+      logger.error(err, 'Failed to apply VRL to TOML');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** .env 설정 저장 (허용된 키만 업데이트) */
+  app.put('/api/monitor/config', async (request, reply) => {
+    const ALLOWED_KEYS = new Set([
+      'HOST', 'PORT', 'NODE_ENV',
+      'ORACLE_USER', 'ORACLE_PASSWORD', 'ORACLE_CONNECT_STRING', 'ORACLE_POOL_MIN', 'ORACLE_POOL_MAX',
+      'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD',
+      'QUEUE_CONCURRENCY', 'BATCH_SIZE', 'BATCH_TIMEOUT_MS',
+      'RAW_LOG_BASE_PATH', 'HEARTBEAT_TTL_SECONDS',
+    ]);
+    const RESTART_KEYS = new Set([
+      'HOST', 'PORT', 'NODE_ENV',
+      'ORACLE_USER', 'ORACLE_PASSWORD', 'ORACLE_CONNECT_STRING', 'ORACLE_POOL_MIN', 'ORACLE_POOL_MAX',
+      'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD',
+    ]);
+
+    const body = request.body as Record<string, string>;
+    const updates: Record<string, string> = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (ALLOWED_KEYS.has(key) && value !== '••••••••') {
+        updates[key] = String(value);
+      }
+    }
+    if (Object.keys(updates).length === 0) {
+      return reply.status(400).send({ success: false, error: 'No valid keys to update' });
+    }
+
+    try {
+      const envPath = join(process.cwd(), '.env');
+      let envContent = readFileSync(envPath, 'utf-8');
+
+      for (const [key, value] of Object.entries(updates)) {
+        const regex = new RegExp(`^${key}=.*$`, 'm');
+        if (regex.test(envContent)) {
+          envContent = envContent.replace(regex, `${key}=${value}`);
+        } else {
+          envContent += `\n${key}=${value}`;
+        }
+        updateEnvValue(key as keyof Env, value);
+      }
+      writeFileSync(envPath, envContent, 'utf-8');
+
+      const needsRestart = Object.keys(updates).some(k => RESTART_KEYS.has(k));
+      logger.info({ updated: Object.keys(updates), needsRestart }, 'Config updated via API');
+      return reply.send({ success: true, updated: Object.keys(updates), needsRestart });
+    } catch (err) {
+      logger.error(err, 'Failed to update config');
+      return reply.status(500).send({ success: false, error: String(err) });
+    }
+  });
+
+  /** 시스템 환경설정 조회 (비밀번호 마스킹) */
+  app.get('/api/monitor/config', async (_request, reply) => {
+    const oracleConnParts = env.ORACLE_CONNECT_STRING.split('/');
+    const oracleHost = oracleConnParts[0] || env.ORACLE_CONNECT_STRING;
+    const oracleService = oracleConnParts[1] || '—';
+
+    return reply.send({
+      server: {
+        host: env.HOST,
+        port: env.PORT,
+        nodeEnv: env.NODE_ENV,
+        nodeVersion: process.version,
+        platform: process.platform,
+        pid: process.pid,
+        memoryUsage: {
+          rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        },
+      },
+      oracle: {
+        host: oracleHost,
+        service: oracleService,
+        connectString: env.ORACLE_CONNECT_STRING,
+        user: env.ORACLE_USER,
+        password: env.ORACLE_PASSWORD ? '••••••••' : '',
+        poolMin: env.ORACLE_POOL_MIN,
+        poolMax: env.ORACLE_POOL_MAX,
+      },
+      redis: {
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        hasPassword: env.REDIS_PASSWORD.length > 0,
+        password: env.REDIS_PASSWORD ? '••••••••' : '',
+      },
+      queue: {
+        concurrency: env.QUEUE_CONCURRENCY,
+        batchSize: env.BATCH_SIZE,
+        batchTimeoutMs: env.BATCH_TIMEOUT_MS,
+      },
+      storage: {
+        rawLogBasePath: env.RAW_LOG_BASE_PATH,
+      },
+      heartbeat: {
+        ttlSeconds: env.HEARTBEAT_TTL_SECONDS,
+      },
+    });
+  });
 };
+
+/** 새 설비용 기본 TOML 템플릿 */
+function getDefaultAgentToml(name: string): string {
+  return `# =============================================================================
+#  Vector Agent (송신기) - ${name} 설비
+# =============================================================================
+
+data_dir = "C:\\\\vector-data-${name.toLowerCase()}"
+
+[api]
+enabled = true
+address = "127.0.0.1:8686"
+
+[sources.work_logs]
+type = "file"
+include = [
+  "C:\\\\logs\\\\${name.toLowerCase()}\\\\*.txt",
+  "C:\\\\logs\\\\${name.toLowerCase()}\\\\*.csv",
+  "C:\\\\logs\\\\${name.toLowerCase()}\\\\*.log",
+]
+read_from = "beginning"
+fingerprint.strategy = "checksum"
+fingerprint.lines = 1
+ignore_older_secs = 86400
+
+[transforms.add_metadata]
+type = "remap"
+inputs = ["work_logs"]
+source = '''
+.line_code = "LINE-01"
+.equipment_id = "${name}-001"
+'''
+
+[sinks.to_aggregator]
+type = "vector"
+inputs = ["add_metadata"]
+address = "127.0.0.1:6000"
+
+[sinks.to_aggregator.buffer]
+type = "disk"
+max_size = 268435488
+when_full = "block"
+`;
+}
 
 async function getQueueStats() {
   const queue = getQueue(QUEUE_NAMES.LOG_INSERT);
@@ -69,18 +1263,17 @@ async function getQueueStats() {
   return counts;
 }
 
-async function getTableStats() {
-  const conn = await getConnection();
+function getTableStats() {
   try {
-    const result = await conn.execute<{ TABLE_NAME: string; ROW_COUNT: number }>(
-      `SELECT 'LOG_INSPECTION' AS TABLE_NAME, COUNT(*) AS ROW_COUNT FROM LOG_INSPECTION
-       UNION ALL SELECT 'LOG_ALARM', COUNT(*) FROM LOG_ALARM
-       UNION ALL SELECT 'LOG_PROCESS', COUNT(*) FROM LOG_PROCESS
-       UNION ALL SELECT 'LOG_ERROR', COUNT(*) FROM LOG_ERROR`,
-    );
-    return (result.rows ?? []) as unknown as Array<{ TABLE_NAME: string; ROW_COUNT: number }>;
-  } finally {
-    await conn.close();
+    const registry = readRegistry();
+    return Object.entries(registry)
+      .map(([tableName, columns]) => ({
+        TABLE_NAME: tableName,
+        COLUMN_COUNT: columns.length,
+      }))
+      .sort((a, b) => a.TABLE_NAME.localeCompare(b.TABLE_NAME));
+  } catch {
+    return [];
   }
 }
 
@@ -106,4 +1299,160 @@ async function checkRedis() {
   } catch {
     return { connected: false };
   }
+}
+
+/**
+ * VRL source 블록에서 특정 설비 유형의 코드를 새 VRL 코드로 교체
+ *
+ * 동작 원리:
+ *   1. `if .equipment_type == "TYPE" {` 또는 `} else if .equipment_type == "TYPE" {` 헤더 탐색
+ *   2. 중괄호 깊이 추적으로 블록 끝 탐색
+ *   3. 헤더와 닫는 줄 사이 내용을 새 코드로 교체
+ */
+/**
+ * VRL source 블록에서 특정 설비 유형의 기존 코드를 추출하여 반환
+ */
+function extractEquipmentBlock(vrlSource: string, equipmentType: string): string | null {
+  const lines = vrlSource.split('\n');
+
+  const headerPattern = new RegExp(
+    `(?:}\\s*else\\s+)?if\\s+\\.equipment_type\\s*==\\s*"${equipmentType}"\\s*\\{`,
+  );
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (headerPattern.test(lines[i].trim())) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return null;
+
+  let depth = 1;
+  let closingIdx = -1;
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    for (const ch of lines[i]) {
+      if (ch === '{') depth++;
+      if (ch === '}') {
+        depth--;
+        if (depth === 0) { closingIdx = i; break; }
+      }
+    }
+    if (closingIdx !== -1) break;
+  }
+  if (closingIdx === -1) return null;
+
+  // 헤더+1 ~ 닫는줄-1 사이의 코드를 추출, 앞쪽 공통 인덴트 제거
+  const blockLines = lines.slice(headerIdx + 1, closingIdx);
+  const minIndent = blockLines
+    .filter(l => l.trim().length > 0)
+    .reduce((min, l) => Math.min(min, l.length - l.trimStart().length), Infinity);
+  const dedented = blockLines
+    .map(l => l.trim().length === 0 ? '' : l.slice(minIndent))
+    .join('\n')
+    .trim();
+
+  return dedented;
+}
+
+function replaceEquipmentBlock(vrlSource: string, equipmentType: string, newCode: string): string | null {
+  const lines = vrlSource.split('\n');
+
+  // 헤더 라인 탐색
+  const headerPattern = new RegExp(
+    `(?:}\\s*else\\s+)?if\\s+\\.equipment_type\\s*==\\s*"${equipmentType}"\\s*\\{`,
+  );
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (headerPattern.test(lines[i].trim())) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return null;
+
+  // 중괄호 깊이 추적으로 블록 끝 탐색
+  // 헤더 라인의 마지막 `{`에서 depth=1로 시작
+  let depth = 1;
+  let closingIdx = -1;
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    for (const ch of lines[i]) {
+      if (ch === '{') depth++;
+      if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          closingIdx = i;
+          break;
+        }
+      }
+    }
+    if (closingIdx !== -1) break;
+  }
+  if (closingIdx === -1) return null;
+
+  // 새 VRL 코드를 2스페이스 인덴트로 포맷
+  const indent = '  ';
+  const indentedCode = newCode.split('\n')
+    .map(l => l.trim() ? indent + l : '')
+    .join('\n');
+
+  // 헤더~닫는줄 사이 내용 교체
+  const newLines = [
+    ...lines.slice(0, headerIdx + 1),
+    indentedCode,
+    ...lines.slice(closingIdx),
+  ];
+
+  return newLines.join('\n');
+}
+
+/**
+ * Aggregator TOML의 VRL source에서 설비 유형별 .data.* 필드를 추출
+ *
+ * VRL 코드 구조:
+ *   if .equipment_type == "AOI" {
+ *     .data.INSPECTOR = get!(board, [0])
+ *     .data.MODEL     = get!(board, [1])
+ *   } else if .equipment_type == "SP" { ... }
+ *
+ * → { AOI: ["data.INSPECTOR", "data.MODEL"], SP: [...] }
+ */
+function extractVrlFields(tomlContent: string): Record<string, string[]> {
+  // source = ''' ... ''' 블록 추출 (parse_logs transform)
+  const sourceMatch = tomlContent.match(
+    /\[transforms\.parse_logs\][\s\S]*?source\s*=\s*'''([\s\S]*?)'''/,
+  );
+  if (!sourceMatch) return {};
+
+  const vrlSource = sourceMatch[1];
+  const result: Record<string, string[]> = {};
+  let currentType: string | null = null;
+
+  for (const line of vrlSource.split('\n')) {
+    const trimmed = line.trim();
+
+    // equipment_type 블록 감지: if/else if .equipment_type == "XXX"
+    const typeMatch = trimmed.match(
+      /(?:else\s+)?if\s+\.equipment_type\s*==\s*"([A-Z_]+)"/,
+    );
+    if (typeMatch) {
+      currentType = typeMatch[1];
+      if (!result[currentType]) result[currentType] = [];
+      continue;
+    }
+
+    // .data.FIELD = 값 패턴 추출 (배열/객체 초기화 = [] / {} 제외)
+    if (currentType) {
+      const fieldMatch = trimmed.match(/^\.data\.([A-Z][A-Z0-9_]*)\s*=(.*)/);
+      if (fieldMatch) {
+        const rhs = fieldMatch[2].trim();
+        if (rhs.startsWith('[') || rhs.startsWith('{')) continue;
+        const fieldName = `data.${fieldMatch[1]}`;
+        if (!result[currentType].includes(fieldName)) {
+          result[currentType].push(fieldName);
+        }
+      }
+    }
+  }
+
+  return result;
 }

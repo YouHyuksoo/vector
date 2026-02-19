@@ -6,6 +6,9 @@ dist/
 .DS_Store
 coverage/
 
+# AI config (API keys)
+config/ai-config.json
+
 # Vector binary & runtime data
 vector-bin/
 vector-data/

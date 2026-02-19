@@ -47,3 +47,16 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+/**
+ * env 객체의 특정 키를 런타임에 업데이트 (즉시 반영)
+ * zod 스키마를 통해 타입 변환(coerce) 후 메모리 + process.env 동시 반영
+ */
+export function updateEnvValue(key: keyof Env, value: string): void {
+  const shape = envSchema.shape[key];
+  const result = shape.safeParse(value);
+  if (result.success) {
+    (env as Record<string, unknown>)[key] = result.data;
+    process.env[key] = value;
+  }
+}

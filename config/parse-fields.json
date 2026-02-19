@@ -1,0 +1,142 @@
+{
+  "SP": [],
+  "SPI": [
+    {
+      "fieldName": "data.MASTER_BARCODE",
+      "fieldLabel": "data.MASTER_BARCODE",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.PCB_ID",
+      "fieldLabel": "data.PCB_ID",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.INSPECTION_DATE",
+      "fieldLabel": "data.INSPECTION_DATE",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.INSPECTION_START_TIME",
+      "fieldLabel": "data.INSPECTION_START_TIME",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.INSPECTION_END_TIME",
+      "fieldLabel": "data.INSPECTION_END_TIME",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.TOTAL_PANEL_COUNT",
+      "fieldLabel": "data.TOTAL_PANEL_COUNT",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.JOB_NAME",
+      "fieldLabel": "data.JOB_NAME",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.PCB_RESULT",
+      "fieldLabel": "data.PCB_RESULT",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.USER_ID",
+      "fieldLabel": "data.USER_ID",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.LOT_INFO",
+      "fieldLabel": "data.LOT_INFO",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.MACHINE_ID",
+      "fieldLabel": "data.MACHINE_ID",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.SIDE",
+      "fieldLabel": "data.SIDE",
+      "fieldOrder": 12
+    },
+    {
+      "fieldName": "data.LANE",
+      "fieldLabel": "data.LANE",
+      "fieldOrder": 13
+    }
+  ],
+  "MAOI": [],
+  "AOI": [
+    {
+      "fieldName": "data.INSPECTOR",
+      "fieldLabel": "data.INSPECTOR",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.MODEL",
+      "fieldLabel": "data.MODEL",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.LOT_ID",
+      "fieldLabel": "data.LOT_ID",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.SERIAL_NO",
+      "fieldLabel": "data.SERIAL_NO",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.RESULT",
+      "fieldLabel": "data.RESULT",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.START_DATE",
+      "fieldLabel": "data.START_DATE",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.END_DATE",
+      "fieldLabel": "data.END_DATE",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.REVIEWED_DATE",
+      "fieldLabel": "data.REVIEWED_DATE",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.OPERATOR",
+      "fieldLabel": "data.OPERATOR",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.BOARD_SIDE",
+      "fieldLabel": "data.BOARD_SIDE",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.LANE",
+      "fieldLabel": "data.LANE",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.INSPECTIONS",
+      "fieldLabel": "data.INSPECTIONS",
+      "fieldOrder": 12
+    }
+  ],
+  "REFLOW": [],
+  "ICT": [],
+  "FCT": [],
+  "BURNIN": [],
+  "HIPOT": [],
+  "EOL": [],
+  "METALMASK": [],
+  "MOUNTER": [],
+  "VISCOSITY": []
+}

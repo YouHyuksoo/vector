@@ -1,0 +1,68 @@
+# =============================================================================
+#  Vector Agent (송신기) - SPI 설비
+# =============================================================================
+#
+#  역할: SPI 설비 PC의 작업처리결과 로그 파일(.txt, .csv, .log)을
+#        중앙 서버(Aggregator)로 전송합니다.
+#
+#  설치 방법:
+#    1. 설비 PC에 Vector를 설치합니다 (vector.exe)
+#    2. 이 파일을 설비 PC에 복사합니다
+#    3. [설비 설정] 섹션에서 line_code, equipment_id를 변경합니다
+#    4. [소스] 섹션에서 include 경로를 실제 로그 위치로 변경합니다
+#    5. [출력] 섹션에서 address를 실제 서버 IP로 변경합니다
+#
+#  실행: vector --config SPI.toml
+#
+# =============================================================================
+
+data_dir = "C:\\vector-data-spi"
+
+[api]
+enabled = true
+address = "127.0.0.1:8686"
+
+# ── [소스] 모드 A — 파일 단위 전송 (현재 활성화) ──
+
+[sources.work_logs]
+type = "file"
+include = [
+  "C:\\logs\\spi\\*.txt",
+  "C:\\logs\\spi\\*.csv",
+  "C:\\logs\\spi\\*.log",
+]
+read_from = "beginning"
+fingerprint.strategy = "checksum"
+fingerprint.lines = 1
+ignore_older_secs = 86400
+
+# ── 파일 전체를 하나의 이벤트로 묶기 ──
+[sources.work_logs.multiline]
+start_pattern = "^"
+condition_pattern = "^$NEVER_MATCH"
+mode = "halt_before"
+timeout_ms = 1000
+
+# ── [설비 설정] ──
+
+[transforms.add_metadata]
+type = "remap"
+inputs = ["work_logs"]
+source = '''
+.equipment_type = "SPI"
+.log_type = "INSPECTION"
+.line_code = "LINE-01"
+.equipment_id = "SPI-001"
+'''
+
+# ── [출력] Aggregator 서버로 전송 ──
+
+[sinks.to_aggregator]
+type = "vector"
+inputs = ["add_metadata"]
+address = "127.0.0.1:6000"
+
+[sinks.to_aggregator.buffer]
+type = "disk"
+max_size = 268435488
+when_full = "block"

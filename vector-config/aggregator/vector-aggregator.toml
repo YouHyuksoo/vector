@@ -1,133 +1,452 @@
 # =============================================================================
-# Vector Aggregator - 중앙 서버에서 실행
-# Agent 데이터 수신 → VRL 파싱 → raw 파일 저장 + HTTP API 전송
+#  Vector Aggregator (수신기) - 중앙 서버에서 실행
+# =============================================================================
 #
-# 초보자 가이드:
-# 1. 중앙 서버에 Vector 설치 후 이 설정 파일로 실행
-# 2. 로그 형식은 예시 포맷으로 구현됨 (실제 로그 확정 시 VRL 파싱 로직 조정)
-# 3. Node.js API 서버(port 3100)가 먼저 실행 중이어야 함
+#  역할: 여러 설비(Agent)에서 보내는 로그를 한곳에서 수신하여,
+#        파싱 → 파일 저장 → Node.js API 서버로 전달합니다.
 #
-# 실행: vector --config vector-aggregator.toml
+#  데이터 흐름:
+#    Agent 전송 → Aggregator 수신 → VRL 파싱 → raw 파일 저장
+#                                            → HTTP API로 Node.js 전달
+#                                            → Node.js가 Oracle DB에 저장
+#
+#  사전 조건:
+#    1. Node.js API 서버(port 3100)가 먼저 실행 중이어야 합니다
+#    2. 방화벽에서 port 6000 (Agent 수신용)이 열려 있어야 합니다
+#
+#  실행 명령어:
+#    vector --config vector-aggregator.toml
+#
 # =============================================================================
 
+
+# -----------------------------------------------------------------------------
+# data_dir: Vector가 내부적으로 사용하는 데이터 저장 경로
+# - 디스크 버퍼, 체크포인트 등을 저장합니다
+# - 이 폴더가 없으면 Vector가 자동 생성합니다
+# -----------------------------------------------------------------------------
 data_dir = "C:\\Project\\vector\\vector-data"
 
+
+# -----------------------------------------------------------------------------
+# [api]: Vector 자체 API 서버 설정
+# - Vector의 상태 확인, 헬스체크에 사용합니다
+# - 프론트엔드 대시보드에서 Vector 상태를 조회할 때 이 API를 호출합니다
+# - 0.0.0.0  → 모든 네트워크 인터페이스에서 접근 가능
+# - 8687     → 포트 번호 (Agent는 8686 사용)
+# -----------------------------------------------------------------------------
 [api]
 enabled = true
 address = "0.0.0.0:8687"
 
+
 # =============================================================================
-# Source: Agent들로부터 수신
+#  Source (소스): Agent들로부터 데이터 수신
+# =============================================================================
+#
+#  type    = "vector"  → Vector 프로토콜로 수신 (Agent가 같은 프로토콜로 전송)
+#  address = "0.0.0.0:6000"
+#    - 0.0.0.0 → 모든 네트워크에서 접속 허용 (Agent가 외부에서 접속하므로 필수)
+#    - 6000    → 수신 포트 (Agent의 sinks.to_aggregator.address와 일치해야 함)
+#
+#  주의: Agent 설정의 address 포트와 반드시 동일해야 합니다!
+#        Agent: address = "서버IP:6000"  ↔  Aggregator: address = "0.0.0.0:6000"
+#
 # =============================================================================
 
 [sources.from_agents]
 type = "vector"
 address = "0.0.0.0:6000"
 
+
 # =============================================================================
-# Transforms: VRL 파싱 및 태깅
-# log_type별 예시 포맷으로 파싱 (실제 로그 형식 확정 시 조정)
+#  Transforms (변환): 설비유형 + 로그유형별 파싱
+# =============================================================================
+#
+#  Agent가 태깅한 .equipment_type, .log_type 필드를 기준으로 파싱 로직을 분기합니다.
+#  VRL(Vector Remap Language)은 Vector의 데이터 변환 전용 언어입니다.
+#
+#  ┌──────────────────────────────────────────────────────────────┐
+#  │  데이터 흐름                                                 │
+#  │                                                              │
+#  │  Agent → .equipment_type = "SP", .log_type = "INSPECTION"   │
+#  │       → Aggregator 수신                                      │
+#  │       → parse_logs에서 equipment_type + log_type 기준 분기   │
+#  │       → 파싱 로직 적용                                       │
+#  │       → format_for_api → Node.js API → Oracle DB            │
+#  └──────────────────────────────────────────────────────────────┘
+#
+#  분기 기준:
+#    1단계: equipment_type (설비유형) - SP, SPI, AOI 등 13종
+#    2단계: log_type (로그유형) - INSPECTION, ALARM, PROCESS
+#
+#  로그 유형 (3종):
+#    INSPECTION - 검사/작업 결과 로그 (메인)
+#    ALARM      - 알람/경고 로그
+#    PROCESS    - 공정 진행 로그
+#
+#  설비 유형 (13종):
+#    SP, SPI, MAOI, AOI, REFLOW, ICT, FCT,
+#    BURNIN, HIPOT, EOL, METALMASK, MOUNTER, VISCOSITY
+#
+#  ★ 새 설비 추가 시: 아래 if 분기에 해당 설비의 파싱 로직을 추가하세요
+#
 # =============================================================================
 
 [transforms.parse_logs]
 type = "remap"
 inputs = ["from_agents"]
 source = '''
-# 원본 메시지 보존 (raw 저장용)
+# 원본 메시지를 보존 (raw 파일 저장용)
 .raw_message = .message
 
-# log_type별 파싱
-if .log_type == "INSPECTION" {
-  # 파이프 구분 형식: timestamp|item|value|unit|result
-  parts = split!(.message, "|")
-  if length(parts) >= 5 {
-    .data.INSPECT_TIMESTAMP = get!(parts, [0])
-    .data.INSPECT_ITEM = get!(parts, [1])
-    .data.INSPECT_VALUE = get!(parts, [2])
-    .data.INSPECT_UNIT = get!(parts, [3])
-    .data.INSPECT_RESULT = get!(parts, [4])
+# 원본 파일명 추출 (Agent가 태깅한 .file 경로에서 파일명만 추출)
+# 예: "C:\\logs\\aoi\\result_001.csv" → "result_001.csv"
+.filename = replace!(.file, r'.*\\', "")
+
+# 대상 Oracle 테이블명 설정 (로그 유형 기준)
+# LOG_INSPECTION, LOG_ALARM, LOG_PROCESS
+.target_table = "LOG_" + to_string!(.log_type)
+
+# =================================================
+# 1단계: 설비유형별 분기 (equipment_type)
+# 2단계: 로그유형별 분기 (log_type)
+#
+# 구조:
+#   if equipment_type == "AOI" {
+#     if log_type == "INSPECTION" { ... 검사 결과 파싱 ... }
+#     else if log_type == "ALARM" { ... 알람 파싱 ... }
+#     else if log_type == "PROCESS" { ... 공정 파싱 ... }
+#   }
+# =================================================
+
+if .equipment_type == "SP" {
+  # ── SP (Solder Paste Printer) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
   }
-} else if .log_type == "ALARM" {
-  # JSON 형식 알람
-  parsed, err = parse_json(.message)
-  if err == null {
-    .data.ALARM_CODE = to_string!(parsed.code)
-    .data.ALARM_LEVEL = to_string!(parsed.level)
-    .data.ALARM_MESSAGE = to_string!(parsed.message)
-    .data.OCCURRED_AT = to_string!(parsed.timestamp)
+
+} else if .equipment_type == "SPI" {
+  values = split!(.message, "\n")
+  header = split!(to_string!(get!(values, [0])), ",")
+  data_line = split!(to_string!(get!(values, [1])), ",")
+
+  .data.MASTER_BARCODE = strip_whitespace!(to_string!(get!(data_line, [0])))
+  .data.PCB_ID = strip_whitespace!(to_string!(get!(data_line, [1])))
+  .data.INSPECTION_DATE = strip_whitespace!(to_string!(get!(data_line, [2])))
+  .data.INSPECTION_START_TIME = strip_whitespace!(to_string!(get!(data_line, [3])))
+  .data.INSPECTION_END_TIME = strip_whitespace!(to_string!(get!(data_line, [4])))
+  .data.TOTAL_PANEL_COUNT = to_int!(get!(data_line, [5]))
+  .data.JOB_NAME = strip_whitespace!(to_string!(get!(data_line, [6])))
+  .data.PCB_RESULT = strip_whitespace!(to_string!(get!(data_line, [7])))
+  .data.USER_ID = strip_whitespace!(to_string!(get!(data_line, [8])))
+  .data.LOT_INFO = strip_whitespace!(to_string!(get!(data_line, [9])))
+  .data.MACHINE_ID = strip_whitespace!(to_string!(get!(data_line, [10])))
+  .data.SIDE = strip_whitespace!(to_string!(get!(data_line, [11])))
+  .data.LANE = to_int!(get!(data_line, [12]))
+} else if .equipment_type == "MAOI" {
+  # ── MAOI (Manual AOI) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
   }
-} else if .log_type == "PROCESS" {
-  # CSV 형식: step,status,start_time,end_time,duration
-  parts = split!(.message, ",")
-  if length(parts) >= 5 {
-    .data.PROCESS_STEP = get!(parts, [0])
-    .data.STEP_STATUS = get!(parts, [1])
-    .data.START_TIME = get!(parts, [2])
-    .data.END_TIME = get!(parts, [3])
-    .data.DURATION_MS = get!(parts, [4])
+
+} else if .equipment_type == "AOI" {
+  # ── AOI (Automated Optical Inspection) ──
+  if .log_type == "INSPECTION" {
+    # 파일 구조 (multiline으로 통째 수신):
+    #   줄1: BoardInfo
+    #   줄2: Inspector,Model,LotID,SerialNo,Result,...
+    #   줄3: L04_SAOI,BN41-03347B,...,PASS,...,TOP,Front
+    #   줄4: Inspection
+    #   줄5: ModuleID,RefID,WindowNo,DefectType,...
+    #   줄6~: 0,_COMP_61462_,5,WrongPart,...  (N행)
+
+    lines = split!(.message, "\n")
+
+    # ── BoardInfo 파싱 (줄3) ──
+    board_line = get!(lines, [2])
+    board = split!(board_line, ",")
+    .data.INSPECTOR    = get!(board, [0])
+    .data.MODEL        = get!(board, [1])
+    .data.LOT_ID       = get!(board, [2])
+    .data.SERIAL_NO    = get!(board, [3])
+    .data.RESULT       = get!(board, [4])
+    .data.START_DATE   = get!(board, [5])
+    .data.END_DATE     = get!(board, [6])
+    .data.REVIEWED_DATE = get!(board, [7])
+    .data.OPERATOR     = get!(board, [8])
+    .data.BOARD_SIDE   = get!(board, [9])
+    .data.LANE         = get!(board, [10])
+
+    # ── Inspection 상세 파싱 (줄6~) ──
+    .data.INSPECTIONS = []
+    i = 5
+    total = length(lines)
+    while i < total {
+      row = get!(lines, [i])
+      if row != "" {
+        cols = split!(row, ",")
+        if length(cols) >= 7 {
+          inspection = {
+            "MODULE_ID":   get!(cols, [0]),
+            "REF_ID":      get!(cols, [1]),
+            "WINDOW_NO":   get!(cols, [2]),
+            "DEFECT_TYPE": get!(cols, [3]),
+            "PART_NAME":   get!(cols, [4]),
+            "REVIEW":      get!(cols, [5]),
+            "FALSE_CALL":  get!(cols, [6]),
+          }
+          .data.INSPECTIONS = push(.data.INSPECTIONS, inspection)
+        }
+      }
+      i = i + 1
+    }
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
   }
+
+} else if .equipment_type == "REFLOW" {
+  # ── REFLOW (Reflow Oven) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "ICT" {
+  # ── ICT (In-Circuit Test) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "FCT" {
+  # ── FCT (Functional Circuit Test) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "BURNIN" {
+  # ── BURNIN (Burn-In Test) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "HIPOT" {
+  # ── HIPOT (High Potential Test) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "EOL" {
+  # ── EOL (End of Line Test) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "METALMASK" {
+  # ── METALMASK (Metal Mask) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "MOUNTER" {
+  # ── MOUNTER (Chip Mounter) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "VISCOSITY" {
+  # ── VISCOSITY (Viscosity Measurement) ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
 } else {
-  log("Unknown log_type: " + to_string!(.log_type), level: "warn")
+  log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
+  .data = {}
 }
 
-# 타임스탬프 보장
+# 타임스탬프 설정
 .timestamp = now()
 '''
 
+
+# -----------------------------------------------------------------------------
+# format_for_api: Node.js API 서버에 전송할 JSON 구조로 변환
+# - 불필요한 필드를 제거하고, API가 기대하는 형식으로 정리합니다
+# - equipment_id, log_type, target_table, timestamp, data 필드만 전달
+# -----------------------------------------------------------------------------
 [transforms.format_for_api]
 type = "remap"
 inputs = ["parse_logs"]
 source = '''
-# HTTP API용 구조로 변환
 . = {
-  "equipment_id": .equipment_id,
-  "log_type": .log_type,
-  "target_table": .target_table,
-  "timestamp": to_string!(.timestamp),
-  "data": .data
+  "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
+  "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)
+  "target_table": .target_table,       # 저장 대상 Oracle 테이블명
+  "timestamp": to_string!(.timestamp), # 타임스탬프 (문자열로 변환)
+  "data": .data                        # 파싱된 데이터 객체
 }
 '''
 
+
 # =============================================================================
-# Sinks
+#  Sinks (출력): 파싱된 데이터를 어디로 보낼 것인가?
 # =============================================================================
 
-# 1. Raw 로그 파일 저장 (원본 보관)
+
+# -----------------------------------------------------------------------------
+# Sink 1: Raw 로그 파일 저장 (원본 보관)
+# -----------------------------------------------------------------------------
+#
+#  파싱 전 원본 데이터를 파일로 저장합니다. (백업/감사 용도)
+#
+#  path 설명:
+#    C:\data\raw-logs\{설비코드}\{년}\{월}\{일}\raw.log
+#    예) C:\data\raw-logs\EQ-001\2026\02\20\raw.log
+#
+#    {{ equipment_id }} → Agent가 태깅한 설비 코드로 자동 치환
+#    %Y, %m, %d        → 년, 월, 일로 자동 치환
+#
+#  encoding:
+#    codec = "json" → 각 줄을 JSON 형식으로 저장
+#
+#  buffer:
+#    type = "disk"     → 디스크 버퍼 사용 (메모리보다 안전)
+#    max_size          → 536870912 = 512MB
+#    when_full = "block" → 버퍼 가득 차면 대기 (데이터 유실 방지)
+#
+# -----------------------------------------------------------------------------
+
 [sinks.raw_file]
 type = "file"
-inputs = ["parse_logs"]
-path = "C:\\data\\raw-logs\\{{ equipment_id }}\\%Y\\%m\\%d\\raw.log"
+inputs = ["parse_logs"]           # parse_logs에서 처리된 데이터를 저장
+path = "C:\\data\\raw-logs\\{{ equipment_type }}\\{{ equipment_id }}\\%Y-%m-%d\\{{ filename }}"
 
 [sinks.raw_file.encoding]
-codec = "json"
+codec = "text"
 
 [sinks.raw_file.buffer]
 type = "disk"
-max_size = 536870912  # 512MB
+max_size = 536870912              # 512MB
 when_full = "block"
 
-# 2. 파싱된 데이터 → Node.js API 서버로 전송
+
+# -----------------------------------------------------------------------------
+# Sink 2: Node.js API 서버로 HTTP 전송
+# -----------------------------------------------------------------------------
+#
+#  파싱된 데이터를 Node.js API 서버(port 3100)로 POST 전송합니다.
+#  Node.js 서버가 이 데이터를 받아서 Oracle DB에 저장합니다.
+#
+#  uri:
+#    http://127.0.0.1:3100/api/logs → Node.js API의 로그 수신 엔드포인트
+#    서버가 다른 호스트에 있으면 IP를 변경하세요
+#
+#  batch (배치 처리):
+#    max_events   = 100 → 100개 이벤트마다 한번에 전송 (성능 최적화)
+#    timeout_secs = 5   → 100개 안 모여도 5초마다 전송 (지연 방지)
+#
+#  buffer:
+#    type = "disk"     → 디스크 버퍼 (API 서버 다운 시 데이터 보관)
+#    max_size          → 536870912 = 512MB
+#    when_full = "block" → 버퍼 가득 차면 대기
+#
+#  request (재시도 설정):
+#    retry_initial_backoff_secs = 1  → 실패 시 1초 후 재시도
+#    retry_max_duration_secs = 30    → 최대 30초까지 재시도 간격 증가
+#
+# -----------------------------------------------------------------------------
+
 [sinks.to_api]
 type = "http"
-inputs = ["format_for_api"]
-uri = "http://127.0.0.1:3100/api/logs"
+inputs = ["format_for_api"]       # format_for_api에서 정리된 데이터를 전송
+uri = "http://127.0.0.1:3100/api/logs"    # ← Node.js API 서버 주소
 method = "post"
 
 [sinks.to_api.encoding]
 codec = "json"
 
 [sinks.to_api.batch]
-max_events = 100
-timeout_secs = 5
+max_events = 100                  # 100개씩 묶어서 전송
+timeout_secs = 5                  # 5초마다 전송 (100개 안 모여도)
 
 [sinks.to_api.buffer]
 type = "disk"
-max_size = 536870912  # 512MB
+max_size = 536870912              # 512MB
 when_full = "block"
 
 [sinks.to_api.request]
-retry_initial_backoff_secs = 1
-retry_max_duration_secs = 30
+retry_initial_backoff_secs = 1    # 실패 시 1초 후 첫 재시도
+retry_max_duration_secs = 30      # 재시도 간격 최대 30초
 
 [sinks.to_api.request.headers]
 Content-Type = "application/json"
