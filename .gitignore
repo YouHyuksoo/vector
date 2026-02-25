@@ -13,3 +13,9 @@ config/ai-config.json
 vector-bin/
 vector-data/
 vector-data-agent/
+
+# Screenshots
+*.png
+
+# Backup files
+*.bak
