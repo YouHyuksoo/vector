@@ -9,6 +9,7 @@
     "sender": "Sender",
     "download": "Agent Download",
     "settings": "Settings",
+    "help": "Help",
     "menu": "Menu",
     "footer": "Vector Log Collector"
   },
@@ -86,6 +87,10 @@
     "saveFailed": "Save failed",
     "yes": "Yes",
     "no": "No",
+    "testConn": "Test Connection",
+    "testingConn": "Testing...",
+    "testConnSuccess": "Connected ({latency}ms)",
+    "testConnFail": "Failed: {error}",
     "sections": {
       "server": "Server",
       "oracle": "Oracle",
@@ -308,6 +313,30 @@
     "testSuccess": "Connected ({latency}ms)",
     "testFail": "Failed: {error}",
     "testResponse": "Response: {response}"
+  },
+  "help": {
+    "title": "Help",
+    "subtitle": "System Guide Documentation",
+    "groupGuide": "System Guide",
+    "groupMenu": "Menu Guide",
+    "topics": {
+      "installation": "Installation",
+      "serverConfig": "Server Config",
+      "workflow": "Workflow",
+      "agentConfig": "Agent Config",
+      "troubleshooting": "Troubleshooting",
+      "fastifyServer": "Fastify Server",
+      "redis": "Redis",
+      "menuDashboard": "Dashboard",
+      "menuLogs": "Log Viewer",
+      "menuErrors": "Errors",
+      "menuMapping": "Target Mapping",
+      "menuReceiver": "Receiver",
+      "menuSimulator": "VRL Simulator",
+      "menuSender": "Sender",
+      "menuDownload": "Agent Download",
+      "menuSettings": "Settings"
+    }
   },
   "vrlSim": {
     "title": "VRL Simulator",

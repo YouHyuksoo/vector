@@ -9,6 +9,7 @@
     "sender": "송신기 설정",
     "download": "송신기 다운로드",
     "settings": "설정",
+    "help": "도움말",
     "menu": "메뉴",
     "footer": "Vector 로그 수집기"
   },
@@ -86,6 +87,10 @@
     "saveFailed": "저장 실패",
     "yes": "예",
     "no": "아니오",
+    "testConn": "접속 테스트",
+    "testingConn": "테스트 중...",
+    "testConnSuccess": "연결 성공 ({latency}ms)",
+    "testConnFail": "연결 실패: {error}",
     "sections": {
       "server": "서버",
       "oracle": "Oracle",
@@ -308,6 +313,30 @@
     "testSuccess": "연결 성공 ({latency}ms)",
     "testFail": "실패: {error}",
     "testResponse": "응답: {response}"
+  },
+  "help": {
+    "title": "도움말",
+    "subtitle": "시스템 가이드 문서",
+    "groupGuide": "시스템 가이드",
+    "groupMenu": "메뉴별 사용설명",
+    "topics": {
+      "installation": "수집기 설치",
+      "serverConfig": "서버 환경설정",
+      "workflow": "워크플로우",
+      "agentConfig": "Agent 설정",
+      "troubleshooting": "문제 해결",
+      "fastifyServer": "Fastify 서버",
+      "redis": "Redis",
+      "menuDashboard": "대시보드",
+      "menuLogs": "로그 조회",
+      "menuErrors": "오류 현황",
+      "menuMapping": "타겟 매핑",
+      "menuReceiver": "수신기 설정",
+      "menuSimulator": "VRL 시뮬레이터",
+      "menuSender": "송신기 설정",
+      "menuDownload": "송신기 다운로드",
+      "menuSettings": "시스템 설정"
+    }
   },
   "vrlSim": {
     "title": "VRL 시뮬레이터",

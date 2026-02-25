@@ -61,7 +61,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   /** 통합 모니터링 데이터 */
   app.get('/api/monitor/overview', async (_request, reply) => {
-    const [queueStats, equipments, tableStats, recentErrors, redisStatus, vectorStatus] =
+    const [queueStats, equipments, tableStats, recentErrors, redisStatus, vectorStatus, oracleStatus] =
       await Promise.allSettled([
         getQueueStats(),
         heartbeatService.getAllStatuses(),
@@ -69,6 +69,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         getRecentErrors(),
         checkRedis(),
         getVectorStatus(),
+        checkOracle(),
       ]);
 
     return reply.send({
@@ -78,6 +79,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         timestamp: new Date().toISOString(),
         nodeEnv: process.env.NODE_ENV ?? 'development',
       },
+      oracle: oracleStatus.status === 'fulfilled' ? oracleStatus.value : { connected: false },
       redis: redisStatus.status === 'fulfilled' ? redisStatus.value : { connected: false },
       vector: vectorStatus.status === 'fulfilled'
         ? vectorStatus.value
@@ -1229,6 +1231,39 @@ Generate VRL parsing code for this log.`;
     }
   });
 
+  /** Oracle / Redis 접속 테스트 */
+  app.post('/api/monitor/test-connection', async (request, reply) => {
+    const { type } = request.body as { type: 'oracle' | 'redis' };
+    const start = Date.now();
+
+    try {
+      if (type === 'oracle') {
+        const conn = await getConnection();
+        try {
+          await conn.execute('SELECT 1 FROM DUAL');
+          return reply.send({ success: true, latencyMs: Date.now() - start });
+        } finally {
+          await conn.close();
+        }
+      } else if (type === 'redis') {
+        const redis = getRedisClient();
+        const pong = await redis.ping();
+        if (pong === 'PONG') {
+          return reply.send({ success: true, latencyMs: Date.now() - start });
+        }
+        return reply.send({ success: false, error: 'Unexpected response: ' + pong });
+      } else {
+        return reply.code(400).send({ success: false, error: 'Invalid type: must be oracle or redis' });
+      }
+    } catch (err: any) {
+      return reply.send({
+        success: false,
+        latencyMs: Date.now() - start,
+        error: err.message || String(err),
+      });
+    }
+  });
+
   /** 시스템 환경설정 조회 (비밀번호 마스킹) */
   app.get('/api/monitor/config', async (_request, reply) => {
     const oracleConnParts = env.ORACLE_CONNECT_STRING.split('/');
@@ -1357,6 +1392,20 @@ async function getRecentErrors() {
     return result.rows ?? [];
   } finally {
     await conn.close();
+  }
+}
+
+async function checkOracle() {
+  try {
+    const conn = await getConnection();
+    try {
+      await conn.execute('SELECT 1 FROM DUAL');
+      return { connected: true };
+    } finally {
+      await conn.close();
+    }
+  } catch {
+    return { connected: false };
   }
 }
 

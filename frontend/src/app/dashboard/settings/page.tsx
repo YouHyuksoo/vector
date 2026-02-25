@@ -50,6 +50,8 @@ export default function SettingsPage() {
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [connTesting, setConnTesting] = useState<string | null>(null);
+  const [connResults, setConnResults] = useState<Record<string, { success: boolean; latencyMs?: number; error?: string }>>({});
   const { t } = useI18n();
 
   const loadConfig = async () => {
@@ -62,6 +64,25 @@ export default function SettingsPage() {
   };
 
   useEffect(() => { loadConfig(); }, []);
+
+  /** Oracle / Redis 접속 테스트 */
+  const handleTestConnection = async (type: 'oracle' | 'redis') => {
+    setConnTesting(type);
+    setConnResults(prev => { const next = { ...prev }; delete next[type]; return next; });
+    try {
+      const res = await apiFetch<{ success: boolean; latencyMs?: number; error?: string }>(
+        '/api/monitor/test-connection',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type }) },
+      );
+      setConnResults(prev => ({ ...prev, [type]: res }));
+    } catch (err) {
+      setConnResults(prev => ({
+        ...prev,
+        [type]: { success: false, error: err instanceof Error ? err.message : 'Failed' },
+      }));
+    }
+    setConnTesting(null);
+  };
 
   const startEdit = () => {
     if (!config) return;
@@ -124,13 +145,42 @@ export default function SettingsPage() {
     if (!sectionData) return null;
     const meta = SECTION_META[sectionKey];
 
+    const isTestable = sectionKey === 'oracle' || sectionKey === 'redis';
+    const isTesting = connTesting === sectionKey;
+    const testResult = connResults[sectionKey];
+
     return (
       <Card noPadding key={sectionKey}>
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-border dark:border-border-dark">
-          <div className={`size-6 rounded flex items-center justify-center ${meta.iconBg}`}>
-            <Icon name={meta.icon} size="xs" />
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border dark:border-border-dark">
+          <div className="flex items-center gap-2">
+            <div className={`size-6 rounded flex items-center justify-center ${meta.iconBg}`}>
+              <Icon name={meta.icon} size="xs" />
+            </div>
+            <span className="text-sm font-semibold">{t(`settings.sections.${sectionKey}`)}</span>
           </div>
-          <span className="text-sm font-semibold">{t(`settings.sections.${sectionKey}`)}</span>
+          {isTestable && !editing && (
+            <div className="flex items-center gap-1.5">
+              {testResult && (
+                <span className={`flex items-center gap-1 text-[10px] font-medium ${
+                  testResult.success ? 'text-success' : 'text-error'
+                }`}>
+                  <Icon name={testResult.success ? 'check_circle' : 'error'} size="xs" />
+                  {testResult.success
+                    ? t('settings.testConnSuccess').replace('{latency}', String(testResult.latencyMs ?? 0))
+                    : t('settings.testConnFail').replace('{error}', testResult.error || 'Unknown')}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                leftIcon={isTesting ? 'progress_activity' : 'speed'}
+                onClick={() => handleTestConnection(sectionKey as 'oracle' | 'redis')}
+                disabled={isTesting}
+                className={`!text-[10px] !px-1.5 !py-0.5 ${isTesting ? 'animate-pulse' : ''}`}
+              >
+                {isTesting ? t('settings.testingConn') : t('settings.testConn')}
+              </Button>
+            </div>
+          )}
         </div>
         <div className="divide-y divide-border/50 dark:divide-border-dark/50">
           {Object.entries(sectionData).map(([key, value]) => {

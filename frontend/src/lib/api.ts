@@ -16,6 +16,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 
 export interface MonitorOverview {
   server: { status: string; uptime: number; timestamp: string; nodeEnv: string };
+  oracle: { connected: boolean };
   redis: { connected: boolean };
   vector: { running: boolean; pid: number | null; apiReachable: boolean; uptime: string | null; version: string | null };
   queue: { waiting: number; active: number; completed: number; failed: number; delayed: number };
