@@ -10,7 +10,7 @@
 
 import { Worker, Job } from 'bullmq';
 import { getRedisConnectionConfig } from '../../redis/redis.client.js';
-import { QUEUE_NAMES } from '../../config/constants.js';
+import { QUEUE_NAMES, TARGET_TYPES } from '../../config/constants.js';
 import { env } from '../../config/env.js';
 import { dynamicInsert } from '../../database/dynamic-insert.js';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
@@ -19,24 +19,31 @@ import { logger } from '../../utils/logger.js';
 import type { LogRecord } from '../../types/index.js';
 
 async function processLogInsert(job: Job<LogRecord>): Promise<void> {
-  const { equipment_id, target_table, data, timestamp } = job.data;
+  const { equipment_id, target_type, target_table, data, timestamp } = job.data;
 
   try {
-    await dynamicInsert.insert(target_table, {
-      ...data,
-      EQUIPMENT_ID: equipment_id,
-      LOG_TIMESTAMP: timestamp,
-      CREATED_AT: new Date().toISOString(),
-    });
+    if (target_type === TARGET_TYPES.PROCEDURE) {
+      await dynamicInsert.callProcedure(target_table, data, {
+        equipment_id,
+        timestamp,
+      });
+    } else {
+      await dynamicInsert.insert(target_table, {
+        ...data,
+        EQUIPMENT_ID: equipment_id,
+        LOG_TIMESTAMP: timestamp,
+        CREATED_AT: new Date().toISOString(),
+      });
+    }
 
     logger.debug(
-      { jobId: job.id, table: target_table, equipment_id },
-      'Log inserted successfully',
+      { jobId: job.id, target_type, table: target_table, equipment_id },
+      'Log processed successfully',
     );
   } catch (err) {
     logger.error(
-      { err, jobId: job.id, table: target_table, equipment_id },
-      'Log insert failed',
+      { err, jobId: job.id, target_type, table: target_table, equipment_id },
+      'Log processing failed',
     );
 
     await errorLogRepository.record({

@@ -13,7 +13,7 @@
 import { Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
 import type { ColumnMeta, RegistryRow, LogType, ParseField } from '../types';
-import { getMergedFields } from '../types';
+import { getMergedFields } from '../mapping-utils';
 
 interface Props {
   columns: ColumnMeta[];

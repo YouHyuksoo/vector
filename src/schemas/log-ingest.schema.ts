@@ -12,6 +12,7 @@ import { z } from 'zod';
 export const logRecordSchema = z.object({
   equipment_id: z.string().min(1),
   log_type: z.string().min(1),
+  target_type: z.enum(['TABLE', 'PROCEDURE']).default('TABLE'),
   target_table: z.string().min(1),
   timestamp: z.string(),
   data: z.record(z.unknown()),

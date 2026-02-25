@@ -464,7 +464,61 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** 프로시져 목록 조회 */
+  /** Oracle 전체 프로시져/함수/패키지 목록 (매핑 페이지용) */
+  app.get('/api/monitor/procedures/oracle/all', async (_request, reply) => {
+    const conn = await getConnection();
+    try {
+      const result = await conn.execute(`
+        SELECT
+          CASE WHEN PROCEDURE_NAME IS NOT NULL
+            THEN OBJECT_NAME || '.' || PROCEDURE_NAME
+            ELSE OBJECT_NAME END AS DISPLAY_NAME,
+          CASE WHEN PROCEDURE_NAME IS NOT NULL
+            THEN PROCEDURE_NAME ELSE OBJECT_NAME END AS OBJECT_NAME,
+          CASE WHEN PROCEDURE_NAME IS NOT NULL
+            THEN up.OBJECT_NAME ELSE NULL END AS PACKAGE_NAME,
+          up.OBJECT_TYPE
+        FROM USER_PROCEDURES up
+        WHERE (up.OBJECT_TYPE = 'PROCEDURE' AND up.PROCEDURE_NAME IS NULL)
+           OR (up.OBJECT_TYPE = 'PACKAGE' AND up.PROCEDURE_NAME IS NOT NULL)
+        ORDER BY 1
+      `);
+      return reply.send({ procedures: result.rows ?? [] });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  /** Oracle 프로시져 파라미터(인수) 조회 */
+  app.get('/api/monitor/procedures/oracle/:objectName/arguments', async (request, reply) => {
+    const { objectName } = request.params as { objectName: string };
+    const { package: packageName } = request.query as { package?: string };
+    const conn = await getConnection();
+    try {
+      const sql = packageName
+        ? `SELECT ARGUMENT_NAME, POSITION, DATA_TYPE, IN_OUT, DATA_LENGTH
+           FROM USER_ARGUMENTS
+           WHERE OBJECT_NAME = :obj AND PACKAGE_NAME = :pkg AND ARGUMENT_NAME IS NOT NULL
+           ORDER BY POSITION`
+        : `SELECT ARGUMENT_NAME, POSITION, DATA_TYPE, IN_OUT, DATA_LENGTH
+           FROM USER_ARGUMENTS
+           WHERE OBJECT_NAME = :obj AND PACKAGE_NAME IS NULL AND ARGUMENT_NAME IS NOT NULL
+           ORDER BY POSITION`;
+      const binds = packageName
+        ? { obj: objectName.toUpperCase(), pkg: packageName.toUpperCase() }
+        : { obj: objectName.toUpperCase() };
+      const result = await conn.execute(sql, binds);
+      return reply.send({ arguments: result.rows ?? [] });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  /** 저장된 프로시져 매핑 목록 조회 (로컬 레지스트리) */
   app.get('/api/monitor/procedures', async (_request, reply) => {
     try {
       const keys = getRegisteredProcedureKeys();
@@ -490,12 +544,21 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** 프로시져 저장 (생성/수정) */
+  /** 프로시져 매핑 저장 (생성/수정) */
   app.post('/api/monitor/procedures', async (request, reply) => {
     const body = request.body as {
       key: string;
       procedureName: string;
-      params: Array<{ PARAM_ORDER: number; SOURCE_FIELD: string; IS_REQUIRED: string }>;
+      callMode?: 'NAMED' | 'ARRAY';
+      arrayTypeName?: string;
+      params: Array<{
+        PARAM_ORDER: number;
+        ARGUMENT_NAME: string;
+        DATA_TYPE: string;
+        IN_OUT: string;
+        SOURCE_FIELD: string;
+        IS_REQUIRED: string;
+      }>;
     };
 
     if (!body.key || !body.procedureName) {
@@ -506,8 +569,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       const entry: ProcedureEntry = {
         targetType: 'PROCEDURE',
         procedureName: body.procedureName,
+        ...(body.callMode ? { callMode: body.callMode } : {}),
+        ...(body.arrayTypeName ? { arrayTypeName: body.arrayTypeName } : {}),
         params: (body.params || []).map((p, i) => ({
           PARAM_ORDER: p.PARAM_ORDER ?? i + 1,
+          ARGUMENT_NAME: p.ARGUMENT_NAME || '',
+          DATA_TYPE: p.DATA_TYPE || '',
+          IN_OUT: p.IN_OUT || 'IN',
           SOURCE_FIELD: p.SOURCE_FIELD || '',
           IS_REQUIRED: p.IS_REQUIRED || 'N',
         })),
@@ -1267,9 +1335,10 @@ function getTableStats() {
   try {
     const registry = readRegistry();
     return Object.entries(registry)
+      .filter(([, entry]) => !isProcedureEntry(entry))
       .map(([tableName, columns]) => ({
         TABLE_NAME: tableName,
-        COLUMN_COUNT: columns.length,
+        COLUMN_COUNT: Array.isArray(columns) ? columns.length : 0,
       }))
       .sort((a, b) => a.TABLE_NAME.localeCompare(b.TABLE_NAME));
   } catch {

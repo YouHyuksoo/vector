@@ -27,14 +27,27 @@ export interface RegistryColumn {
 /** 프로시져 파라미터 매핑 */
 export interface ProcedureParam {
   PARAM_ORDER: number;
+  ARGUMENT_NAME: string;
+  DATA_TYPE: string;
+  IN_OUT: string;
   SOURCE_FIELD: string;
   IS_REQUIRED: string;
 }
+
+/**
+ * 프로시져 호출 모드
+ * - NAMED: 개별 Named 파라미터 (BEGIN PKG(:P1, :P2); END;)
+ * - ARRAY: Oracle Collection 배열 파라미터 (BEGIN PKG(:p_data, :p_info); END;)
+ *          ARGUMENT_NAME으로 배열 그룹핑, PARAM_ORDER가 배열 인덱스
+ */
+export type ProcedureCallMode = 'NAMED' | 'ARRAY';
 
 /** 프로시져 타겟 설정 */
 export interface ProcedureEntry {
   targetType: 'PROCEDURE';
   procedureName: string;
+  callMode?: ProcedureCallMode;
+  arrayTypeName?: string;
   params: ProcedureParam[];
 }
 

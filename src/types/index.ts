@@ -7,10 +7,14 @@
  * 2. **사용 방법**: `import type { LogRecord } from './types/index.js'`
  */
 
+/** 데이터 저장 방식: 테이블 INSERT 또는 프로시져 CALL */
+export type TargetType = 'TABLE' | 'PROCEDURE';
+
 /** Vector에서 전송되는 개별 로그 레코드 */
 export interface LogRecord {
   equipment_id: string;
   log_type: string;
+  target_type: TargetType;
   target_table: string;
   timestamp: string;
   data: Record<string, unknown>;

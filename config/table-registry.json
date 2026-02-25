@@ -1,1 +1,32 @@
-{}
+{
+  "PROC_1771538008473": {
+    "targetType": "PROCEDURE",
+    "procedureName": "PKG_LOG.INSERT_AOI_LOG",
+    "params": [
+      {
+        "PARAM_ORDER": 1,
+        "SOURCE_FIELD": "equipment_id",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 2,
+        "SOURCE_FIELD": "data.INSPECTOR",
+        "IS_REQUIRED": "N"
+      }
+    ]
+  },
+  "PKG_BATCH.P_PBA_FT_SUMMARY": {
+    "targetType": "PROCEDURE",
+    "procedureName": "PKG_BATCH.P_PBA_FT_SUMMARY",
+    "params": [
+      {
+        "PARAM_ORDER": 1,
+        "ARGUMENT_NAME": "P_DATE",
+        "DATA_TYPE": "DATE",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.INSPECTION_DATE",
+        "IS_REQUIRED": "N"
+      }
+    ]
+  }
+}

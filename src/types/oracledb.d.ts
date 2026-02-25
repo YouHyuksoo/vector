@@ -25,10 +25,22 @@ declare module 'oracledb' {
     batchErrors?: Array<{ errorNum: number; message: string; offset: number }>;
   }
 
+  /** Oracle DB Object (Collection 타입 인스턴스) */
+  interface DbObject {
+    new (data?: unknown[]): DbObject;
+    [index: number]: unknown;
+    length: number;
+  }
+
+  /** Oracle DB Object Class (Collection 타입 생성자) */
+  interface DbObjectClass {
+    new (data?: unknown[]): DbObject;
+  }
+
   interface Connection {
     execute<T = unknown>(
       sql: string,
-      binds?: unknown[] | Record<string, unknown>,
+      binds?: unknown[] | Record<string, unknown> | Record<string, BindParameter>,
       options?: ExecuteOptions,
     ): Promise<ExecuteResult<T>>;
     executeMany(
@@ -36,6 +48,8 @@ declare module 'oracledb' {
       binds: unknown[][],
       options?: ExecuteManyOptions,
     ): Promise<ExecuteResult>;
+    /** Oracle Collection/Object 타입 클래스를 조회한다 */
+    getDbObjectClass(typeName: string): Promise<DbObjectClass>;
     close(): Promise<void>;
   }
 
@@ -50,6 +64,17 @@ declare module 'oracledb' {
   const DB_TYPE_CLOB: number;
   const OUT_FORMAT_OBJECT: number;
 
+  const BIND_IN: number;
+  const BIND_INOUT: number;
+  const BIND_OUT: number;
+
+  interface BindParameter {
+    dir?: number;
+    type?: number;
+    val?: unknown;
+    maxSize?: number;
+  }
+
   let fetchAsString: number[];
   let outFormat: number;
 
@@ -61,6 +86,9 @@ declare module 'oracledb' {
     DB_TYPE_TIMESTAMP,
     DB_TYPE_CLOB,
     OUT_FORMAT_OBJECT,
+    BIND_IN,
+    BIND_INOUT,
+    BIND_OUT,
     fetchAsString,
     outFormat,
     createPool,
@@ -73,10 +101,14 @@ declare module 'oracledb' {
     ExecuteOptions,
     ExecuteManyOptions,
     ExecuteResult,
+    BindParameter,
     DB_TYPE_VARCHAR,
     DB_TYPE_NUMBER,
     DB_TYPE_TIMESTAMP,
     DB_TYPE_CLOB,
     OUT_FORMAT_OBJECT,
+    BIND_IN,
+    BIND_INOUT,
+    BIND_OUT,
   };
 }

@@ -104,6 +104,9 @@ source = '''
 # 예: "C:\\logs\\aoi\\result_001.csv" → "result_001.csv"
 .filename = replace!(.file, r'.*\\', "")
 
+# 데이터 저장 방식 (TABLE: 테이블 INSERT, PROCEDURE: 프로시져 CALL)
+.target_type = "TABLE"
+
 # 대상 Oracle 테이블명 설정 (로그 유형 기준)
 # LOG_INSPECTION, LOG_ALARM, LOG_PROCESS
 .target_table = "LOG_" + to_string!(.log_type)
@@ -133,6 +136,9 @@ if .equipment_type == "SP" {
   }
 
 } else if .equipment_type == "SPI" {
+  # PROCEDURE 모드 사용 시 아래 두 줄의 주석을 해제하세요
+  # .target_type = "PROCEDURE"
+  # .target_table = "PKG_BATCH.P_SPI_INSERT"
   values = split!(.message, "\n")
   header = split!(to_string!(get!(values, [0])), ",")
   data_line = split!(to_string!(get!(values, [1])), ",")
@@ -351,7 +357,8 @@ source = '''
 . = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)
-  "target_table": .target_table,       # 저장 대상 Oracle 테이블명
+  "target_type": .target_type,         # 저장 방식 (TABLE/PROCEDURE)
+  "target_table": .target_table,       # 저장 대상 (테이블명 또는 프로시져 레지스트리 키)
   "timestamp": to_string!(.timestamp), # 타임스탬프 (문자열로 변환)
   "data": .data                        # 파싱된 데이터 객체
 }

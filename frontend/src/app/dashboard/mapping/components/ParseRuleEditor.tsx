@@ -15,7 +15,7 @@ import { Icon, Button, Modal } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import type { LogType, ParseField } from '../types';
-import { LOG_TYPES } from '../types';
+import { getLogTypesFromRules } from '../mapping-utils';
 
 interface Props {
   isOpen: boolean;
@@ -27,7 +27,8 @@ interface Props {
 
 export default function ParseRuleEditor({ isOpen, onClose, parseRules, onSaved, selectedType }: Props) {
   const { t } = useI18n();
-  const [eqType, setEqType] = useState<LogType>(selectedType || LOG_TYPES[0]);
+  const logTypes = getLogTypesFromRules(parseRules);
+  const [eqType, setEqType] = useState<LogType>(selectedType || logTypes[0] || '');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -37,7 +38,8 @@ export default function ParseRuleEditor({ isOpen, onClose, parseRules, onSaved, 
       return;
     }
     // 아니면 파싱 완료된 첫 번째 설비로 자동 선택
-    const first = LOG_TYPES.find(lt => (parseRules[lt] || []).length > 0);
+    const types = getLogTypesFromRules(parseRules);
+    const first = types.find(lt => (parseRules[lt] || []).length > 0);
     if (first) setEqType(first);
   }, [isOpen, selectedType, parseRules]);
   const [fields, setFields] = useState<Array<{ fieldName: string; fieldLabel: string }>>([]);
@@ -116,7 +118,7 @@ export default function ParseRuleEditor({ isOpen, onClose, parseRules, onSaved, 
 
         {/* 설비 유형 선택 */}
         <div className="flex flex-wrap gap-1.5">
-          {LOG_TYPES.map(lt => {
+          {logTypes.map(lt => {
             const hasFields = (parseRules[lt] || []).length > 0;
             return (
               <button key={lt} onClick={() => hasFields && setEqType(lt)} disabled={!hasFields}

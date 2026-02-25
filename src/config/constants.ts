@@ -24,6 +24,11 @@ export const TARGET_TABLES = {
   PROCESS: 'LOG_PROCESS',
 } as const;
 
+export const TARGET_TYPES = {
+  TABLE: 'TABLE',
+  PROCEDURE: 'PROCEDURE',
+} as const;
+
 /** TABLE_COLUMN_REGISTRY 메모리 캐시 TTL (5분) */
 export const REGISTRY_CACHE_TTL_MS = 5 * 60 * 1000;
 

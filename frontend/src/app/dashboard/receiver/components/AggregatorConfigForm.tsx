@@ -13,6 +13,7 @@
 import { useMemo } from 'react';
 import { Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
+import { TargetRoutingSection } from './TargetRoutingSection';
 
 interface Props {
   content: string;
@@ -220,6 +221,9 @@ export function AggregatorConfigForm({ content, onChange }: Props) {
         </div>
       </Sec>
 
+      {/* 타겟 라우팅 — 설비별 TABLE/PROCEDURE 분기 */}
+      <TargetRoutingSection content={content} onChange={onChange} />
+
       {/* API 전송 + 재시도 — 한 섹션으로 합침 */}
       <Sec icon="send" title={t('receiver.form.apiSink')}>
         <F label={t('receiver.form.apiUri')} value={f.apiUri}
@@ -245,7 +249,7 @@ export function AggregatorConfigForm({ content, onChange }: Props) {
 
 /* ── 서브 컴포넌트 ──────────────────────────────── */
 
-function Sec({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+export function Sec({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
     <div className="p-3 rounded-xl bg-surface/50 dark:bg-surface-dark/50 border border-border/50">
       <div className="flex items-center gap-2 mb-2">
@@ -257,7 +261,7 @@ function Sec({ icon, title, children }: { icon: string; title: string; children:
   );
 }
 
-function F({ label, value, onChange, type = 'text', suffix, placeholder, mono }: {
+export function F({ label, value, onChange, type = 'text', suffix, placeholder, mono }: {
   label: string; value: string; onChange: (v: string) => void;
   type?: string; suffix?: string; placeholder?: string; mono?: boolean;
 }) {
