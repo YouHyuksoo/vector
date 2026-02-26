@@ -82,6 +82,69 @@ export function isTypeParsed(
   return merged.some(f => f.value.startsWith('data.'));
 }
 
+/** 기본 테이블명 생성 (설비 유형 기반) */
+export function generateDefaultTableName(logType: string): string {
+  return `LOG_${logType.toUpperCase()}`;
+}
+
+/** 기본 프로시져명 생성 (설비 유형 기반) */
+export function generateDefaultProcName(logType: string): string {
+  return `SP_INSERT_${logType.toUpperCase()}`;
+}
+
+/**
+ * 프론트 미리보기용 Oracle 타입 추론 (백엔드 inferOracleType과 동일 로직)
+ */
+export function inferOracleType(fieldName: string): { dataType: string; nullable: boolean } {
+  const upper = fieldName.toUpperCase();
+  if (upper === 'INSPECTIONS' || upper.endsWith('_JSON') || upper.endsWith('_DATA')) {
+    return { dataType: 'CLOB', nullable: true };
+  }
+  if (upper.endsWith('_COUNT') || upper.endsWith('_QTY') || upper.endsWith('_NUM')) {
+    return { dataType: 'NUMBER', nullable: true };
+  }
+  if (upper.endsWith('_DATE') || upper.endsWith('_TIME')) {
+    return { dataType: 'VARCHAR2(100)', nullable: true };
+  }
+  if (upper.endsWith('_ID') || upper.endsWith('_CODE')) {
+    return { dataType: 'VARCHAR2(100)', nullable: true };
+  }
+  if (upper.endsWith('_RESULT')) {
+    return { dataType: 'VARCHAR2(50)', nullable: true };
+  }
+  return { dataType: 'VARCHAR2(500)', nullable: true };
+}
+
+/**
+ * 시스템 컬럼 + data.* 컬럼 목록으로 미리보기 컬럼 생성
+ */
+export function buildPreviewColumns(
+  logType: string,
+  parseRules: Record<string, ParseField[]>,
+): import('./types').PreviewColumnDef[] {
+  const cols: import('./types').PreviewColumnDef[] = [
+    { columnName: 'LOG_ID', dataType: 'NUMBER(PK)', nullable: false, isSystem: true, sourceField: '' },
+    { columnName: 'EQUIPMENT_ID', dataType: 'VARCHAR2(50)', nullable: false, isSystem: true, sourceField: 'equipment_id' },
+    { columnName: 'LOG_TIMESTAMP', dataType: 'TIMESTAMP', nullable: true, isSystem: true, sourceField: 'timestamp' },
+  ];
+
+  const fields = parseRules[logType] || [];
+  for (const f of fields) {
+    const colName = f.fieldName.split('.').pop()?.toUpperCase() || f.fieldName;
+    const typeDef = inferOracleType(colName);
+    cols.push({
+      columnName: colName,
+      dataType: typeDef.dataType,
+      nullable: typeDef.nullable,
+      isSystem: false,
+      sourceField: f.fieldName,
+    });
+  }
+
+  cols.push({ columnName: 'CREATED_AT', dataType: 'TIMESTAMP', nullable: true, isSystem: true, sourceField: '' });
+  return cols;
+}
+
 /** Oracle 컬럼명을 소스 필드에 자동 매칭 */
 export function autoMatchField(
   columnName: string,

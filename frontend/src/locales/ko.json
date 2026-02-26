@@ -1,14 +1,15 @@
 {
   "nav": {
     "dashboard": "대시보드",
-    "logViewer": "로그 조회",
+    "logViewer": "데이터 조회",
     "targetMapping": "타겟 매핑",
-    "errors": "오류 현황",
+    "errors": "처리 로그",
     "receiver": "수신기 설정",
     "simulator": "VRL 시뮬레이터",
     "sender": "송신기 설정",
     "download": "송신기 다운로드",
     "settings": "설정",
+    "logFileSearch": "로그파일검색",
     "help": "도움말",
     "menu": "메뉴",
     "footer": "Vector 로그 수집기"
@@ -59,12 +60,35 @@
     "lastSeen": "마지막 확인"
   },
   "errors": {
-    "title": "오류 현황",
+    "title": "처리 로그",
     "subtitle": "시스템 오류 목록",
     "delete": "전체 삭제",
     "deleting": "삭제 중...",
     "deleteConfirm": "모든 오류 로그를 삭제하시겠습니까?",
-    "deleted": "{count}건 삭제 완료"
+    "deleted": "{count}건 삭제 완료",
+    "status": "상태",
+    "statusAll": "전체",
+    "statusSuccess": "정상",
+    "statusError": "오류",
+    "stage": "단계",
+    "stageAll": "전체",
+    "stageFileReceive": "파일 수신",
+    "stageHttpReceive": "HTTP 수신",
+    "stageQueueEnqueue": "큐 적재",
+    "stageTableInsert": "테이블 INSERT",
+    "stageProcedureCall": "프로시져 CALL",
+    "stageFileWrite": "파일 기록",
+    "stageVectorControl": "Vector 제어",
+    "stageUnknown": "미분류",
+    "sourceTable": "테이블",
+    "equipment": "장비",
+    "dateRange": "시간 범위",
+    "startDate": "시작",
+    "endDate": "종료",
+    "limit": "조회 건수",
+    "search": "조회",
+    "totalCount": "{total}건 중 {count}건 표시",
+    "all": "전체"
   },
   "error": {
     "title": "최근 오류",
@@ -129,7 +153,24 @@
       "modeTable": "테이블 INSERT",
       "modeProcedure": "프로시져 CALL",
       "autoDefault": "기본값 (LOG_{log_type})",
-      "targetName": "타겟명"
+      "targetName": "타겟명",
+      "apiUriAuto": "API URI는 설정 페이지의 서버 포트를 기반으로 저장 시 자동 반영됩니다.",
+      "targetTablePlaceholder": "비우면 LOG_{log_type} 기본값",
+      "tooltip": {
+        "dataDir": "Vector가 내부적으로 사용하는 데이터 저장 경로입니다. 디스크 버퍼, 체크포인트 파일 등이 이 폴더에 저장됩니다. 폴더가 없으면 Vector가 자동 생성합니다.",
+        "apiIp": "Vector 자체 상태 조회 API의 바인딩 IP입니다. 대시보드에서 Vector의 헬스체크/상태 확인에 사용합니다. 0.0.0.0이면 모든 네트워크에서 접근 가능합니다.",
+        "apiPort": "Vector 상태 조회 API의 포트 번호입니다. 기본값 8687 (Agent는 8686 사용). 대시보드 '인프라 현황'에서 이 포트로 Vector 상태를 조회합니다.",
+        "listenIp": "Agent(설비 PC)에서 보내는 로그를 수신하는 IP입니다. 0.0.0.0이면 모든 네트워크에서 접속을 허용합니다. 외부 Agent가 접속하므로 보통 0.0.0.0을 사용합니다.",
+        "listenPort": "Agent 로그 수신 포트입니다. Agent 설정의 address 포트와 반드시 일치해야 합니다. 예: Agent에서 '서버IP:6000'으로 전송 → 여기서 6000으로 수신.",
+        "rawPath": "원본 로그 파일 저장 경로 패턴입니다. {{ equipment_type }}, {{ equipment_id }}, {{ filename }} 등의 변수와 %Y(년), %m(월), %d(일) 날짜 변수를 사용할 수 있습니다.",
+        "rawBufSize": "Raw 파일 저장용 디스크 버퍼 최대 크기입니다. 버퍼가 가득 차면 수신을 일시 대기합니다(데이터 유실 방지). 디스크 여유 공간에 맞춰 설정하세요.",
+        "apiUri": "파싱된 로그 데이터를 전송할 Node.js API 서버(Fastify)의 엔드포인트 URL입니다. 이 서버가 데이터를 받아 Oracle DB에 저장합니다. 기본값: http://127.0.0.1:3100/api/logs",
+        "batchMax": "한번에 묶어서 전송할 최대 이벤트 수입니다. 이 수만큼 모이면 즉시 전송합니다. 값이 클수록 전송 효율이 높지만 지연이 늘어날 수 있습니다.",
+        "batchTimeout": "배치가 max_events만큼 안 모여도, 이 시간(초)이 지나면 모인 만큼 전송합니다. 데이터 지연을 방지합니다. 예: 5초로 설정하면 최대 5초 내 전송 보장.",
+        "apiBufSize": "API 전송용 디스크 버퍼 최대 크기입니다. Node.js 서버가 다운되어도 이 버퍼에 데이터가 보관되어 복구 시 자동 재전송됩니다.",
+        "retryInitial": "API 전송 실패 시 첫 재시도까지 대기하는 시간(초)입니다. 이후 재시도마다 대기 시간이 점점 늘어납니다(지수 백오프).",
+        "retryMax": "재시도 대기 시간의 최대값(초)입니다. 지수 백오프로 대기 시간이 늘어나도 이 값을 초과하지 않습니다. 예: 30초이면 최대 30초 간격으로 재시도."
+      }
     }
   },
   "sender": {
@@ -164,7 +205,20 @@
       "ignoreOlder": "파일 만료",
       "timeout": "타임아웃",
       "bufferSize": "버퍼",
-      "rawToml": "TOML 직접 편집"
+      "rawToml": "TOML 직접 편집",
+      "tooltip": {
+        "equipType": "설비의 대분류 유형입니다. (예: AOI, SPI, MOUNTER 등)",
+        "logType": "수집할 로그의 종류입니다. (예: INSPECTION, ALARM, PROCESS 등)",
+        "lineCode": "설비가 위치한 라인의 식별 코드입니다.",
+        "equipId": "설비 고유의 관리 번호 또는 이름입니다.",
+        "serverIp": "로그를 전송할 수신기(Aggregator) 서버의 IP 주소입니다.",
+        "serverPort": "수신기 서버가 로그를 받기 위해 열어둔 포트 번호입니다.",
+        "readFrom": "파일을 처음 읽을 때 위치입니다. beginning은 파일의 처음부터, end는 설정 이후 추가되는 로그부터 읽습니다.",
+        "ignoreOlder": "지정된 초보다 오래된 로그 파일은 수집 대상에서 제외합니다.",
+        "timeout": "파일 읽기 작업의 타임아웃(ms)입니다.",
+        "bufferSize": "메모리에 보관할 로그의 최대 크기입니다. 서버 전송 지연 시 활용됩니다.",
+        "logPaths": "로그 파일이 생성되는 경로를 지정합니다. 와일드카드(*)를 사용할 수 있습니다. (예: C:\\logs\\*.csv)"
+      }
     }
   },
   "download": {
@@ -288,7 +342,34 @@
     "autoMapDone": "{count}개 컬럼 자동 매핑 완료",
     "selectField": "소스 필드 선택...",
     "customField": "직접 입력값",
-    "mapped": "매핑됨"
+    "mapped": "매핑됨",
+    "tomlSynced": "라우팅 자동 반영 완료",
+    "autoCreate": "자동 생성",
+    "autoCreateTableTitle": "Oracle 테이블 자동 생성",
+    "autoCreateProcTitle": "Oracle 프로시져 자동 생성",
+    "selectLogTypeFirst": "설비 유형을 먼저 선택하세요",
+    "tableNameLabel": "테이블명",
+    "tableNameDefault": "비워두면 LOG_{설비유형} 기본값",
+    "procNameLabel": "프로시져명",
+    "procNameDefault": "비워두면 SP_INSERT_{설비유형} 기본값",
+    "targetTableLabel": "INSERT 대상 테이블",
+    "targetTableDefault": "비워두면 LOG_{설비유형} 기본값",
+    "previewColumns": "생성될 컬럼",
+    "previewParams": "생성될 파라미터",
+    "showDDL": "DDL 보기",
+    "hideDDL": "DDL 닫기",
+    "createWarning": "실행 후 되돌릴 수 없습니다",
+    "createTableBtn": "테이블 생성 + 자동 매핑",
+    "createProcBtn": "프로시져 생성 + 자동 매핑",
+    "creating": "생성 중...",
+    "createSuccess": "생성 완료!",
+    "alreadyExists": "이미 존재하는 이름입니다",
+    "noPrivilege": "DDL 실행 권한이 없습니다",
+    "nameTooLong": "이름이 너무 깁니다 (최대 30자)",
+    "noFields": "선택한 설비에 파싱 필드가 없습니다",
+    "invalidName": "영문, 숫자, 언더스코어만 사용 가능합니다",
+    "systemCol": "시스템",
+    "dataCol": "데이터"
   },
   "parseRule": {
     "edit": "파싱 룰 편집",
@@ -329,7 +410,7 @@
       "redis": "Redis",
       "menuDashboard": "대시보드",
       "menuLogs": "로그 조회",
-      "menuErrors": "오류 현황",
+      "menuErrors": "처리 로그",
       "menuMapping": "타겟 매핑",
       "menuReceiver": "수신기 설정",
       "menuSimulator": "VRL 시뮬레이터",
@@ -337,6 +418,18 @@
       "menuDownload": "송신기 다운로드",
       "menuSettings": "시스템 설정"
     }
+  },
+  "logFiles": {
+    "title": "로그파일검색",
+    "subtitle": "처리 로그 파일 탐색",
+    "fileList": "파일 목록",
+    "selectPrompt": "좌측에서 파일을 선택하세요",
+    "search": "검색",
+    "searchPlaceholder": "키워드 검색...",
+    "noFiles": "로그 파일이 없습니다",
+    "size": "크기",
+    "records": "건",
+    "total": "총 {total}건 중 {filtered}건"
   },
   "vrlSim": {
     "title": "VRL 시뮬레이터",

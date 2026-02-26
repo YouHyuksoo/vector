@@ -77,3 +77,12 @@ export interface LogTypeConfig {
   icon: string;
   fields: { value: string; label: string }[];
 }
+
+/** 자동 생성 미리보기용 컬럼 정의 */
+export interface PreviewColumnDef {
+  columnName: string;
+  dataType: string;
+  nullable: boolean;
+  isSystem: boolean;
+  sourceField: string;
+}

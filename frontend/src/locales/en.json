@@ -1,14 +1,15 @@
 {
   "nav": {
     "dashboard": "Dashboard",
-    "logViewer": "Log Viewer",
+    "logViewer": "Data Viewer",
     "targetMapping": "Target Mapping",
-    "errors": "Errors",
+    "errors": "Processing Logs",
     "receiver": "Receiver",
     "simulator": "VRL Simulator",
     "sender": "Sender",
     "download": "Agent Download",
     "settings": "Settings",
+    "logFileSearch": "Log File Search",
     "help": "Help",
     "menu": "Menu",
     "footer": "Vector Log Collector"
@@ -59,12 +60,35 @@
     "lastSeen": "Last Seen"
   },
   "errors": {
-    "title": "ERRORS",
+    "title": "PROCESSING LOGS",
     "subtitle": "System Error Log",
     "delete": "Delete All",
     "deleting": "Deleting...",
     "deleteConfirm": "Delete all error logs?",
-    "deleted": "{count} rows deleted"
+    "deleted": "{count} rows deleted",
+    "status": "Status",
+    "statusAll": "All",
+    "statusSuccess": "Success",
+    "statusError": "Error",
+    "stage": "Stage",
+    "stageAll": "All",
+    "stageFileReceive": "File Receive",
+    "stageHttpReceive": "HTTP Receive",
+    "stageQueueEnqueue": "Queue Enqueue",
+    "stageTableInsert": "Table Insert",
+    "stageProcedureCall": "Procedure Call",
+    "stageFileWrite": "File Write",
+    "stageVectorControl": "Vector Control",
+    "stageUnknown": "Unknown",
+    "sourceTable": "Table",
+    "equipment": "Equipment",
+    "dateRange": "Time Range",
+    "startDate": "From",
+    "endDate": "To",
+    "limit": "Limit",
+    "search": "Search",
+    "totalCount": "Showing {count} of {total}",
+    "all": "All"
   },
   "error": {
     "title": "Recent Errors",
@@ -129,7 +153,24 @@
       "modeTable": "TABLE INSERT",
       "modeProcedure": "PROCEDURE CALL",
       "autoDefault": "Default (LOG_{log_type})",
-      "targetName": "Target Name"
+      "targetName": "Target Name",
+      "apiUriAuto": "API URI is auto-synced from Settings page server port on save.",
+      "targetTablePlaceholder": "Empty = LOG_{log_type} default",
+      "tooltip": {
+        "dataDir": "Directory where Vector stores internal data such as disk buffers and checkpoints. The folder is auto-created if it doesn't exist.",
+        "apiIp": "Binding IP for Vector's own status/health API. The dashboard uses this to check Vector status. 0.0.0.0 allows access from all networks.",
+        "apiPort": "Port for Vector's status API. Default: 8687 (Agents use 8686). The dashboard 'Infrastructure' panel queries this port to check Vector's status.",
+        "listenIp": "IP address to listen for incoming logs from Agent (equipment) PCs. 0.0.0.0 allows connections from all networks — required since Agents connect externally.",
+        "listenPort": "Port for receiving Agent logs. Must match the address port in Agent configs. E.g., Agent sends to 'serverIP:6000' → this listens on 6000.",
+        "rawPath": "Path pattern for saving raw log files. Supports variables: {{ equipment_type }}, {{ equipment_id }}, {{ filename }}, and date variables %Y (year), %m (month), %d (day).",
+        "rawBufSize": "Max disk buffer size for raw file storage. When full, reception pauses to prevent data loss. Set according to available disk space.",
+        "apiUri": "Endpoint URL of the Node.js API server (Fastify) that receives parsed log data and stores it in Oracle DB. Default: http://127.0.0.1:3100/api/logs",
+        "batchMax": "Max events to batch before sending. Sends immediately when this count is reached. Higher values improve efficiency but may increase latency.",
+        "batchTimeout": "Max seconds to wait before sending a partial batch. Prevents data delay. E.g., set to 5 = guaranteed delivery within 5 seconds.",
+        "apiBufSize": "Max disk buffer size for API transmission. If the Node.js server is down, data is retained in this buffer and auto-resent on recovery.",
+        "retryInitial": "Seconds to wait before the first retry after a failed API transmission. Each subsequent retry waits longer (exponential backoff).",
+        "retryMax": "Maximum retry interval in seconds. Even with exponential backoff, the wait time won't exceed this value. E.g., 30 = retries at most every 30s."
+      }
     }
   },
   "sender": {
@@ -164,7 +205,20 @@
       "ignoreOlder": "File Expiry",
       "timeout": "Timeout",
       "bufferSize": "Buffer",
-      "rawToml": "Edit TOML directly"
+      "rawToml": "Edit TOML directly",
+      "tooltip": {
+        "equipType": "Major equipment category (e.g., AOI, SPI, MOUNTER).",
+        "logType": "Type of logs to collect (e.g., INSPECTION, ALARM, PROCESS).",
+        "lineCode": "Identifier for the line where the equipment is located.",
+        "equipId": "Unique management ID or name of the equipment.",
+        "serverIp": "IP address of the Receiver (Aggregator) server.",
+        "serverPort": "Port number the Receiver server is listening on for logs.",
+        "readFrom": "Initial read position. 'beginning' starts from the start of files; 'end' starts from new logs added after config.",
+        "ignoreOlder": "Ignore log files older than the specified seconds.",
+        "timeout": "Timeout (ms) for file read operations.",
+        "bufferSize": "Max size of logs to keep in memory during transmission delays.",
+        "logPaths": "Paths where log files are generated. Wildcards (*) are supported (e.g., C:\\logs\\*.csv)."
+      }
     }
   },
   "download": {
@@ -288,7 +342,34 @@
     "autoMapDone": "{count} columns auto-mapped",
     "selectField": "Select source field...",
     "customField": "custom value",
-    "mapped": "mapped"
+    "mapped": "mapped",
+    "tomlSynced": "Routing auto-synced",
+    "autoCreate": "Auto Create",
+    "autoCreateTableTitle": "Auto Create Oracle Table",
+    "autoCreateProcTitle": "Auto Create Oracle Procedure",
+    "selectLogTypeFirst": "Select equipment type first",
+    "tableNameLabel": "Table Name",
+    "tableNameDefault": "Leave empty for LOG_{type} default",
+    "procNameLabel": "Procedure Name",
+    "procNameDefault": "Leave empty for SP_INSERT_{type} default",
+    "targetTableLabel": "INSERT Target Table",
+    "targetTableDefault": "Leave empty for LOG_{type} default",
+    "previewColumns": "Columns to Create",
+    "previewParams": "Parameters to Create",
+    "showDDL": "Show DDL",
+    "hideDDL": "Hide DDL",
+    "createWarning": "This action cannot be undone",
+    "createTableBtn": "Create Table + Auto Map",
+    "createProcBtn": "Create Procedure + Auto Map",
+    "creating": "Creating...",
+    "createSuccess": "Created successfully!",
+    "alreadyExists": "Name already exists",
+    "noPrivilege": "No DDL execution privilege",
+    "nameTooLong": "Name too long (max 30 chars)",
+    "noFields": "No parse fields for selected equipment",
+    "invalidName": "Only letters, numbers, underscores allowed",
+    "systemCol": "System",
+    "dataCol": "Data"
   },
   "parseRule": {
     "edit": "Edit Parse Rules",
@@ -329,7 +410,7 @@
       "redis": "Redis",
       "menuDashboard": "Dashboard",
       "menuLogs": "Log Viewer",
-      "menuErrors": "Errors",
+      "menuErrors": "Processing Logs",
       "menuMapping": "Target Mapping",
       "menuReceiver": "Receiver",
       "menuSimulator": "VRL Simulator",
@@ -337,6 +418,18 @@
       "menuDownload": "Agent Download",
       "menuSettings": "Settings"
     }
+  },
+  "logFiles": {
+    "title": "LOG FILE SEARCH",
+    "subtitle": "Process Log File Browser",
+    "fileList": "Files",
+    "selectPrompt": "Select a file from the list",
+    "search": "Search",
+    "searchPlaceholder": "Search keyword...",
+    "noFiles": "No log files",
+    "size": "Size",
+    "records": "records",
+    "total": "Showing {filtered} of {total}"
   },
   "vrlSim": {
     "title": "VRL Simulator",

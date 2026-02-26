@@ -19,6 +19,7 @@ import { heartbeatService } from '../../redis/heartbeat.service.js';
 import { getConnection } from '../../database/oracle.pool.js';
 import { getRedisClient } from '../../redis/redis.client.js';
 import { logger } from '../../utils/logger.js';
+import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
 import { env, updateEnvValue } from '../../config/env.js';
 import type { Env } from '../../config/env.js';
 import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AGENT_CONFIG_DIR } from '../../services/vector-process.service.js';
@@ -28,6 +29,12 @@ import {
   isProcedureEntry, type RegistryColumn, type ProcedureEntry, type ProcedureParam,
 } from '../../config/local-registry.js';
 import { readParseFields, setFieldsByEquipment, deleteFieldsByEquipment, writeParseFields, type ParseField } from '../../config/local-parse-fields.js';
+import { syncTomlRouting } from '../../config/vrl-target-updater.js';
+import {
+  buildCreateTableDDL, buildCreateProcedureDDL,
+  buildRegistryColumns, buildRegistryProcedure, parseOracleError,
+  type FieldDef,
+} from '../../database/oracle-ddl.js';
 
 export const monitorRoute: FastifyPluginAsync = async (app) => {
 
@@ -102,12 +109,30 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   /** Vector aggregator 시작 */
   app.post('/api/monitor/vector/start', async (_request, reply) => {
     const result = await startVector();
+    if (result.success) {
+      errorLogRepository.success('VECTOR_CONTROL', 'VECTOR_PROCESS', 'SYSTEM', result.message);
+    } else {
+      await errorLogRepository.record({
+        source_table: 'VECTOR_PROCESS', equipment_id: 'SYSTEM',
+        error_message: result.message, raw_data: JSON.stringify({ action: 'start' }),
+        stage: 'VECTOR_CONTROL',
+      });
+    }
     return reply.status(result.success ? 200 : 400).send(result);
   });
 
   /** Vector aggregator 중지 */
   app.post('/api/monitor/vector/stop', async (_request, reply) => {
     const result = await stopVector();
+    if (result.success) {
+      errorLogRepository.success('VECTOR_CONTROL', 'VECTOR_PROCESS', 'SYSTEM', result.message);
+    } else {
+      await errorLogRepository.record({
+        source_table: 'VECTOR_PROCESS', equipment_id: 'SYSTEM',
+        error_message: result.message, raw_data: JSON.stringify({ action: 'stop' }),
+        stage: 'VECTOR_CONTROL',
+      });
+    }
     return reply.status(result.success ? 200 : 400).send(result);
   });
 
@@ -132,9 +157,35 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       const backupName = createTomlBackup('editor');
       writeFileSync(VECTOR_CONFIG, content, 'utf-8');
       logger.info('Aggregator config updated via API');
+      errorLogRepository.success('FILE_WRITE', 'AGGREGATOR_CONFIG', 'SYSTEM', 'Config saved');
+
+      // VRL 변경 시 parse-fields 자동 동기화
+      try {
+        const extracted = extractVrlFields(content);
+        if (Object.keys(extracted).length > 0) {
+          const allFields = readParseFields();
+          for (const [eqType, fields] of Object.entries(extracted)) {
+            allFields[eqType] = fields.map((f, i) => ({
+              fieldName: f, fieldLabel: f, fieldOrder: i + 1,
+            }));
+          }
+          writeParseFields(allFields);
+          logger.info('Parse-fields auto-synced after aggregator config save');
+        }
+      } catch (syncErr) {
+        logger.warn({ err: syncErr }, 'Failed to auto-sync parse-fields');
+      }
+
       return reply.send({ success: true, message: 'Config saved', backupName });
     } catch (err) {
       logger.error(err, 'Failed to save aggregator config');
+      await errorLogRepository.record({
+        source_table: 'AGGREGATOR_CONFIG',
+        equipment_id: 'SYSTEM',
+        error_message: err instanceof Error ? err.message : String(err),
+        raw_data: content.substring(0, 4000),
+        stage: 'FILE_WRITE',
+      });
       return reply.status(500).send({ error: String(err) });
     }
   });
@@ -300,6 +351,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       logger.info({ name }, 'Agent config updated, backup created');
       return reply.send({ success: true, message: 'Config saved', backedUp: true });
     } catch (err) {
+      await errorLogRepository.record({
+        source_table: 'AGENT_CONFIG',
+        equipment_id: name,
+        error_message: err instanceof Error ? err.message : String(err),
+        raw_data: content.substring(0, 4000),
+        stage: 'FILE_WRITE',
+      });
       return reply.status(500).send({ error: String(err) });
     }
   });
@@ -313,6 +371,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     try {
       const defaultContent = content || getDefaultAgentToml(name);
       writeFileSync(filePath, defaultContent, 'utf-8');
+      addEquipmentToAggregatorVrl(name);
       logger.info({ name }, 'New agent config created');
       return reply.send({ success: true, name });
     } catch (err) {
@@ -330,7 +389,9 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       unlinkSync(filePath);
       const bakPath = filePath + '.bak';
       if (existsSync(bakPath)) unlinkSync(bakPath);
-      logger.info({ name }, 'Agent config deleted');
+      removeEquipmentFromAggregatorVrl(name);
+      deleteFieldsByEquipment(name);
+      logger.info({ name }, 'Agent config deleted (+ VRL block & parse-fields cleaned)');
       return reply.send({ success: true });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
@@ -387,6 +448,51 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
+  /** Oracle 테이블 자동 생성 (DDL 실행 + registry 매핑) */
+  app.post('/api/monitor/tables/oracle/create', async (request, reply) => {
+    const body = request.body as {
+      tableName: string;
+      logType: string;
+      fields: FieldDef[];
+      preview?: boolean;
+    };
+    if (!body.tableName || !body.logType || !Array.isArray(body.fields) || body.fields.length === 0) {
+      return reply.status(400).send({ error: 'tableName, logType, fields required' });
+    }
+    const upperName = body.tableName.toUpperCase();
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(upperName)) {
+      return reply.status(400).send({ error: 'invalidName' });
+    }
+    if (upperName.length > 30) {
+      return reply.status(400).send({ error: 'nameTooLong' });
+    }
+
+    const { ddl, columns } = buildCreateTableDDL(upperName, body.fields);
+
+    if (body.preview) {
+      return reply.send({ ddl, columns });
+    }
+
+    const conn = await getConnection();
+    try {
+      await conn.execute(ddl);
+      const regCols = buildRegistryColumns(upperName, body.fields);
+      setTableColumns(upperName, regCols);
+
+      let tomlSync: { success: boolean; backupName?: string } | undefined;
+      tomlSync = syncTomlRouting(body.logType, 'TABLE', upperName, createTomlBackup);
+
+      logger.info({ tableName: upperName, logType: body.logType, colCount: regCols.length }, 'Auto-created Oracle table + registry');
+      return reply.send({ success: true, tableName: upperName, ddl, columns, tomlSync });
+    } catch (err) {
+      const parsed = parseOracleError(err);
+      logger.error({ err, tableName: upperName }, 'Failed to auto-create Oracle table');
+      return reply.status(400).send({ error: parsed.message, code: parsed.code });
+    } finally {
+      await conn.close();
+    }
+  });
+
   /** Oracle 테이블 컬럼 메타데이터 */
   app.get('/api/monitor/tables/oracle/:tableName/columns', async (request, reply) => {
     const { tableName } = request.params as { tableName: string };
@@ -434,10 +540,19 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
+  /** 레지스트리에 등록된 테이블/프로시져 키 목록 (프론트엔드 검증용) */
+  app.get('/api/monitor/registry-keys', async (_request, reply) => {
+    return reply.send({
+      tables: getRegisteredTableNames(),
+      procedures: getRegisteredProcedureKeys(),
+    });
+  });
+
   /** 테이블 컬럼 레지스트리 저장 — TABLE 타겟 (로컬 JSON) */
   app.post('/api/monitor/registry', async (request, reply) => {
     const body = request.body as {
       table: string;
+      equipmentType?: string;
       columns: Array<{
         COLUMN_NAME: string;
         DATA_TYPE: string;
@@ -460,7 +575,14 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         COLUMN_ORDER: col.COLUMN_ORDER,
       }));
       setTableColumns(body.table, columns);
-      return reply.send({ success: true, count: columns.length });
+
+      // equipmentType이 있으면 TOML 타겟 라우팅도 자동 동기화
+      let tomlSync: { success: boolean; backupName?: string } | undefined;
+      if (body.equipmentType) {
+        tomlSync = syncTomlRouting(body.equipmentType, 'TABLE', body.table, createTomlBackup);
+      }
+
+      return reply.send({ success: true, count: columns.length, tomlSync });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -488,6 +610,53 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       return reply.send({ procedures: result.rows ?? [] });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  /** Oracle 프로시져 자동 생성 (DDL 실행 + registry 매핑) */
+  app.post('/api/monitor/procedures/oracle/create', async (request, reply) => {
+    const body = request.body as {
+      procedureName: string;
+      tableName: string;
+      logType: string;
+      fields: FieldDef[];
+      preview?: boolean;
+    };
+    if (!body.procedureName || !body.tableName || !body.logType || !Array.isArray(body.fields) || body.fields.length === 0) {
+      return reply.status(400).send({ error: 'procedureName, tableName, logType, fields required' });
+    }
+    const upperProc = body.procedureName.toUpperCase();
+    const upperTable = body.tableName.toUpperCase();
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(upperProc)) {
+      return reply.status(400).send({ error: 'invalidName' });
+    }
+    if (upperProc.length > 30) {
+      return reply.status(400).send({ error: 'nameTooLong' });
+    }
+
+    const { ddl, params } = buildCreateProcedureDDL(upperProc, upperTable, body.fields);
+
+    if (body.preview) {
+      return reply.send({ ddl, params });
+    }
+
+    const conn = await getConnection();
+    try {
+      await conn.execute(ddl);
+      const regProc = buildRegistryProcedure(upperProc, body.fields);
+      setProcedure(upperProc, regProc);
+
+      let tomlSync: { success: boolean; backupName?: string } | undefined;
+      tomlSync = syncTomlRouting(body.logType, 'PROCEDURE', upperProc, createTomlBackup);
+
+      logger.info({ procedureName: upperProc, tableName: upperTable, logType: body.logType }, 'Auto-created Oracle procedure + registry');
+      return reply.send({ success: true, procedureName: upperProc, ddl, params, tomlSync });
+    } catch (err) {
+      const parsed = parseOracleError(err);
+      logger.error({ err, procedureName: upperProc }, 'Failed to auto-create Oracle procedure');
+      return reply.status(400).send({ error: parsed.message, code: parsed.code });
     } finally {
       await conn.close();
     }
@@ -553,6 +722,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       procedureName: string;
       callMode?: 'NAMED' | 'ARRAY';
       arrayTypeName?: string;
+      equipmentType?: string;
       params: Array<{
         PARAM_ORDER: number;
         ARGUMENT_NAME: string;
@@ -583,7 +753,14 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         })),
       };
       setProcedure(body.key, entry);
-      return reply.send({ success: true, count: entry.params.length });
+
+      // equipmentType이 있으면 TOML 타겟 라우팅도 자동 동기화
+      let tomlSync: { success: boolean; backupName?: string } | undefined;
+      if (body.equipmentType) {
+        tomlSync = syncTomlRouting(body.equipmentType, 'PROCEDURE', body.key, createTomlBackup);
+      }
+
+      return reply.send({ success: true, count: entry.params.length, tomlSync });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -624,7 +801,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
       // 데이터 조회 (최신순)
       const sql = `SELECT ${columns.join(', ')} FROM ${tableName}
-                    ORDER BY CREATED_AT DESC FETCH FIRST :lim ROWS ONLY`;
+                    ORDER BY ROWID DESC FETCH FIRST :lim ROWS ONLY`;
       const result = await conn.execute(sql, { lim: rowLimit });
       return reply.send({ columns, rows: result.rows ?? [] });
     } catch (err) {
@@ -634,20 +811,103 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** 오류 로그 전체 삭제 (LOG_ERROR 테이블) */
-  app.delete('/api/monitor/errors', async (_request, reply) => {
-    const conn = await getConnection();
+  /** 처리 로그 조회 — 파일 기반 (DB 불필요, 정상+오류 통합) */
+  app.get('/api/monitor/errors', async (request, reply) => {
+    const {
+      status, stage, sourceTable, equipmentId,
+      startDate, endDate, limit: rawLimit,
+    } = request.query as Record<string, string | undefined>;
+
     try {
-      const result = await conn.execute('DELETE FROM LOG_ERROR');
-      await conn.commit();
-      const deleted = (result as any).rowsAffected ?? 0;
+      const result = errorLogRepository.query({
+        status, stage, sourceTable, equipmentId,
+        startDate, endDate,
+        limit: Number(rawLimit) || 100,
+      });
+      return reply.send(result);
+    } catch (err) {
+      logger.error({ err }, 'Failed to query process logs');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 오류 로그 전체 삭제 — 파일 비우기 (DB 불필요) */
+  app.delete('/api/monitor/errors', async (_request, reply) => {
+    try {
+      const deleted = errorLogRepository.deleteAll();
       logger.info({ deleted }, 'Error logs deleted via API');
       return reply.send({ success: true, deleted });
     } catch (err) {
-      await conn.rollback();
       return reply.status(500).send({ error: String(err) });
-    } finally {
-      await conn.close();
+    }
+  });
+
+  // ─── 원본 로그 파일 탐색 API ───
+
+  /** 폴더/파일 트리 조회 — path 쿼리로 하위 탐색 */
+  app.get('/api/monitor/log-files', async (request, reply) => {
+    const { path: relPath } = request.query as { path?: string };
+    const baseDir = env.RAW_LOG_BASE_PATH;
+
+    try {
+      const targetDir = relPath ? join(baseDir, relPath) : baseDir;
+      if (!existsSync(targetDir)) {
+        return reply.send({ entries: [], currentPath: relPath || '' });
+      }
+
+      const entries: Array<{ name: string; type: 'dir' | 'file'; size?: number }> = [];
+      for (const name of readdirSync(targetDir)) {
+        const fp = join(targetDir, name);
+        const st = statSync(fp);
+        if (st.isDirectory()) {
+          entries.push({ name, type: 'dir' });
+        } else {
+          entries.push({ name, type: 'file', size: st.size });
+        }
+      }
+      entries.sort((a, b) => a.type === b.type ? a.name.localeCompare(b.name) : a.type === 'dir' ? -1 : 1);
+      return reply.send({ entries, currentPath: relPath || '' });
+    } catch (err) {
+      logger.error({ err }, 'Failed to list log directory');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 특정 파일 원본 텍스트 반환 */
+  app.get('/api/monitor/log-files/read', async (request, reply) => {
+    const { path: relPath, search } = request.query as { path?: string; search?: string };
+    if (!relPath) {
+      return reply.status(400).send({ error: 'path required' });
+    }
+    // 경로 조작 방지
+    if (relPath.includes('..')) {
+      return reply.status(400).send({ error: 'Invalid path' });
+    }
+    const filePath = join(env.RAW_LOG_BASE_PATH, relPath);
+    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+      return reply.status(404).send({ error: 'File not found' });
+    }
+
+    try {
+      const raw = readFileSync(filePath, 'utf-8');
+      const lines = raw.split('\n');
+      const total = lines.length;
+
+      let filtered = lines;
+      if (search) {
+        const kw = search.toLowerCase();
+        filtered = lines.filter(l => l.toLowerCase().includes(kw));
+      }
+
+      return reply.send({
+        path: relPath,
+        content: filtered.join('\n'),
+        total,
+        filtered: filtered.length,
+      });
+    } catch (err) {
+      logger.error({ err, relPath }, 'Failed to read log file');
+      return reply.status(500).send({ error: String(err) });
     }
   });
 
@@ -1314,6 +1574,118 @@ Generate VRL parsing code for this log.`;
   });
 };
 
+/**
+ * Aggregator VRL source에 새 설비 블록을 자동 추가
+ * - 이미 존재하면 스킵
+ * - 마지막 `} else {` 앞에 블록 삽입
+ */
+function addEquipmentToAggregatorVrl(name: string): void {
+  const tomlContent = readFileSync(VECTOR_CONFIG, 'utf-8');
+
+  // 이미 해당 설비 블록이 존재하면 스킵
+  if (tomlContent.includes(`.equipment_type == "${name}"`)) {
+    logger.info({ name }, 'Equipment block already exists in aggregator VRL, skipping');
+    return;
+  }
+
+  const newBlock = `} else if .equipment_type == "${name}" {
+  # ── ${name} ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+`;
+
+  // 마지막 `} else {` 앞에 삽입 (Unknown equipment_type 처리 블록 앞)
+  const lastElseIdx = tomlContent.lastIndexOf('} else {');
+  if (lastElseIdx === -1) {
+    logger.warn({ name }, 'Could not find "} else {" in aggregator VRL, skipping auto-insert');
+    return;
+  }
+
+  const updated = tomlContent.substring(0, lastElseIdx) + newBlock + tomlContent.substring(lastElseIdx);
+  writeFileSync(VECTOR_CONFIG, updated, 'utf-8');
+  logger.info({ name }, 'Equipment block added to aggregator VRL');
+}
+
+/**
+ * Aggregator VRL source에서 설비 블록을 제거
+ * - 존재하지 않으면 스킵
+ * - 첫 번째 블록(if) 제거 시 다음 블록을 if로 변환
+ */
+function removeEquipmentFromAggregatorVrl(name: string): void {
+  const tomlContent = readFileSync(VECTOR_CONFIG, 'utf-8');
+
+  if (!tomlContent.includes(`.equipment_type == "${name}"`)) {
+    logger.info({ name }, 'Equipment block not found in aggregator VRL, skipping removal');
+    return;
+  }
+
+  const sourceMatch = tomlContent.match(
+    /(\[transforms\.parse_logs\][\s\S]*?source\s*=\s*''')([\s\S]*?)(''')/,
+  );
+  if (!sourceMatch) return;
+
+  const vrlSource = sourceMatch[2];
+  const lines = vrlSource.split('\n');
+
+  // 헤더 라인 탐색 (} else if ... 또는 if ...)
+  const elseIfRe = new RegExp(
+    `^\\s*\\}\\s*else\\s+if\\s+\\.equipment_type\\s*==\\s*"${name}"\\s*\\{\\s*$`,
+  );
+  const ifRe = new RegExp(
+    `^\\s*if\\s+\\.equipment_type\\s*==\\s*"${name}"\\s*\\{\\s*$`,
+  );
+
+  let headerIdx = -1;
+  let isFirstBlock = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (elseIfRe.test(lines[i])) { headerIdx = i; break; }
+    if (ifRe.test(lines[i])) { headerIdx = i; isFirstBlock = true; break; }
+  }
+  if (headerIdx === -1) return;
+
+  // 중괄호 깊이 추적으로 블록 끝 탐색
+  let depth = 1;
+  let closingIdx = -1;
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    for (const ch of lines[i]) {
+      if (ch === '{') depth++;
+      if (ch === '}') {
+        depth--;
+        if (depth === 0) { closingIdx = i; break; }
+      }
+    }
+    if (closingIdx !== -1) break;
+  }
+  if (closingIdx === -1) return;
+
+  // 블록 제거: [headerIdx, closingIdx) 범위 삭제
+  const newLines = [...lines.slice(0, headerIdx), ...lines.slice(closingIdx)];
+
+  // 첫 번째 블록 제거 시: 다음 블록의 "} else if" → "if"로 변환
+  if (isFirstBlock) {
+    for (let i = headerIdx; i < newLines.length; i++) {
+      const fixed = newLines[i].replace(/^\s*\}\s*else\s+if\s+/, 'if ');
+      if (fixed !== newLines[i]) {
+        newLines[i] = fixed;
+        break;
+      }
+    }
+  }
+
+  const newToml = tomlContent.replace(sourceMatch[2], newLines.join('\n'));
+  // 백업은 DELETE 핸들러에서 처리 (createTomlBackup은 route 스코프 내부 함수)
+  writeFileSync(VECTOR_CONFIG, newToml, 'utf-8');
+  logger.info({ name }, 'Equipment block removed from aggregator VRL');
+}
+
 /** 새 설비용 기본 TOML 템플릿 */
 function getDefaultAgentToml(name: string): string {
   return `# =============================================================================
@@ -1342,6 +1714,8 @@ ignore_older_secs = 86400
 type = "remap"
 inputs = ["work_logs"]
 source = '''
+.equipment_type = "${name}"
+.log_type = "INSPECTION"
 .line_code = "LINE-01"
 .equipment_id = "${name}-001"
 '''
@@ -1381,18 +1755,8 @@ function getTableStats() {
   }
 }
 
-async function getRecentErrors() {
-  const conn = await getConnection();
-  try {
-    const result = await conn.execute(
-      `SELECT ERROR_ID, SOURCE_TABLE, EQUIPMENT_ID, ERROR_MESSAGE,
-              TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
-       FROM LOG_ERROR ORDER BY CREATED_AT DESC FETCH FIRST 20 ROWS ONLY`,
-    );
-    return result.rows ?? [];
-  } finally {
-    await conn.close();
-  }
+function getRecentErrors() {
+  return errorLogRepository.query({ status: 'ERROR', limit: 20 }).logs;
 }
 
 async function checkOracle() {
