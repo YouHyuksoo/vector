@@ -304,8 +304,18 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   /** 설비 이름 유효성 검사 (영문, 숫자, 하이픈, 언더스코어만 허용) */
   const isValidAgentName = (name: string) => /^[A-Za-z0-9_-]+$/.test(name);
   const agentPath = (name: string) => join(AGENT_CONFIG_DIR, `${name}.toml`);
+  const AGENT_DESC_PATH = join(AGENT_CONFIG_DIR, 'descriptions.json');
 
-  /** 설비 목록 조회 */
+  const loadDescriptions = (): Record<string, string> => {
+    try { if (existsSync(AGENT_DESC_PATH)) return JSON.parse(readFileSync(AGENT_DESC_PATH, 'utf-8')); }
+    catch { /* ignore */ }
+    return {};
+  };
+  const saveDescriptions = (data: Record<string, string>) => {
+    writeFileSync(AGENT_DESC_PATH, JSON.stringify(data, null, 2), 'utf-8');
+  };
+
+  /** 설비 목록 조회 (설명 포함) */
   app.get('/api/monitor/agent/configs', async (_request, reply) => {
     try {
       if (!existsSync(AGENT_CONFIG_DIR)) mkdirSync(AGENT_CONFIG_DIR, { recursive: true });
@@ -313,7 +323,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         .filter(f => f.endsWith('.toml') && !f.endsWith('.bak.toml'))
         .map(f => f.replace('.toml', ''))
         .sort();
-      return reply.send({ names: files });
+      return reply.send({ names: files, descriptions: loadDescriptions() });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -362,9 +372,9 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** 새 설비 생성 */
+  /** 새 설비 생성 (설명 포함) */
   app.post('/api/monitor/agent/configs', async (request, reply) => {
-    const { name, content } = request.body as { name: string; content?: string };
+    const { name, content, description } = request.body as { name: string; content?: string; description?: string };
     if (!name || !isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
     const filePath = agentPath(name);
     if (existsSync(filePath)) return reply.status(409).send({ error: 'Already exists' });
@@ -372,8 +382,28 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       const defaultContent = content || getDefaultAgentToml(name);
       writeFileSync(filePath, defaultContent, 'utf-8');
       addEquipmentToAggregatorVrl(name);
+      if (description) {
+        const descs = loadDescriptions();
+        descs[name] = description;
+        saveDescriptions(descs);
+      }
       logger.info({ name }, 'New agent config created');
       return reply.send({ success: true, name });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 설비 설명 수정 */
+  app.put('/api/monitor/agent/description/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const { description } = request.body as { description: string };
+    if (!isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
+    try {
+      const descs = loadDescriptions();
+      if (description) descs[name] = description; else delete descs[name];
+      saveDescriptions(descs);
+      return reply.send({ success: true });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -391,6 +421,8 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       if (existsSync(bakPath)) unlinkSync(bakPath);
       removeEquipmentFromAggregatorVrl(name);
       deleteFieldsByEquipment(name);
+      const descs = loadDescriptions();
+      if (descs[name]) { delete descs[name]; saveDescriptions(descs); }
       logger.info({ name }, 'Agent config deleted (+ VRL block & parse-fields cleaned)');
       return reply.send({ success: true });
     } catch (err) {
@@ -996,6 +1028,15 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   // ─── AI 모델 설정 API ───
 
   const AI_CONFIG_PATH = join(process.cwd(), 'config', 'ai-config.json');
+  const SYSTEM_PROMPT_PATH = join(process.cwd(), 'config', 'ai-system-prompt.txt');
+
+  /** 저장된 시스템 프롬프트 로드 (없으면 기본값) */
+  function loadSavedSystemPrompt(): string {
+    if (existsSync(SYSTEM_PROMPT_PATH)) {
+      return readFileSync(SYSTEM_PROMPT_PATH, 'utf-8');
+    }
+    return getDefaultVrlSystemPrompt();
+  }
 
   interface AiModelConfig {
     apiKey: string;
@@ -1148,6 +1189,27 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     return reply.send({ models });
   });
 
+  /** AI VRL 시스템 프롬프트 조회 (저장본 우선, 없으면 기본값) */
+  app.get('/api/monitor/ai/system-prompt', async (_request, reply) => {
+    return reply.send({
+      prompt: loadSavedSystemPrompt(),
+      isCustom: existsSync(SYSTEM_PROMPT_PATH),
+    });
+  });
+
+  /** AI VRL 시스템 프롬프트 저장 */
+  app.put('/api/monitor/ai/system-prompt', async (request, reply) => {
+    const { prompt } = request.body as { prompt: string };
+    writeFileSync(SYSTEM_PROMPT_PATH, prompt, 'utf-8');
+    return reply.send({ success: true });
+  });
+
+  /** AI VRL 시스템 프롬프트 초기화 (저장본 삭제) */
+  app.delete('/api/monitor/ai/system-prompt', async (_request, reply) => {
+    if (existsSync(SYSTEM_PROMPT_PATH)) unlinkSync(SYSTEM_PROMPT_PATH);
+    return reply.send({ success: true, prompt: getDefaultVrlSystemPrompt() });
+  });
+
   /** AI로 VRL 코드 생성 */
   app.post('/api/monitor/ai/generate-vrl', async (request, reply) => {
     const { provider, sampleLog, equipmentType, userInstruction } = request.body as {
@@ -1167,28 +1229,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: `AI model "${provider}" is not configured or disabled` });
     }
 
-    const systemPrompt = `You are a VRL (Vector Remap Language) expert for the Vector log collection tool.
-Your task: parse a raw log into structured .data.FIELD fields.
-
-CRITICAL VRL syntax rules:
-- Input: .message contains the raw log string
-- ALL functions MUST use the infallible form with "!" suffix. This is mandatory.
-  split!(), get!(), strip_whitespace!(), to_string!(), to_int!(), to_float!(), parse_timestamp!()
-- Split: values = split!(.message, ",")
-- Get element: get!(values, [0])  — returns "any" type
-- To use string functions on get! results, wrap with to_string! first:
-  .data.FIELD = strip_whitespace!(to_string!(get!(values, [0])))
-- Convert numbers: to_int!(get!(values, [3]))  or  to_float!(get!(values, [5]))
-- Use UPPERCASE_SNAKE_CASE for field names
-- Only assign to .data.* fields
-- NEVER use non-! versions like strip_whitespace(), split(), get() — they cause compile errors
-
-Example pattern:
-  values = split!(.message, ",")
-  .data.NAME = strip_whitespace!(to_string!(get!(values, [0])))
-  .data.COUNT = to_int!(get!(values, [1]))
-
-IMPORTANT: Return ONLY the VRL code. No markdown, no explanations, no code fences.`;
+    const systemPrompt = (request.body as any).systemPrompt || loadSavedSystemPrompt();
 
     const userPrompt = `Equipment type: ${equipmentType}
 Sample log:
@@ -1268,6 +1309,34 @@ Generate VRL parsing code for this log.`;
   });
 
   // ─── VRL 시뮬레이터 API ───
+
+  /** 설비유형 → target_table/target_type 매핑 일괄 조회 */
+  app.get('/api/monitor/vrl/target-map', async (_request, reply) => {
+    try {
+      const toml = readFileSync(VECTOR_CONFIG, 'utf-8');
+      const sourceMatch = toml.match(
+        /\[transforms\.parse_logs\][\s\S]*?source\s*=\s*'''([\s\S]*?)'''/,
+      );
+      if (!sourceMatch) return reply.send({ map: {} });
+      const vrl = sourceMatch[1];
+      const map: Record<string, { targetTable: string; targetType: string }> = {};
+      const eqMatches = vrl.matchAll(/\.equipment_type\s*==\s*"([^"]+)"/g);
+      for (const m of eqMatches) {
+        const eqType = m[1];
+        const block = extractEquipmentBlock(vrl, eqType);
+        if (!block) continue;
+        const tblMatch = block.match(/\.target_table\s*=\s*"([^"]+)"/);
+        const typeMatch = block.match(/\.target_type\s*=\s*"([^"]+)"/);
+        map[eqType] = {
+          targetTable: tblMatch?.[1] || `LOG_INSPECTION`,
+          targetType: typeMatch?.[1] || 'TABLE',
+        };
+      }
+      return reply.send({ map });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
 
   /** 특정 설비 유형의 기존 VRL 코드 조회 */
   app.get('/api/monitor/vrl/code/:equipmentType', async (request, reply) => {
@@ -1362,12 +1431,22 @@ Generate VRL parsing code for this log.`;
         return reply.send({ success: false, error: 'Failed to parse VRL output as JSON:\n' + jsonStr.slice(0, 300) });
       }
 
+      // 입력 필드는 제외하고 VRL이 생성한 필드만 추출
+      const inputKeys = new Set(['message', 'equipment_type', 'log_type']);
       const fields: Array<{ name: string; value: unknown }> = [];
-      if (output.data && typeof output.data === 'object') {
-        for (const [key, value] of Object.entries(output.data as Record<string, unknown>)) {
-          fields.push({ name: `data.${key}`, value });
+
+      const flatten = (obj: Record<string, unknown>, prefix = '') => {
+        for (const [key, value] of Object.entries(obj)) {
+          const path = prefix ? `${prefix}.${key}` : key;
+          if (!prefix && inputKeys.has(key)) continue;
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            flatten(value as Record<string, unknown>, path);
+          } else {
+            fields.push({ name: path, value });
+          }
         }
-      }
+      };
+      flatten(output);
 
       return reply.send({ success: true, output, fields });
     } catch (err) {
@@ -1684,6 +1763,71 @@ function removeEquipmentFromAggregatorVrl(name: string): void {
   // 백업은 DELETE 핸들러에서 처리 (createTomlBackup은 route 스코프 내부 함수)
   writeFileSync(VECTOR_CONFIG, newToml, 'utf-8');
   logger.info({ name }, 'Equipment block removed from aggregator VRL');
+}
+
+/** AI VRL 생성용 기본 시스템 프롬프트 */
+function getDefaultVrlSystemPrompt(): string {
+  return `You are a VRL (Vector Remap Language) expert for the Vector log collection tool.
+Your task: parse a raw log into structured .data.FIELD fields.
+
+CRITICAL VRL syntax rules:
+- Input: .message contains the raw log string (may be single-line or multi-line)
+- ALL functions MUST use the infallible form with "!" suffix. This is mandatory.
+  split!(), get!(), strip_whitespace!(), to_string!(), to_int!(), to_float!(), parse_timestamp!()
+- Get element: get!(array, [index]) — returns "any" type
+- To use string functions on get! results, wrap with to_string! first
+- Convert: to_int!(), to_float!() for numbers
+- Use UPPERCASE_SNAKE_CASE for field names
+- Only assign to .data.* fields (NEVER .FIELD directly)
+- NEVER use non-! versions — they cause compile errors
+- for_each requires explicit type via array!(): for_each(array!(items)) -> |_idx, row| { ... }
+- push() returns new array: .data.ITEMS = push(.data.ITEMS, item)
+- NEVER use "if" inside object literals { "key": if ... }. VRL forbids this.
+  Instead, compute the value BEFORE the object and use a variable:
+    val = if condition { x } else { y }
+    item = { "KEY": val }
+- For fields that may be "-" or empty, keep them as string. Do NOT try conditional to_float!/to_int!.
+  Simply use: strip_whitespace!(to_string!(get!(cols, [N])))
+- NEVER use null in VRL. Use "" or 0 as defaults instead.
+
+PATTERN 1 — Single-line CSV (no header):
+  values = split!(.message, ",")
+  .data.NAME = strip_whitespace!(to_string!(get!(values, [0])))
+  .data.COUNT = to_int!(get!(values, [1]))
+
+PATTERN 2 — Multi-line CSV with header row (MOST COMMON for equipment logs):
+  lines = split!(.message, "\\n")
+  # Skip header (line 0), parse first data row (line 1)
+  first_row = split!(to_string!(get!(lines, [1])), ",")
+  .data.BARCODE = strip_whitespace!(to_string!(get!(first_row, [0])))
+  .data.RESULT = strip_whitespace!(to_string!(get!(first_row, [2])))
+  .data.VALUE = to_float!(get!(first_row, [5]))
+
+  # Parse ALL data rows into array:
+  .data.DETAILS = []
+  detail_lines = slice!(lines, 1)
+  for_each(array!(detail_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split!(to_string!(row), ",")
+      item = {
+        "BARCODE": strip_whitespace!(to_string!(get!(cols, [0]))),
+        "RESULT": strip_whitespace!(to_string!(get!(cols, [2]))),
+      }
+      .data.DETAILS = push(.data.DETAILS, item)
+    }
+  }
+
+PATTERN 3 — Key=Value or fixed-format logs:
+  # Use parse_key_value!, parse_csv!, parse_json!, regex patterns as needed.
+
+STRATEGY:
+1. Look at the sample log structure carefully — identify if it has a header row.
+2. For CSV with headers: use PATTERN 2. Map EVERY column from the header to a .data.FIELD.
+3. Parse the first data row into individual .data.FIELD values for the board/summary info.
+4. If multiple data rows exist, also parse them into a .data.DETAILS or .data.ITEMS array.
+5. Name fields exactly matching the header column names (converted to UPPERCASE_SNAKE_CASE, spaces/special chars replaced with _).
+
+IMPORTANT: Return ONLY the VRL code. No markdown, no explanations, no code fences.`;
 }
 
 /** 새 설비용 기본 TOML 템플릿 */

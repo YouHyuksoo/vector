@@ -43,6 +43,7 @@ class TableRegistry {
       TABLE_NAME: tableName,
       COLUMN_NAME: col.COLUMN_NAME,
       DATA_TYPE: col.DATA_TYPE,
+      SOURCE_FIELD: col.SOURCE_FIELD || col.COLUMN_NAME,
       IS_REQUIRED: col.IS_REQUIRED || 'N',
       COLUMN_ORDER: col.COLUMN_ORDER,
     }));

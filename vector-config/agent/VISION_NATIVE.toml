@@ -1,0 +1,48 @@
+# =============================================================================
+#  Vector Agent (송신기) - VISION_NATIVE 설비
+# =============================================================================
+
+data_dir = "C:\\vector-data-vision_native"
+
+[api]
+enabled = true
+address = "127.0.0.1:8686"
+
+[sources.work_logs]
+type = "file"
+include = [
+  "C:\\logs\\vision_native\\*.txt",
+  "C:\\logs\\vision_native\\*.csv",
+  "C:\\logs\\vision_native\\*.log",
+]
+read_from = "end"
+fingerprint.strategy = "checksum"
+fingerprint.lines = 1
+ignore_older_secs = 86400
+
+# ── 파일 전체를 하나의 이벤트로 묶기 ──
+[sources.work_logs.multiline]
+start_pattern = "^"
+condition_pattern = "^$$NEVER_MATCH"
+mode = "halt_before"
+timeout_ms = 1000
+
+[transforms.add_metadata]
+type = "remap"
+inputs = ["work_logs"]
+source = '''
+.equipment_type = "VISION_NATIVE"
+.log_type = "INSPECTION"
+.line_code = "LINE-01"
+.equipment_id = "VISION_NATIVE-001"
+'''
+
+[sinks.to_aggregator]
+type = "vector"
+inputs = ["add_metadata"]
+address = "127.0.0.1:6000"
+
+[sinks.to_aggregator.buffer]
+type = "disk"
+max_size = 268435488
+when_full = "block"

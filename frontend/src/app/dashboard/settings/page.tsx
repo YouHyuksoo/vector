@@ -225,10 +225,10 @@ export default function SettingsPage() {
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-lg font-bold flex items-center gap-2">
+        <h1 className="text-xl font-bold flex items-center gap-2">
           <Icon name="settings" className="text-primary" />
           <span className="tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">{t('settings.title')}</span>
-          <span className="text-muted-foreground text-xs font-normal ml-1">/ {t('settings.subtitle')}</span>
+          <span className="text-muted-foreground text-sm font-normal ml-1">/ {t('settings.subtitle')}</span>
         </h1>
         <div className="flex items-center gap-2">
           {saveResult && (

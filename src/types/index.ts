@@ -44,6 +44,7 @@ export interface TableColumnInfo {
   TABLE_NAME: string;
   COLUMN_NAME: string;
   DATA_TYPE: string;
+  SOURCE_FIELD: string;
   IS_REQUIRED: string;
   COLUMN_ORDER: number;
 }

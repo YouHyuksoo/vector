@@ -132,11 +132,531 @@
   ],
   "REFLOW": [],
   "ICT": [],
-  "FCT": [],
+  "FCT": [
+    {
+      "fieldName": "data.BARCODE",
+      "fieldLabel": "data.BARCODE",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.DEVICE",
+      "fieldLabel": "data.DEVICE",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.RESULT",
+      "fieldLabel": "data.RESULT",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.MODEL",
+      "fieldLabel": "data.MODEL",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.DATE",
+      "fieldLabel": "data.DATE",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.TIME",
+      "fieldLabel": "data.TIME",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.TYPE",
+      "fieldLabel": "data.TYPE",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.VOLT_INPUT_V",
+      "fieldLabel": "data.VOLT_INPUT_V",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.VOLT_VALUE_V",
+      "fieldLabel": "data.VOLT_VALUE_V",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.CURR_RESULT",
+      "fieldLabel": "data.CURR_RESULT",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.CURR_MIN_MA",
+      "fieldLabel": "data.CURR_MIN_MA",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.CURR_MAX_MA",
+      "fieldLabel": "data.CURR_MAX_MA",
+      "fieldOrder": 12
+    },
+    {
+      "fieldName": "data.CURR_VALUE_MA",
+      "fieldLabel": "data.CURR_VALUE_MA",
+      "fieldOrder": 13
+    },
+    {
+      "fieldName": "data.LED_RESULT",
+      "fieldLabel": "data.LED_RESULT",
+      "fieldOrder": 14
+    },
+    {
+      "fieldName": "data.LED_NAME",
+      "fieldLabel": "data.LED_NAME",
+      "fieldOrder": 15
+    },
+    {
+      "fieldName": "data.SCORE_MIN",
+      "fieldLabel": "data.SCORE_MIN",
+      "fieldOrder": 16
+    },
+    {
+      "fieldName": "data.SCORE_MAX",
+      "fieldLabel": "data.SCORE_MAX",
+      "fieldOrder": 17
+    },
+    {
+      "fieldName": "data.SCORE_VALUE",
+      "fieldLabel": "data.SCORE_VALUE",
+      "fieldOrder": 18
+    },
+    {
+      "fieldName": "data.SCORE_RESULT",
+      "fieldLabel": "data.SCORE_RESULT",
+      "fieldOrder": 19
+    },
+    {
+      "fieldName": "data.HUE_MIN",
+      "fieldLabel": "data.HUE_MIN",
+      "fieldOrder": 20
+    },
+    {
+      "fieldName": "data.HUE_MAX",
+      "fieldLabel": "data.HUE_MAX",
+      "fieldOrder": 21
+    },
+    {
+      "fieldName": "data.HUE_VALUE",
+      "fieldLabel": "data.HUE_VALUE",
+      "fieldOrder": 22
+    },
+    {
+      "fieldName": "data.HUE_RESULT",
+      "fieldLabel": "data.HUE_RESULT",
+      "fieldOrder": 23
+    },
+    {
+      "fieldName": "data.SAT_MIN",
+      "fieldLabel": "data.SAT_MIN",
+      "fieldOrder": 24
+    },
+    {
+      "fieldName": "data.SAT_MAX",
+      "fieldLabel": "data.SAT_MAX",
+      "fieldOrder": 25
+    },
+    {
+      "fieldName": "data.SAT_VALUE",
+      "fieldLabel": "data.SAT_VALUE",
+      "fieldOrder": 26
+    },
+    {
+      "fieldName": "data.SAT_RESULT",
+      "fieldLabel": "data.SAT_RESULT",
+      "fieldOrder": 27
+    },
+    {
+      "fieldName": "data.LUM_MIN",
+      "fieldLabel": "data.LUM_MIN",
+      "fieldOrder": 28
+    },
+    {
+      "fieldName": "data.LUM_MAX",
+      "fieldLabel": "data.LUM_MAX",
+      "fieldOrder": 29
+    },
+    {
+      "fieldName": "data.LUM_VALUE",
+      "fieldLabel": "data.LUM_VALUE",
+      "fieldOrder": 30
+    },
+    {
+      "fieldName": "data.LUM_RESULT",
+      "fieldLabel": "data.LUM_RESULT",
+      "fieldOrder": 31
+    },
+    {
+      "fieldName": "data.DETAILS",
+      "fieldLabel": "data.DETAILS",
+      "fieldOrder": 32
+    }
+  ],
   "BURNIN": [],
   "HIPOT": [],
   "EOL": [],
   "METALMASK": [],
   "MOUNTER": [],
-  "VISCOSITY": []
+  "VISCOSITY": [],
+  "VISION_LEGACY": [
+    {
+      "fieldName": "data.BARCODE",
+      "fieldLabel": "data.BARCODE",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.DEVICE",
+      "fieldLabel": "data.DEVICE",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.DEVICE_RESULT",
+      "fieldLabel": "data.DEVICE_RESULT",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.MODEL",
+      "fieldLabel": "data.MODEL",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.DATE",
+      "fieldLabel": "data.DATE",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.TIME",
+      "fieldLabel": "data.TIME",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.MODULE_NAME",
+      "fieldLabel": "data.MODULE_NAME",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.OUTPUT_VOLTAGE",
+      "fieldLabel": "data.OUTPUT_VOLTAGE",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.READ_VOLTAGE",
+      "fieldLabel": "data.READ_VOLTAGE",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.CURRENT_RESULT",
+      "fieldLabel": "data.CURRENT_RESULT",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.CURRENT_LOWER",
+      "fieldLabel": "data.CURRENT_LOWER",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.CURRENT_UPPER",
+      "fieldLabel": "data.CURRENT_UPPER",
+      "fieldOrder": 12
+    },
+    {
+      "fieldName": "data.CURRENT_VALUE",
+      "fieldLabel": "data.CURRENT_VALUE",
+      "fieldOrder": 13
+    },
+    {
+      "fieldName": "data.LED_RESULT",
+      "fieldLabel": "data.LED_RESULT",
+      "fieldOrder": 14
+    },
+    {
+      "fieldName": "data.LED_NAME",
+      "fieldLabel": "data.LED_NAME",
+      "fieldOrder": 15
+    },
+    {
+      "fieldName": "data.RED_MIN",
+      "fieldLabel": "data.RED_MIN",
+      "fieldOrder": 16
+    },
+    {
+      "fieldName": "data.RED_MAX",
+      "fieldLabel": "data.RED_MAX",
+      "fieldOrder": 17
+    },
+    {
+      "fieldName": "data.RED_VALUE",
+      "fieldLabel": "data.RED_VALUE",
+      "fieldOrder": 18
+    },
+    {
+      "fieldName": "data.GREEN_MIN",
+      "fieldLabel": "data.GREEN_MIN",
+      "fieldOrder": 19
+    },
+    {
+      "fieldName": "data.GREEN_MAX",
+      "fieldLabel": "data.GREEN_MAX",
+      "fieldOrder": 20
+    },
+    {
+      "fieldName": "data.GREEN_VALUE",
+      "fieldLabel": "data.GREEN_VALUE",
+      "fieldOrder": 21
+    },
+    {
+      "fieldName": "data.BLUE_MIN",
+      "fieldLabel": "data.BLUE_MIN",
+      "fieldOrder": 22
+    },
+    {
+      "fieldName": "data.BLUE_MAX",
+      "fieldLabel": "data.BLUE_MAX",
+      "fieldOrder": 23
+    },
+    {
+      "fieldName": "data.BLUE_VALUE",
+      "fieldLabel": "data.BLUE_VALUE",
+      "fieldOrder": 24
+    },
+    {
+      "fieldName": "data.SCORE_LOWER",
+      "fieldLabel": "data.SCORE_LOWER",
+      "fieldOrder": 25
+    },
+    {
+      "fieldName": "data.SCORE_UPPER",
+      "fieldLabel": "data.SCORE_UPPER",
+      "fieldOrder": 26
+    },
+    {
+      "fieldName": "data.SCORE_VALUE",
+      "fieldLabel": "data.SCORE_VALUE",
+      "fieldOrder": 27
+    },
+    {
+      "fieldName": "data.SCORE_RESULT",
+      "fieldLabel": "data.SCORE_RESULT",
+      "fieldOrder": 28
+    },
+    {
+      "fieldName": "data.HUE_LOWER",
+      "fieldLabel": "data.HUE_LOWER",
+      "fieldOrder": 29
+    },
+    {
+      "fieldName": "data.HUE_UPPER",
+      "fieldLabel": "data.HUE_UPPER",
+      "fieldOrder": 30
+    },
+    {
+      "fieldName": "data.HUE_VALUE",
+      "fieldLabel": "data.HUE_VALUE",
+      "fieldOrder": 31
+    },
+    {
+      "fieldName": "data.HUE_RESULT",
+      "fieldLabel": "data.HUE_RESULT",
+      "fieldOrder": 32
+    },
+    {
+      "fieldName": "data.SAT_LOWER",
+      "fieldLabel": "data.SAT_LOWER",
+      "fieldOrder": 33
+    },
+    {
+      "fieldName": "data.SAT_UPPER",
+      "fieldLabel": "data.SAT_UPPER",
+      "fieldOrder": 34
+    },
+    {
+      "fieldName": "data.SAT_VALUE",
+      "fieldLabel": "data.SAT_VALUE",
+      "fieldOrder": 35
+    },
+    {
+      "fieldName": "data.SAT_RESULT",
+      "fieldLabel": "data.SAT_RESULT",
+      "fieldOrder": 36
+    },
+    {
+      "fieldName": "data.LUM_LOWER",
+      "fieldLabel": "data.LUM_LOWER",
+      "fieldOrder": 37
+    },
+    {
+      "fieldName": "data.LUM_UPPER",
+      "fieldLabel": "data.LUM_UPPER",
+      "fieldOrder": 38
+    },
+    {
+      "fieldName": "data.LUM_VALUE",
+      "fieldLabel": "data.LUM_VALUE",
+      "fieldOrder": 39
+    },
+    {
+      "fieldName": "data.LUM_RESULT",
+      "fieldLabel": "data.LUM_RESULT",
+      "fieldOrder": 40
+    },
+    {
+      "fieldName": "data.TT_OFF_RESULT",
+      "fieldLabel": "data.TT_OFF_RESULT",
+      "fieldOrder": 41
+    },
+    {
+      "fieldName": "data.TT_ON_RESULT",
+      "fieldLabel": "data.TT_ON_RESULT",
+      "fieldOrder": 42
+    },
+    {
+      "fieldName": "data.TT_OFF_MIN",
+      "fieldLabel": "data.TT_OFF_MIN",
+      "fieldOrder": 43
+    },
+    {
+      "fieldName": "data.TT_OFF_VALUE",
+      "fieldLabel": "data.TT_OFF_VALUE",
+      "fieldOrder": 44
+    },
+    {
+      "fieldName": "data.TT_ON_MAX",
+      "fieldLabel": "data.TT_ON_MAX",
+      "fieldOrder": 45
+    },
+    {
+      "fieldName": "data.TT_ON_VALUE",
+      "fieldLabel": "data.TT_ON_VALUE",
+      "fieldOrder": 46
+    },
+    {
+      "fieldName": "data.DETAILS",
+      "fieldLabel": "data.DETAILS",
+      "fieldOrder": 47
+    }
+  ],
+  "DOWNLOAD": [
+    {
+      "fieldName": "data.BARCODE",
+      "fieldLabel": "data.BARCODE",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.PCB_NO",
+      "fieldLabel": "data.PCB_NO",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.RESULT",
+      "fieldLabel": "data.RESULT",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.MODEL",
+      "fieldLabel": "data.MODEL",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.DAY",
+      "fieldLabel": "data.DAY",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.TIME",
+      "fieldLabel": "data.TIME",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.SW_VER",
+      "fieldLabel": "data.SW_VER",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_1",
+      "fieldLabel": "data.MCU_HEX_CRC_1",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_2",
+      "fieldLabel": "data.MCU_HEX_CRC_2",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_3",
+      "fieldLabel": "data.MCU_HEX_CRC_3",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_4",
+      "fieldLabel": "data.MCU_HEX_CRC_4",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_5",
+      "fieldLabel": "data.MCU_HEX_CRC_5",
+      "fieldOrder": 12
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_6",
+      "fieldLabel": "data.MCU_HEX_CRC_6",
+      "fieldOrder": 13
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_7",
+      "fieldLabel": "data.MCU_HEX_CRC_7",
+      "fieldOrder": 14
+    },
+    {
+      "fieldName": "data.ROM_CRC",
+      "fieldLabel": "data.ROM_CRC",
+      "fieldOrder": 15
+    },
+    {
+      "fieldName": "data.NAME",
+      "fieldLabel": "data.NAME",
+      "fieldOrder": 16
+    },
+    {
+      "fieldName": "data.MCU_CHKSUM",
+      "fieldLabel": "data.MCU_CHKSUM",
+      "fieldOrder": 17
+    },
+    {
+      "fieldName": "data.ROM_CHKSUM",
+      "fieldLabel": "data.ROM_CHKSUM",
+      "fieldOrder": 18
+    },
+    {
+      "fieldName": "data.MCU_READ_CHKSUM",
+      "fieldLabel": "data.MCU_READ_CHKSUM",
+      "fieldOrder": 19
+    },
+    {
+      "fieldName": "data.ROM_READ_CHKSUM",
+      "fieldLabel": "data.ROM_READ_CHKSUM",
+      "fieldOrder": 20
+    },
+    {
+      "fieldName": "data.MCU_RESULT",
+      "fieldLabel": "data.MCU_RESULT",
+      "fieldOrder": 21
+    },
+    {
+      "fieldName": "data.ROM_RESULT",
+      "fieldLabel": "data.ROM_RESULT",
+      "fieldOrder": 22
+    },
+    {
+      "fieldName": "data.DRV_IC_RESULT",
+      "fieldLabel": "data.DRV_IC_RESULT",
+      "fieldOrder": 23
+    },
+    {
+      "fieldName": "data.DETAILS",
+      "fieldLabel": "data.DETAILS",
+      "fieldOrder": 24
+    }
+  ]
 }

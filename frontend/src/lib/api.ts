@@ -10,7 +10,14 @@
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(path, options);
-  if (!res.ok) throw new Error(`API Error: ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    let msg = `API Error: ${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      if (body.error) msg = typeof body.error === 'string' ? body.error : JSON.stringify(body.error);
+    } catch { /* JSON 파싱 실패 시 기본 메시지 사용 */ }
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -22,7 +29,24 @@ export interface MonitorOverview {
   queue: { waiting: number; active: number; completed: number; failed: number; delayed: number };
   equipments: Array<{ equipment_id: string; online: boolean; last_seen: string; metadata: Record<string, string> }>;
   tables: Array<{ TABLE_NAME: string; COLUMN_COUNT: number }>;
-  recentErrors: Array<{ ERROR_ID: number; SOURCE_TABLE: string; EQUIPMENT_ID: string; ERROR_MESSAGE: string; CREATED_AT: string }>;
+  recentErrors: Array<{ LOG_ID: number; SOURCE_TABLE: string; EQUIPMENT_ID: string; MESSAGE: string; STAGE: string; STATUS: string; CREATED_AT: string }>;
+}
+
+export interface ProcessLogRow {
+  LOG_ID: number;
+  SOURCE_TABLE: string;
+  EQUIPMENT_ID: string;
+  MESSAGE: string;
+  STAGE: string;
+  STATUS: string;
+  CREATED_AT: string;
+}
+
+export interface ProcessLogResponse {
+  logs: ProcessLogRow[];
+  total: number;
+  sourceTables: string[];
+  equipmentIds: string[];
 }
 
 export interface SystemConfig {

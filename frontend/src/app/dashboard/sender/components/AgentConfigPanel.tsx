@@ -19,19 +19,21 @@ import { AgentGuide } from './AgentGuide';
 interface Props {
   name: string;
   onDownload: () => void;
+  description?: string;
+  onDescriptionSave?: (desc: string) => void;
 }
 
-export function AgentConfigPanel({ name, onDownload }: Props) {
+export function AgentConfigPanel({ name, onDownload, description = '', onDescriptionSave }: Props) {
   const { t } = useI18n();
   const [content, setContent] = useState('');
   const [original, setOriginal] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [showRaw, setShowRaw] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [desc, setDesc] = useState(description);
 
-  const hasChanges = content !== original;
+  const hasChanges = content !== original || desc !== description;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +60,7 @@ export function AgentConfigPanel({ name, onDownload }: Props) {
         body: JSON.stringify({ content }),
       });
       setOriginal(content);
+      if (onDescriptionSave && desc !== description) onDescriptionSave(desc);
       setResult({ ok: true, msg: t('aggregator.saved') });
     } catch (err) {
       setResult({ ok: false, msg: err instanceof Error ? err.message : 'Save failed' });
@@ -100,26 +103,26 @@ export function AgentConfigPanel({ name, onDownload }: Props) {
         </div>
       </div>
 
-      {/* 폼 입력 필드 */}
-      <AgentConfigForm content={content} onChange={setContent} />
+      {/* 폼 + TOML 에디터 좌우 분할 */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* 좌측: 폼 입력 필드 */}
+        <AgentConfigForm content={content} onChange={setContent} description={desc} onDescriptionChange={setDesc} />
 
-      {/* Raw TOML 토글 */}
-      <button onClick={() => setShowRaw(!showRaw)}
-        className="flex items-center gap-1.5 self-start text-xs text-muted-foreground
-          hover:text-text dark:hover:text-white transition-colors">
-        <Icon name={showRaw ? 'expand_less' : 'expand_more'} size="xs" />
-        {t('sender.form.rawToml')}
-      </button>
-
-      {showRaw && (
+        {/* 우측: Raw TOML 에디터 */}
         <Card noPadding>
+          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border dark:border-border-dark">
+            <Icon name="code" size="xs" className="text-muted-foreground" />
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {t('sender.form.rawToml')}
+            </span>
+          </div>
           <textarea value={content} onChange={e => setContent(e.target.value)}
             spellCheck={false}
-            className="w-full min-h-[400px] p-4 font-mono text-xs leading-relaxed resize-y
+            className="w-full min-h-[500px] p-4 font-mono text-xs leading-relaxed resize-y
               bg-background-white dark:bg-background-dark text-text dark:text-white
-              border-0 outline-none focus:ring-0 rounded-xl" />
+              border-0 outline-none focus:ring-0 rounded-b-xl" />
         </Card>
-      )}
+      </div>
 
       {hasChanges && (
         <p className="text-[10px] text-warning flex items-center gap-1">

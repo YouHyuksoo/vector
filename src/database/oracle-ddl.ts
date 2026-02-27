@@ -48,13 +48,69 @@ const SYSTEM_TAIL_COLUMNS = [
   { columnName: 'CREATED_AT', dataType: 'TIMESTAMP DEFAULT SYSTIMESTAMP', nullable: true, sourceField: '' },
 ];
 
+/** Oracle 예약어 — 컬럼명으로 사용 시 접두사 추가 필요 */
+const ORACLE_RESERVED = new Set([
+  'DATE', 'TIME', 'TIMESTAMP', 'NUMBER', 'TABLE', 'INDEX', 'ORDER', 'GROUP',
+  'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'FROM', 'WHERE', 'AND', 'OR', 'NOT',
+  'NULL', 'DEFAULT', 'CHECK', 'CREATE', 'ALTER', 'DROP', 'GRANT', 'REVOKE',
+  'SET', 'VALUES', 'INTO', 'AS', 'IS', 'IN', 'ON', 'BY', 'TO', 'OF', 'FOR',
+  'WITH', 'LIKE', 'BETWEEN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'TYPE',
+  'LEVEL', 'START', 'CONNECT', 'PRIOR', 'SIZE', 'MODE', 'COMMENT', 'COLUMN',
+  'ROW', 'ROWS', 'PRIMARY', 'UNIQUE', 'CONSTRAINT',
+]);
+
+/** 한글 필드명 → 영문 컬럼명 매핑 (제조/검사 도메인 공통 용어) */
+const KOREAN_TO_ENGLISH: Record<string, string> = {
+  '검사결과': 'INSPECT_RESULT', '검사일': 'INSPECT_DATE', '검사일시': 'INSPECT_DATETIME',
+  '검사시간': 'INSPECT_TIME', '검사자': 'INSPECTOR', '검사코드': 'INSPECT_CODE',
+  '바코드': 'BARCODE', '시리얼번호': 'SERIAL_NO', '시리얼': 'SERIAL_NO',
+  '모델명': 'MODEL_NAME', '모델': 'MODEL', '제품명': 'PRODUCT_NAME', '제품코드': 'PRODUCT_CODE',
+  '작업자': 'OPERATOR', '작업일': 'WORK_DATE', '작업일시': 'WORK_DATETIME', '작업시간': 'WORK_TIME',
+  '불량코드': 'DEFECT_CODE', '불량유형': 'DEFECT_TYPE', '불량수량': 'DEFECT_QTY',
+  '설비명': 'EQUIP_NAME', '설비코드': 'EQUIP_CODE', '설비번호': 'EQUIP_NO',
+  '라인코드': 'LINE_CODE', '라인': 'LINE_CODE', '라인명': 'LINE_NAME',
+  '수량': 'QTY', '양품수량': 'PASS_QTY', '양품': 'PASS_QTY',
+  '판정결과': 'JUDGE_RESULT', '판정': 'JUDGMENT', '결과': 'RESULT',
+  '날짜': 'LOG_DATE', '시간': 'LOG_TIME', '일시': 'LOG_DATETIME',
+  '생성일': 'CREATED_DATE', '수정일': 'MODIFIED_DATE',
+  '파일명': 'FILE_NAME', '비고': 'REMARK', '메모': 'MEMO',
+  '구분': 'CATEGORY', '유형': 'TYPE_CODE', '상태': 'STATUS',
+  '공정': 'PROCESS', '공정명': 'PROCESS_NAME', '공정코드': 'PROCESS_CODE',
+  '로트': 'LOT_ID', '로트번호': 'LOT_NO', '기판': 'PCB_ID',
+  '온도': 'TEMPERATURE', '습도': 'HUMIDITY', '전압': 'VOLTAGE', '전류': 'CURRENT',
+  '양불판정': 'PASS_FAIL', '합격': 'PASS', '불합격': 'FAIL',
+};
+
+/** 한글(Hangul) 포함 여부 감지 */
+const hasKorean = (s: string) => /[\uAC00-\uD7AF\u3130-\u318F]/.test(s);
+
 /**
  * VRL 파싱 필드명에서 Oracle 컬럼명 추출
+ * - 한글 필드명은 영문으로 자동 변환 (미등록 한글은 FIELD_{index} 폴백)
+ * - Oracle 예약어는 LOG_ 접두사 자동 추가
  * @example fieldToColumnName('data.INSPECTOR') → 'INSPECTOR'
+ * @example fieldToColumnName('data.DATE') → 'LOG_DATE'
+ * @example fieldToColumnName('data.검사결과') → 'INSPECT_RESULT'
+ * @example fieldToColumnName('data.미등록한글', 3) → 'FIELD_4'
  */
-export function fieldToColumnName(fieldName: string): string {
+export function fieldToColumnName(fieldName: string, index?: number): string {
   const parts = fieldName.split('.');
-  return parts[parts.length - 1].toUpperCase();
+  let colName = parts[parts.length - 1];
+
+  if (hasKorean(colName)) {
+    const mapped = KOREAN_TO_ENGLISH[colName];
+    if (mapped) {
+      colName = mapped;
+    } else {
+      colName = `FIELD_${index !== undefined ? index + 1 : 1}`;
+    }
+  }
+
+  colName = colName.toUpperCase();
+  if (ORACLE_RESERVED.has(colName)) {
+    return `LOG_${colName}`;
+  }
+  return colName;
 }
 
 /**
@@ -89,8 +145,8 @@ export function inferOracleType(fieldName: string): OracleTypeDef {
  */
 export function buildCreateTableDDL(tableName: string, fields: FieldDef[]): CreateTableResult {
   const upperName = tableName.toUpperCase();
-  const dataColumns = fields.map(f => {
-    const colName = fieldToColumnName(f.fieldName);
+  const dataColumns = fields.map((f, i) => {
+    const colName = fieldToColumnName(f.fieldName, i);
     const typeDef = inferOracleType(colName);
     return { columnName: colName, dataType: typeDef.dataType, nullable: typeDef.nullable, isSystem: false, sourceField: f.fieldName };
   });
@@ -124,8 +180,8 @@ export function buildCreateProcedureDDL(procName: string, tableName: string, fie
 
   const paramDefs = [
     { paramName: 'P_EQUIPMENT_ID', dataType: 'VARCHAR2', sourceField: 'equipment_id' },
-    ...fields.map(f => {
-      const colName = fieldToColumnName(f.fieldName);
+    ...fields.map((f, i) => {
+      const colName = fieldToColumnName(f.fieldName, i);
       const typeDef = inferOracleType(colName);
       const baseType = typeDef.dataType.replace(/\(\d+\)/, '');
       return { paramName: `P_${colName}`, dataType: baseType, sourceField: f.fieldName };
@@ -137,8 +193,8 @@ export function buildCreateProcedureDDL(procName: string, tableName: string, fie
     return `  ${p.paramName} IN ${p.dataType}${comma}`;
   });
 
-  const insertCols = ['EQUIPMENT_ID', ...fields.map(f => fieldToColumnName(f.fieldName))];
-  const insertVals = ['P_EQUIPMENT_ID', ...fields.map(f => `P_${fieldToColumnName(f.fieldName)}`)];
+  const insertCols = ['EQUIPMENT_ID', ...fields.map((f, i) => fieldToColumnName(f.fieldName, i))];
+  const insertVals = ['P_EQUIPMENT_ID', ...fields.map((f, i) => `P_${fieldToColumnName(f.fieldName, i)}`)];
 
   const ddl = [
     `CREATE OR REPLACE PROCEDURE ${upperProc} (`,
@@ -172,14 +228,14 @@ export function buildRegistryColumns(tableName: string, fields: FieldDef[]): Reg
     SOURCE_FIELD: 'timestamp', IS_REQUIRED: 'N', COLUMN_ORDER: order++,
   });
 
-  for (const f of fields) {
-    const colName = fieldToColumnName(f.fieldName);
+  fields.forEach((f, i) => {
+    const colName = fieldToColumnName(f.fieldName, i);
     const typeDef = inferOracleType(colName);
     columns.push({
       COLUMN_NAME: colName, DATA_TYPE: typeDef.dataType,
       SOURCE_FIELD: f.fieldName, IS_REQUIRED: 'N', COLUMN_ORDER: order++,
     });
-  }
+  });
 
   return columns;
 }
@@ -198,15 +254,15 @@ export function buildRegistryProcedure(procName: string, fields: FieldDef[]): Pr
     DATA_TYPE: 'VARCHAR2', IN_OUT: 'IN', SOURCE_FIELD: 'equipment_id', IS_REQUIRED: 'Y',
   });
 
-  for (const f of fields) {
-    const colName = fieldToColumnName(f.fieldName);
+  fields.forEach((f, i) => {
+    const colName = fieldToColumnName(f.fieldName, i);
     const typeDef = inferOracleType(colName);
     const baseType = typeDef.dataType.replace(/\(\d+\)/, '');
     params.push({
       PARAM_ORDER: order++, ARGUMENT_NAME: `P_${colName}`,
       DATA_TYPE: baseType, IN_OUT: 'IN', SOURCE_FIELD: f.fieldName, IS_REQUIRED: 'N',
     });
-  }
+  });
 
   return {
     targetType: 'PROCEDURE',

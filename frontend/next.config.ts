@@ -6,6 +6,21 @@ const nextConfig: NextConfig = {
       { source: '/api/:path*', destination: 'http://localhost:3100/api/:path*' },
     ];
   },
+  turbopack: {
+    rules: {
+      '*.md': {
+        loaders: ['raw-loader'],
+        as: '*.js',
+      },
+    },
+  },
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.md$/,
+      type: 'asset/source',
+    });
+    return config;
+  },
 };
 
 export default nextConfig;

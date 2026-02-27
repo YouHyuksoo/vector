@@ -27,9 +27,7 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\hipot\\*.txt",
   "C:\\logs\\hipot\\*.csv",
-  "C:\\logs\\hipot\\*.log",
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

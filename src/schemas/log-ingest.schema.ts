@@ -18,10 +18,11 @@ export const logRecordSchema = z.object({
   data: z.record(z.unknown()),
 });
 
-/** Vector HTTP sink는 JSON 배열로 전송, 수동 호출은 { logs: [...] } 형식 */
+/** Vector HTTP sink는 단일 객체 또는 JSON 배열로 전송, 수동 호출은 { logs: [...] } 형식 */
 export const logBatchSchema = z.union([
   z.object({ logs: z.array(logRecordSchema).min(1).max(1000) }),
   z.array(logRecordSchema).min(1).max(1000),
+  logRecordSchema,
 ]);
 
 export const heartbeatSchema = z.object({

@@ -3,20 +3,22 @@
  * @description 수신기(Aggregator) TOML 설정 편집 + 백업 이력 페이지
  *
  * 초보자 가이드:
- * 1. **좌측**: Aggregator TOML 설정 — 폼 입력 + 접이식 원본 에디터
- * 2. **우측**: 변경 이력 — 과거 백업 조회/미리보기/복구
+ * 1. **좌측**: Aggregator 폼 설정 + 변경 이력(백업)
+ * 2. **우측**: TOML 직접 편집 에디터
  * 3. **저장 후**: Vector 재시작 여부를 선택할 수 있음
  */
 'use client';
 
 import { useState } from 'react';
-import { Icon, Button, Modal } from '@/components/ui';
+import { Icon, Card, Button, Modal } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import { AggregatorConfigPanel } from './components/AggregatorConfigPanel';
 import { BackupHistory } from './components/BackupHistory';
 
 export default function ReceiverPage() {
+  const [content, setContent] = useState('');
+  const [showRaw, setShowRaw] = useState(false);
   const [showRestart, setShowRestart] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [restartResult, setRestartResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -51,12 +53,12 @@ export default function ReceiverPage() {
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-lg font-bold flex items-center gap-2">
+        <h1 className="text-xl font-bold flex items-center gap-2">
           <Icon name="download" className="text-success" />
           <span className="tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-success to-primary">
             {t('receiver.title')}
           </span>
-          <span className="text-muted-foreground text-xs font-normal ml-1">
+          <span className="text-muted-foreground text-sm font-normal ml-1">
             / {t('receiver.subtitle')}
           </span>
         </h1>
@@ -67,8 +69,10 @@ export default function ReceiverPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4 items-start">
+      <div className="flex flex-col gap-3">
         <AggregatorConfigPanel
+          content={content}
+          onChange={setContent}
           onSaved={handleSaved}
           refreshKey={configRefreshKey}
         />
@@ -77,6 +81,29 @@ export default function ReceiverPage() {
           refreshKey={backupRefreshKey}
           onRestored={handleRestored}
         />
+
+        {/* TOML 직접 편집 */}
+        <button
+          onClick={() => setShowRaw(!showRaw)}
+          className="flex items-center gap-1.5 self-start text-xs text-muted-foreground
+            hover:text-text dark:hover:text-white transition-colors"
+        >
+          <Icon name={showRaw ? 'expand_less' : 'expand_more'} size="xs" />
+          {t('sender.form.rawToml')}
+        </button>
+
+        {showRaw && (
+          <Card noPadding>
+            <textarea
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              spellCheck={false}
+              className="w-full min-h-[400px] p-3 font-mono text-xs leading-relaxed resize-y
+                bg-background-white dark:bg-background-dark text-text dark:text-white
+                border-0 outline-none focus:ring-0 rounded-lg"
+            />
+          </Card>
+        )}
       </div>
 
       <Modal isOpen={showRestart} onClose={() => setShowRestart(false)} title={t('aggregator.restartPrompt')} size="sm">

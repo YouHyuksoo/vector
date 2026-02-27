@@ -39,12 +39,12 @@ export default function SimulatorPage() {
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-lg font-bold flex items-center gap-2">
+        <h1 className="text-xl font-bold flex items-center gap-2">
           <Icon name="science" className="text-info" />
           <span className="tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-info to-primary">
             {t('vrlSim.title')}
           </span>
-          <span className="text-muted-foreground text-xs font-normal ml-1">
+          <span className="text-muted-foreground text-sm font-normal ml-1">
             / {t('vrlSim.desc')}
           </span>
         </h1>

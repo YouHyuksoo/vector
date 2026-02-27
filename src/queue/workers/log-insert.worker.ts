@@ -27,14 +27,22 @@ async function processLogInsert(job: Job<LogRecord>): Promise<void> {
         equipment_id,
         timestamp,
       });
+    } else if (Array.isArray(data.ROWS) && data.ROWS.length > 0) {
+      // 멀티행 CSV: ROWS 배열의 각 행을 개별 INSERT
+      const extraFields = { equipment_id, timestamp };
+      for (const row of data.ROWS) {
+        await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
+      }
     } else {
-      await dynamicInsert.insert(target_table, {
-        ...data,
-        EQUIPMENT_ID: equipment_id,
-        LOG_TIMESTAMP: timestamp,
-        CREATED_AT: new Date().toISOString(),
+      await dynamicInsert.insert(target_table, data, {
+        equipment_id,
+        timestamp,
       });
     }
+
+    const rowCount = Array.isArray(data.ROWS) ? data.ROWS.length : 1;
+    const stage = target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT';
+    errorLogRepository.success(stage, target_table, equipment_id, `${stage} 성공 (${rowCount}건)`);
 
     logger.debug(
       { jobId: job.id, target_type, table: target_table, equipment_id },
@@ -51,6 +59,7 @@ async function processLogInsert(job: Job<LogRecord>): Promise<void> {
       equipment_id,
       error_message: err instanceof Error ? err.message : String(err),
       raw_data: JSON.stringify(job.data),
+      stage: target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT',
     });
 
     throw err; // BullMQ가 재시도 처리

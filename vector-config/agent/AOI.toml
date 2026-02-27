@@ -31,7 +31,7 @@ include = [
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"
-fingerprint.lines = 1
+fingerprint.lines = 5
 ignore_older_secs = 86400
 
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
@@ -39,7 +39,7 @@ ignore_older_secs = 86400
 # 이후 모든 줄을 계속 이어붙임. 1초간 새 줄이 없으면 전송 완료.
 [sources.work_logs.multiline]
 start_pattern = "^"
-condition_pattern = "^$NEVER_MATCH"
+condition_pattern = "^$$NEVER_MATCH"
 mode = "halt_before"
 timeout_ms = 1000
 

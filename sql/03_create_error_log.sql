@@ -14,3 +14,10 @@ CREATE TABLE LOG_ERROR (
 );
 
 COMMENT ON TABLE LOG_ERROR IS 'DB 삽입 실패 시 에러 정보 및 원본 데이터 보관';
+
+-- =============================================================================
+-- STAGE 컬럼 추가 (v2): 어떤 처리 단계에서 오류가 발생했는지 구분
+-- 값: TABLE_INSERT | PROCEDURE_CALL | UNKNOWN (기존 레코드)
+-- =============================================================================
+-- ALTER TABLE LOG_ERROR ADD (STAGE VARCHAR2(50) DEFAULT 'UNKNOWN');
+-- CREATE INDEX IDX_ERR_STAGE ON LOG_ERROR(STAGE);

@@ -11,9 +11,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
-import { TargetRoutingSection } from './TargetRoutingSection';
+import { Sec, F } from './FormFields';
+import { VrlParsingOptions } from './VrlParsingOptions';
+import { TransportOptions, BufferSafetyOptions } from './AdvancedOptions';
+
+export { Sec, F, SF, TF, Tip } from './FormFields';
+
 
 interface Props {
   content: string;
@@ -74,17 +78,11 @@ const setRawBufSize = (c: string, v: string) =>
     `$1${v}`,
   );
 
-/** [sinks.to_api] uri 추출 */
-const getApiUri = (c: string) => {
-  const m = c.match(/\[sinks\.to_api\]\s*\n[^[]*?uri\s*=\s*"([^"]*)"/);
-  return m ? m[1] : '';
-};
-
-/** [sinks.to_api] uri 교체 */
-const setApiUri = (c: string, v: string) =>
+/** TOML 내 모든 HTTP sink의 uri에서 포트를 일괄 교체 (to_api, to_file_notify 등) */
+export const syncApiPort = (c: string, port: number | string): string =>
   c.replace(
-    /(\[sinks\.to_api\]\s*\n[^[]*?uri\s*=\s*")[^"]*(")/,
-    `$1${v}$2`,
+    /(uri\s*=\s*"http:\/\/127\.0\.0\.1:)\d+(\/api\/)/g,
+    `$1${port}$2`,
   );
 
 /** [sinks.to_api.batch] max_events 추출 */
@@ -179,7 +177,6 @@ export function AggregatorConfigForm({ content, onChange }: Props) {
       srcIp, srcPort,
       rawPath: getRawPath(content),
       rawBufSize: getRawBufSize(content),
-      apiUri: getApiUri(content),
       batchMaxEvents: getBatchMaxEvents(content),
       batchTimeout: getBatchTimeout(content),
       apiBufSize: getApiBufSize(content),
@@ -191,96 +188,80 @@ export function AggregatorConfigForm({ content, onChange }: Props) {
   const u = (fn: (c: string) => string) => onChange(fn(content));
 
   return (
-    <div className="flex flex-col gap-2.5">
-      {/* 네트워크 — 기본 + Agent 수신을 한 섹션으로 */}
-      <Sec icon="settings" title={t('receiver.form.basic')}>
-        <F label={t('receiver.form.dataDir')} value={f.dataDir}
-          onChange={v => u(c => setDataDir(c, v))}
-          placeholder="C:\Project\vector\vector-data" mono />
-        <div className="grid grid-cols-[1fr_80px_1fr_80px] gap-2 mt-2">
-          <F label={t('receiver.form.apiIp')} value={f.apiIp}
-            onChange={v => u(c => setApiAddr(c, v, f.apiPort))} />
-          <F label={t('receiver.form.apiPort')} value={f.apiPort} type="number"
-            onChange={v => u(c => setApiAddr(c, f.apiIp, v))} />
-          <F label={t('receiver.form.listenIp')} value={f.srcIp}
-            onChange={v => u(c => setSourceAddr(c, v, f.srcPort))} />
-          <F label={t('receiver.form.listenPort')} value={f.srcPort} type="number"
-            onChange={v => u(c => setSourceAddr(c, f.srcIp, v))} />
-        </div>
-      </Sec>
+    <div className="flex flex-col gap-2">
+      {/* API 전송 + 기본 설정 — 나란히 배치 */}
+      <div className="grid grid-cols-2 gap-2">
+        <Sec icon="send" title={t('receiver.form.apiSink')} hint={t('receiver.form.apiUriAuto')}>
+          <div className="grid grid-cols-3 gap-2">
+            <F label={t('receiver.form.batchMax')} value={f.batchMaxEvents} type="number" suffix={t('receiver.form.batchMaxUnit')}
+              onChange={v => u(c => setBatchMaxEvents(c, v))}
+              tooltip={t('receiver.form.tooltip.batchMax')} />
+            <F label={t('receiver.form.batchTimeout')} value={f.batchTimeout} type="number" suffix="s"
+              onChange={v => u(c => setBatchTimeout(c, v))}
+              tooltip={t('receiver.form.tooltip.batchTimeout')} />
+            <F label={t('receiver.form.apiBufSize')}
+              value={String(Math.round(Number(f.apiBufSize) / 1048576))} type="number" suffix="MB"
+              onChange={v => u(c => setApiBufSize(c, String(Number(v) * 1048576)))}
+              tooltip={t('receiver.form.tooltip.apiBufSize')} />
+            <F label={t('receiver.form.retryInitial')} value={f.retryInitial} type="number" suffix="s"
+              onChange={v => u(c => setRetryInitial(c, v))}
+              tooltip={t('receiver.form.tooltip.retryInitial')} />
+            <F label={t('receiver.form.retryMax')} value={f.retryMax} type="number" suffix="s"
+              onChange={v => u(c => setRetryMax(c, v))}
+              tooltip={t('receiver.form.tooltip.retryMax')} />
+          </div>
+        </Sec>
 
-      {/* 파일 저장 — 경로 + 버퍼를 한 줄로 */}
-      <Sec icon="folder_open" title={t('receiver.form.rawFile')}>
-        <div className="grid grid-cols-[1fr_100px] gap-2">
-          <F label={t('receiver.form.rawPath')} value={f.rawPath}
-            onChange={v => u(c => setRawPath(c, v))}
-            placeholder="C:\data\raw-logs\{{ equipment_type }}\..." mono />
-          <F label={t('receiver.form.rawBufSize')}
-            value={String(Math.round(Number(f.rawBufSize) / 1048576))} type="number" suffix="MB"
-            onChange={v => u(c => setRawBufSize(c, String(Number(v) * 1048576)))} />
-        </div>
-      </Sec>
-
-      {/* 타겟 라우팅 — 설비별 TABLE/PROCEDURE 분기 */}
-      <TargetRoutingSection content={content} onChange={onChange} />
-
-      {/* API 전송 + 재시도 — 한 섹션으로 합침 */}
-      <Sec icon="send" title={t('receiver.form.apiSink')}>
-        <F label={t('receiver.form.apiUri')} value={f.apiUri}
-          onChange={v => u(c => setApiUri(c, v))}
-          placeholder="http://127.0.0.1:3100/api/logs" mono />
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 mt-2">
-          <F label={t('receiver.form.batchMax')} value={f.batchMaxEvents} type="number" suffix={t('receiver.form.batchMaxUnit')}
-            onChange={v => u(c => setBatchMaxEvents(c, v))} />
-          <F label={t('receiver.form.batchTimeout')} value={f.batchTimeout} type="number" suffix="s"
-            onChange={v => u(c => setBatchTimeout(c, v))} />
-          <F label={t('receiver.form.apiBufSize')}
-            value={String(Math.round(Number(f.apiBufSize) / 1048576))} type="number" suffix="MB"
-            onChange={v => u(c => setApiBufSize(c, String(Number(v) * 1048576)))} />
-          <F label={t('receiver.form.retryInitial')} value={f.retryInitial} type="number" suffix="s"
-            onChange={v => u(c => setRetryInitial(c, v))} />
-          <F label={t('receiver.form.retryMax')} value={f.retryMax} type="number" suffix="s"
-            onChange={v => u(c => setRetryMax(c, v))} />
-        </div>
-      </Sec>
-    </div>
-  );
-}
-
-/* ── 서브 컴포넌트 ──────────────────────────────── */
-
-export function Sec({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
-  return (
-    <div className="p-3 rounded-xl bg-surface/50 dark:bg-surface-dark/50 border border-border/50">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon name={icon} size="md" className="text-success" />
-        <span className="text-base font-bold text-text dark:text-white">{title}</span>
+        <Sec icon="settings" title={t('receiver.form.basic')}>
+          <div className="flex flex-col gap-2">
+            <F label={t('receiver.form.dataDir')} value={f.dataDir}
+              onChange={v => u(c => setDataDir(c, v))}
+              tooltip={t('receiver.form.tooltip.dataDir')}
+              placeholder="C:\Project\vector\vector-data" mono />
+            <div className="grid grid-cols-[1fr_70px] gap-2">
+              <F label={t('receiver.form.apiIp')} value={f.apiIp}
+                onChange={v => u(c => setApiAddr(c, v, f.apiPort))}
+                tooltip={t('receiver.form.tooltip.apiIp')} />
+              <F label={t('receiver.form.apiPort')} value={f.apiPort} type="number"
+                onChange={v => u(c => setApiAddr(c, f.apiIp, v))}
+                tooltip={t('receiver.form.tooltip.apiPort')} />
+            </div>
+            <div className="grid grid-cols-[1fr_70px] gap-2">
+              <F label={t('receiver.form.listenIp')} value={f.srcIp}
+                onChange={v => u(c => setSourceAddr(c, v, f.srcPort))}
+                tooltip={t('receiver.form.tooltip.listenIp')} />
+              <F label={t('receiver.form.listenPort')} value={f.srcPort} type="number"
+                onChange={v => u(c => setSourceAddr(c, f.srcIp, v))}
+                tooltip={t('receiver.form.tooltip.listenPort')} />
+            </div>
+          </div>
+        </Sec>
       </div>
-      {children}
+
+      {/* 파일 저장 + VRL 파싱 옵션 — 나란히 배치 */}
+      <div className="grid grid-cols-2 gap-2">
+        <Sec icon="folder_open" title={t('receiver.form.rawFile')}>
+          <div className="grid grid-cols-[1fr_80px] gap-2">
+            <F label={t('receiver.form.rawPath')} value={f.rawPath}
+              onChange={v => u(c => setRawPath(c, v))}
+              tooltip={t('receiver.form.tooltip.rawPath')}
+              placeholder="{{ equipment_type }}\{{ equipment_id }}\..." mono />
+            <F label={t('receiver.form.rawBufSize')}
+              value={String(Math.round(Number(f.rawBufSize) / 1048576))} type="number" suffix="MB"
+              onChange={v => u(c => setRawBufSize(c, String(Number(v) * 1048576)))}
+              tooltip={t('receiver.form.tooltip.rawBufSize')} />
+          </div>
+        </Sec>
+        <VrlParsingOptions content={content} onChange={onChange} />
+      </div>
+
+      {/* 전송/인코딩 옵션 (신규) */}
+      <TransportOptions content={content} onChange={onChange} />
+
+      {/* 버퍼/안전 옵션 (신규) */}
+      <BufferSafetyOptions content={content} onChange={onChange} />
+
     </div>
   );
 }
 
-export function F({ label, value, onChange, type = 'text', suffix, placeholder, mono }: {
-  label: string; value: string; onChange: (v: string) => void;
-  type?: string; suffix?: string; placeholder?: string; mono?: boolean;
-}) {
-  return (
-    <div>
-      <label className="text-sm font-medium text-muted-foreground mb-1 block">{label}</label>
-      <div className="relative">
-        <input type={type} value={value} onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className={`w-full px-3 py-2 text-base border rounded-lg
-            bg-white dark:bg-slate-800 border-border
-            ${mono ? 'font-mono text-sm' : ''}
-            ${suffix ? 'pr-12' : ''}`} />
-        {suffix && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-            {suffix}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}

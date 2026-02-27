@@ -7,14 +7,16 @@ import { useI18n } from '@/contexts/I18nContext';
 
 const NAV_ITEMS = [
   { labelKey: 'nav.dashboard', icon: 'dashboard', href: '/dashboard' },
-  { labelKey: 'nav.logViewer', icon: 'description', href: '/dashboard/logs' },
-  { labelKey: 'nav.errors', icon: 'error', href: '/dashboard/errors' },
-  { labelKey: 'nav.targetMapping', icon: 'swap_horiz', href: '/dashboard/mapping' },
+  { labelKey: 'nav.sender', icon: 'upload', href: '/dashboard/sender' },
   { labelKey: 'nav.receiver', icon: 'download', href: '/dashboard/receiver' },
   { labelKey: 'nav.simulator', icon: 'science', href: '/dashboard/simulator' },
-  { labelKey: 'nav.sender', icon: 'upload', href: '/dashboard/sender' },
+  { labelKey: 'nav.targetMapping', icon: 'swap_horiz', href: '/dashboard/mapping' },
+  { labelKey: 'nav.logViewer', icon: 'description', href: '/dashboard/logs' },
+  { labelKey: 'nav.errors', icon: 'error', href: '/dashboard/errors' },
+  { labelKey: 'nav.logFileSearch', icon: 'folder_open', href: '/dashboard/log-files' },
   { labelKey: 'nav.download', icon: 'file_download', href: '/dashboard/download' },
   { labelKey: 'nav.settings', icon: 'settings', href: '/dashboard/settings' },
+  { labelKey: 'nav.help', icon: 'help', href: '/dashboard/help' },
 ];
 
 interface SidebarProps {

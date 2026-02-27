@@ -20,6 +20,7 @@ class DynamicInsert {
   async insert(
     tableName: string,
     data: Record<string, unknown>,
+    extraFields: Record<string, unknown> = {},
   ): Promise<number> {
     const schema = await tableRegistry.getSchema(tableName);
 
@@ -28,13 +29,13 @@ class DynamicInsert {
     }
 
     const bindValues = schema.columns.map((col) => {
-      const value = data[col.COLUMN_NAME];
-      if (value === undefined && col.IS_REQUIRED === 'Y') {
+      const raw = this.resolveSourceField(col.SOURCE_FIELD, data, extraFields);
+      if ((raw === undefined || raw === null) && col.IS_REQUIRED === 'Y') {
         throw new Error(
-          `Required column ${col.COLUMN_NAME} missing for table ${tableName}`,
+          `Required column ${col.COLUMN_NAME} (source: ${col.SOURCE_FIELD}) missing for table ${tableName}`,
         );
       }
-      return value ?? null;
+      return raw != null ? this.convertParamValue(raw, col.DATA_TYPE) : null;
     });
 
     const conn = await getConnection();
@@ -198,7 +199,7 @@ class DynamicInsert {
       }
       const arr = groups.get(name)!;
       const value = this.resolveSourceField(param.SOURCE_FIELD, data, extraFields);
-      arr[param.PARAM_ORDER - 1] = value == null ? '' : String(value);
+      arr[param.PARAM_ORDER - 1] = value == null ? '' : (typeof value === 'object' ? JSON.stringify(value) : String(value));
     }
 
     const conn = await getConnection();
@@ -248,30 +249,24 @@ class DynamicInsert {
   /** 데이터 타입에 맞게 값을 변환한다. */
   private convertParamValue(value: unknown, dataType: string): unknown {
     if (value === null || value === undefined) return null;
+    const upper = dataType.toUpperCase();
 
-    switch (dataType.toUpperCase()) {
-      case 'DATE':
-      case 'TIMESTAMP':
-        return value instanceof Date ? value : new Date(String(value));
-      case 'NUMBER':
-        return typeof value === 'number' ? value : Number(value);
-      default:
-        return String(value);
+    if (upper === 'DATE' || upper.startsWith('TIMESTAMP')) {
+      return value instanceof Date ? value : new Date(String(value));
     }
+    if (upper === 'NUMBER') {
+      return typeof value === 'number' ? value : Number(value);
+    }
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
   }
 
   private getOracleType(dataType: string): number {
-    switch (dataType.toUpperCase()) {
-      case 'NUMBER':
-        return oracledb.DB_TYPE_NUMBER;
-      case 'DATE':
-      case 'TIMESTAMP':
-        return oracledb.DB_TYPE_TIMESTAMP;
-      case 'CLOB':
-        return oracledb.DB_TYPE_CLOB;
-      default:
-        return oracledb.DB_TYPE_VARCHAR;
-    }
+    const upper = dataType.toUpperCase();
+    if (upper === 'NUMBER') return oracledb.DB_TYPE_NUMBER;
+    if (upper === 'DATE' || upper.startsWith('TIMESTAMP')) return oracledb.DB_TYPE_TIMESTAMP;
+    if (upper === 'CLOB') return oracledb.DB_TYPE_CLOB;
+    return oracledb.DB_TYPE_VARCHAR;
   }
 }
 

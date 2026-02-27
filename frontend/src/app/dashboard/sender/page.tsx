@@ -20,16 +20,19 @@ export default function SenderPage() {
   const [names, setNames] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
   const [addError, setAddError] = useState('');
   const [showDelete, setShowDelete] = useState(false);
   const { t } = useI18n();
 
   const fetchNames = useCallback(async () => {
     try {
-      const data = await apiFetch<{ names: string[] }>('/api/monitor/agent/configs');
+      const data = await apiFetch<{ names: string[]; descriptions?: Record<string, string> }>('/api/monitor/agent/configs');
       setNames(data.names);
+      setDescriptions(data.descriptions || {});
       if (!selected && data.names.length > 0) setSelected(data.names[0]);
     } catch { /* ignore */ }
     setLoading(false);
@@ -47,10 +50,11 @@ export default function SenderPage() {
       await apiFetch('/api/monitor/agent/configs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed }),
+        body: JSON.stringify({ name: trimmed, description: newDesc.trim() || undefined }),
       });
       setShowAdd(false);
       setNewName('');
+      setNewDesc('');
       setAddError('');
       await fetchNames();
       setSelected(trimmed);
@@ -67,6 +71,17 @@ export default function SenderPage() {
       const remaining = names.filter(n => n !== selected);
       setSelected(remaining.length > 0 ? remaining[0] : null);
       await fetchNames();
+    } catch { /* ignore */ }
+  };
+
+  const handleDescUpdate = async (name: string, desc: string) => {
+    try {
+      await apiFetch(`/api/monitor/agent/description/${name}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: desc }),
+      });
+      setDescriptions(prev => ({ ...prev, [name]: desc }));
     } catch { /* ignore */ }
   };
 
@@ -99,16 +114,22 @@ export default function SenderPage() {
         {/* 좌측: 설비 목록 */}
         <EquipmentList
           names={names}
+          descriptions={descriptions}
           selected={selected}
           onSelect={setSelected}
           onAdd={() => setShowAdd(true)}
           onDelete={() => setShowDelete(true)}
+          onDescriptionUpdate={handleDescUpdate}
         />
 
         {/* 우측: TOML 에디터 */}
         <div className="flex flex-col gap-3">
           {selected ? (
-            <AgentConfigPanel key={selected} name={selected} onDownload={handleDownload} />
+            <AgentConfigPanel
+              key={selected} name={selected} onDownload={handleDownload}
+              description={descriptions[selected] || ''}
+              onDescriptionSave={desc => handleDescUpdate(selected, desc)}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-2">
               <Icon name="inventory_2" size="xl" />
@@ -128,6 +149,17 @@ export default function SenderPage() {
             placeholder="예: MOUNTER"
             error={addError}
           />
+          <div>
+            <label className="block text-sm font-medium text-text dark:text-white mb-1">{t('sender.descLabel')}</label>
+            <input
+              value={newDesc}
+              onChange={e => setNewDesc(e.target.value)}
+              placeholder={t('sender.descPlaceholder')}
+              className="w-full rounded-lg border border-border dark:border-border-dark bg-surface dark:bg-surface-dark
+                px-3 py-2 text-sm text-text dark:text-white placeholder:text-muted-foreground
+                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowAdd(false)}>{t('aggregator.later')}</Button>
             <Button variant="primary" leftIcon="add" onClick={handleAdd}>{t('sender.add')}</Button>

@@ -12,7 +12,7 @@
  */
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Icon, Card, Button } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
@@ -21,11 +21,13 @@ import { getLogTypesFromRules } from './mapping-utils';
 import { useTableMapping } from './hooks/useTableMapping';
 import { useProcedureMapping } from './hooks/useProcedureMapping';
 import SelectionPanel from './components/SelectionPanel';
-import LogTypeSelector from './components/LogTypeSelector';
 import MappingTable from './components/MappingTable';
 import ProcedureMapping from './components/ProcedureMapping';
 import ParseRuleEditor from './components/ParseRuleEditor';
 import AutoCreateModal from './components/AutoCreateModal';
+import PipelineStatus from './components/PipelineStatus';
+
+interface TargetMapEntry { targetTable: string; targetType: string; }
 
 export default function MappingPage() {
   const [targetType, setTargetType] = useState<TargetType>('TABLE');
@@ -36,9 +38,18 @@ export default function MappingPage() {
   const [parseRules, setParseRules] = useState<Record<string, ParseField[]>>({});
   const [editorOpen, setEditorOpen] = useState(false);
   const [autoCreateOpen, setAutoCreateOpen] = useState(false);
+  const [pipelineKey, setPipelineKey] = useState(0);
+  const [targetMap, setTargetMap] = useState<Record<string, TargetMapEntry>>({});
+  const autoSelecting = useRef(false);
   const { t } = useI18n();
 
-  const sharedOpts = { setLoading, setSaving, setSaveMsg, setLogType, t };
+  /** 자동 선택 중 loadTable/loadProcedure 내부 setLogType(null) 차단 */
+  const guardedSetLogType = useCallback((v: LogType | null) => {
+    if (autoSelecting.current && v === null) return;
+    setLogType(v);
+  }, []);
+
+  const sharedOpts = { setLoading, setSaving, setSaveMsg, setLogType: guardedSetLogType, t };
   const tbl = useTableMapping({ logType, parseRules, ...sharedOpts });
   const proc = useProcedureMapping({ logType, ...sharedOpts });
 
@@ -60,15 +71,50 @@ export default function MappingPage() {
 
   useEffect(() => { loadParseRules(); }, [loadParseRules]);
 
+  /** VRL 설정에서 설비유형 → target_table/target_type 매핑 로드 */
+  useEffect(() => {
+    apiFetch<{ map: Record<string, TargetMapEntry> }>('/api/monitor/vrl/target-map')
+      .then(d => setTargetMap(d.map || {}))
+      .catch(() => {});
+  }, [pipelineKey]);
+
   const logTypes = getLogTypesFromRules(parseRules);
-  const handleSave = targetType === 'TABLE' ? tbl.saveTableMapping : proc.saveProcedureMapping;
+  const rawSave = targetType === 'TABLE' ? tbl.saveTableMapping : proc.saveProcedureMapping;
+  const handleSave = useCallback(async () => { await rawSave(); setPipelineKey(k => k + 1); }, [rawSave]);
   const hasSelection = targetType === 'TABLE' ? !!tbl.selected : !!proc.selectedProc;
   const mappedCount = targetType === 'TABLE'
     ? tbl.registry.filter(r => r.SOURCE_FIELD).length
     : proc.procParams.filter(p => p.SOURCE_FIELD).length;
 
+  /** 설비 유형 선택 시 targetMap 기반 테이블/프로시져 자동 선택 */
+  useEffect(() => {
+    if (!logType || autoSelecting.current) return;
+    const entry = targetMap[logType];
+    if (!entry) return;
+    const isProc = entry.targetType === 'PROCEDURE';
+    if (isProc && proc.oracleProcs.length === 0) return;
+
+    autoSelecting.current = true;
+    const run = async () => {
+      try {
+        if (isProc) {
+          if (targetType !== 'PROCEDURE') { setTargetType('PROCEDURE'); tbl.reset(); }
+          const found = proc.oracleProcs.find(p =>
+            p.DISPLAY_NAME === entry.targetTable || p.OBJECT_NAME === entry.targetTable,
+          );
+          if (found) await proc.loadProcedure(found);
+        } else {
+          if (targetType !== 'TABLE') { setTargetType('TABLE'); proc.reset(); }
+          await tbl.loadTable(entry.targetTable);
+        }
+      } finally { autoSelecting.current = false; }
+    };
+    run();
+  }, [logType, targetMap, proc.oracleProcs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleAutoCreated = useCallback(async (name: string, createdLogType: string) => {
     setSaveMsg(t('mapping.createSuccess'));
+    setPipelineKey(k => k + 1);
     if (targetType === 'TABLE') {
       await tbl.refreshTables();
       await tbl.loadTable(name);
@@ -122,6 +168,8 @@ export default function MappingPage() {
         </div>
       </div>
 
+      <PipelineStatus refreshKey={pipelineKey} onEquipmentSelect={setLogType} />
+
       {/* 타겟 유형 토글 */}
       <div className="flex items-center gap-2">
         <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
@@ -169,7 +217,6 @@ export default function MappingPage() {
             </Card>
           ) : (
             <>
-              <LogTypeSelector logTypes={logTypes} logType={logType} parseRules={parseRules} onSelect={setLogType} />
               <Card noPadding>
                 {targetType === 'TABLE' ? (
                   <>
