@@ -10,7 +10,7 @@
  * 5. **안전 설계**: record() 내부에서 에러를 삼킴 → 로깅이 앱을 크래시시키지 않음
  */
 
-import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../../utils/logger.js';
 
@@ -25,6 +25,7 @@ export interface ProcessLogEntry {
   message: string;
   stage: string;
   status: 'SUCCESS' | 'ERROR';
+  raw_data?: string;
 }
 
 export interface ProcessLogRecord {
@@ -35,6 +36,7 @@ export interface ProcessLogRecord {
   STAGE: string;
   STATUS: string;
   CREATED_AT: string;
+  RAW_DATA?: string;
 }
 
 export interface ProcessQueryParams {
@@ -87,6 +89,7 @@ class ProcessLogRepository {
         STAGE: entry.stage,
         STATUS: entry.status,
         CREATED_AT: now.toISOString().replace('T', ' ').substring(0, 19),
+        ...(entry.raw_data ? { RAW_DATA: entry.raw_data } : {}),
       };
       appendFileSync(this.getFilePath(now), JSON.stringify(record) + '\n', 'utf-8');
     } catch (err) {
@@ -102,6 +105,7 @@ class ProcessLogRepository {
       message: entry.error_message,
       stage: entry.stage ?? 'UNKNOWN',
       status: 'ERROR',
+      raw_data: entry.raw_data,
     });
   }
 
@@ -154,6 +158,47 @@ class ProcessLogRepository {
     const equipmentIds = [...new Set(all.flatMap(r => r.EQUIPMENT_ID.split(',')))].sort();
 
     return { logs, total, sourceTables, equipmentIds };
+  }
+
+  /** LOG_ID 배열로 특정 로그 조회 */
+  findByIds(logIds: number[]): ProcessLogRecord[] {
+    const files = this.listLogFiles().map(f => join(LOG_DIR, f));
+    const all = this.readFiles(files);
+    const idSet = new Set(logIds);
+    return all.filter(r => idSet.has(r.LOG_ID));
+  }
+
+  /** ERROR 상태 + RAW_DATA 있는 로그 전체 조회 */
+  findRetryable(): ProcessLogRecord[] {
+    const files = this.listLogFiles().map(f => join(LOG_DIR, f));
+    const all = this.readFiles(files);
+    return all.filter(r => r.STATUS === 'ERROR' && r.RAW_DATA);
+  }
+
+  /** 특정 LOG_ID들의 STATUS 업데이트 (JSONL 파일 재작성) */
+  updateStatus(logIds: number[], newStatus: string): number {
+    const idSet = new Set(logIds);
+    let updated = 0;
+
+    for (const file of this.listLogFiles()) {
+      const fp = join(LOG_DIR, file);
+      const records = this.readFile(fp);
+      let changed = false;
+
+      for (const rec of records) {
+        if (idSet.has(rec.LOG_ID) && rec.STATUS !== newStatus) {
+          rec.STATUS = newStatus;
+          changed = true;
+          updated++;
+        }
+      }
+
+      if (changed) {
+        const content = records.map(r => JSON.stringify(r)).join('\n') + '\n';
+        writeFileSync(fp, content, 'utf-8');
+      }
+    }
+    return updated;
   }
 
   /** 로그 전체 삭제 */

@@ -20,7 +20,15 @@ export default function SenderPage() {
   const [names, setNames] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
+  type DescEntry = string | { description?: string; encoding?: string };
+  type ConfigStatus = Record<string, boolean>;
+  const [rawDescs, setRawDescs] = useState<Record<string, DescEntry>>({});
+  const [configStatus, setConfigStatus] = useState<Record<string, ConfigStatus>>({});
+  const getDescStr = (e?: DescEntry) => typeof e === 'string' ? e : e?.description ?? '';
+  const getEncStr = (e?: DescEntry) => typeof e === 'object' && e?.encoding ? e.encoding : 'utf-8';
+  const descriptions: Record<string, string> = Object.fromEntries(
+    Object.entries(rawDescs).map(([k, v]) => [k, getDescStr(v)])
+  );
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -30,9 +38,10 @@ export default function SenderPage() {
 
   const fetchNames = useCallback(async () => {
     try {
-      const data = await apiFetch<{ names: string[]; descriptions?: Record<string, string> }>('/api/monitor/agent/configs');
+      const data = await apiFetch<{ names: string[]; descriptions?: Record<string, DescEntry>; configStatus?: Record<string, ConfigStatus> }>('/api/monitor/agent/configs');
       setNames(data.names);
-      setDescriptions(data.descriptions || {});
+      setRawDescs(data.descriptions || {});
+      setConfigStatus(data.configStatus || {});
       if (!selected && data.names.length > 0) setSelected(data.names[0]);
     } catch { /* ignore */ }
     setLoading(false);
@@ -74,14 +83,17 @@ export default function SenderPage() {
     } catch { /* ignore */ }
   };
 
-  const handleDescUpdate = async (name: string, desc: string) => {
+  const handleDescUpdate = async (name: string, desc: string, enc?: string) => {
     try {
       await apiFetch(`/api/monitor/agent/description/${name}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: desc }),
+        body: JSON.stringify({ description: desc, ...(enc ? { encoding: enc } : {}) }),
       });
-      setDescriptions(prev => ({ ...prev, [name]: desc }));
+      setRawDescs(prev => ({
+        ...prev,
+        [name]: { description: desc, encoding: enc ?? getEncStr(prev[name]) },
+      }));
     } catch { /* ignore */ }
   };
 
@@ -109,12 +121,12 @@ export default function SenderPage() {
         <span className="text-muted-foreground text-sm font-normal">/ {t('sender.subtitle')}</span>
       </div>
 
-      {/* 좌우 분할 */}
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
-        {/* 좌측: 설비 목록 */}
+      {/* 상단: 설비 목록 → 하단: 설정 */}
+      <div className="flex flex-col gap-6">
         <EquipmentList
           names={names}
           descriptions={descriptions}
+          configStatus={configStatus}
           selected={selected}
           onSelect={setSelected}
           onAdd={() => setShowAdd(true)}
@@ -122,13 +134,15 @@ export default function SenderPage() {
           onDescriptionUpdate={handleDescUpdate}
         />
 
-        {/* 우측: TOML 에디터 */}
+        {/* 하단: 설정 패널 */}
         <div className="flex flex-col gap-3">
           {selected ? (
             <AgentConfigPanel
               key={selected} name={selected} onDownload={handleDownload}
               description={descriptions[selected] || ''}
-              onDescriptionSave={desc => handleDescUpdate(selected, desc)}
+              encoding={getEncStr(rawDescs[selected])}
+              onDescriptionSave={(desc, enc) => handleDescUpdate(selected, desc, enc)}
+              onSaved={fetchNames}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-2">

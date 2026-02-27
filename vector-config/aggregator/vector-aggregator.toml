@@ -60,6 +60,48 @@ address = "0.0.0.0:6000"
 
 
 # =============================================================================
+#  이벤트 라우팅: 하트비트 메트릭 vs 로그 이벤트 분리
+# =============================================================================
+#
+#  Agent는 로그 이벤트(파일 데이터)와 메트릭 이벤트(하트비트)를 모두 전송합니다.
+#  route 변환으로 하트비트 메트릭을 분리하여 별도 파이프라인으로 처리합니다.
+#
+#  - heartbeat: .name == "heartbeat" → 하트비트 API로 전달
+#  - _unmatched: 나머지 로그 이벤트 → 기존 파싱 파이프라인
+#
+# =============================================================================
+
+[transforms.route_events]
+type = "route"
+inputs = ["from_agents"]
+
+[transforms.route_events.route]
+heartbeat = '.name == "heartbeat"'
+
+# ── 하트비트 메트릭 → Node.js POST /api/heartbeat ──
+# static_metrics 원본을 그대로 전송, Node.js에서 tags 추출 처리
+[sinks.to_heartbeat_api]
+type = "http"
+inputs = ["route_events.heartbeat"]
+uri = "http://127.0.0.1:3100/api/heartbeat"
+method = "post"
+
+[sinks.to_heartbeat_api.encoding]
+codec = "json"
+
+[sinks.to_heartbeat_api.batch]
+max_events = 1
+timeout_secs = 30
+
+[sinks.to_heartbeat_api.request]
+retry_initial_backoff_secs = 5
+retry_max_duration_secs = 60
+
+[sinks.to_heartbeat_api.request.headers]
+Content-Type = "application/json"
+
+
+# =============================================================================
 #  Transforms (변환): 설비유형 + 로그유형별 파싱
 # =============================================================================
 #
@@ -95,7 +137,7 @@ address = "0.0.0.0:6000"
 
 [transforms.parse_logs]
 type = "remap"
-inputs = ["from_agents"]
+inputs = ["route_events._unmatched"]
 drop_on_abort = false
 source = '''
 # 원본 메시지를 보존 (raw 파일 저장용)
@@ -147,22 +189,22 @@ if .equipment_type == "SP" {
   # .target_type = "PROCEDURE"
   # .target_table = "PKG_BATCH.P_SPI_INSERT"
   values = split!(.message, "\n")
-  header = split!(to_string!(get!(values, [0])), ",")
-  data_line = split!(to_string!(get!(values, [1])), ",")
+  header = split(to_string!(get!(values, [0])), ",")
+  data_line = split(to_string!(get!(values, [1])), ",")
 
-  .data.MASTER_BARCODE = strip_whitespace!(to_string!(get!(data_line, [0])))
-  .data.PCB_ID = strip_whitespace!(to_string!(get!(data_line, [1])))
-  .data.INSPECTION_DATE = strip_whitespace!(to_string!(get!(data_line, [2])))
-  .data.INSPECTION_START_TIME = strip_whitespace!(to_string!(get!(data_line, [3])))
-  .data.INSPECTION_END_TIME = strip_whitespace!(to_string!(get!(data_line, [4])))
-  .data.TOTAL_PANEL_COUNT = to_int!(get!(data_line, [5]))
-  .data.JOB_NAME = strip_whitespace!(to_string!(get!(data_line, [6])))
-  .data.PCB_RESULT = strip_whitespace!(to_string!(get!(data_line, [7])))
-  .data.USER_ID = strip_whitespace!(to_string!(get!(data_line, [8])))
-  .data.LOT_INFO = strip_whitespace!(to_string!(get!(data_line, [9])))
-  .data.MACHINE_ID = strip_whitespace!(to_string!(get!(data_line, [10])))
-  .data.SIDE = strip_whitespace!(to_string!(get!(data_line, [11])))
-  .data.LANE = to_int!(get!(data_line, [12]))
+  .data.MASTER_BARCODE = strip_whitespace(to_string!(get!(data_line, [0])))
+  .data.PCB_ID = strip_whitespace(to_string!(get!(data_line, [1])))
+  .data.INSPECTION_DATE = strip_whitespace(to_string!(get!(data_line, [2])))
+  .data.INSPECTION_START_TIME = strip_whitespace(to_string!(get!(data_line, [3])))
+  .data.INSPECTION_END_TIME = strip_whitespace(to_string!(get!(data_line, [4])))
+  .data.TOTAL_PANEL_COUNT = strip_whitespace(to_string!(get!(data_line, [5])))
+  .data.JOB_NAME = strip_whitespace(to_string!(get!(data_line, [6])))
+  .data.PCB_RESULT = strip_whitespace(to_string!(get!(data_line, [7])))
+  .data.USER_ID = strip_whitespace(to_string!(get!(data_line, [8])))
+  .data.LOT_INFO = strip_whitespace(to_string!(get!(data_line, [9])))
+  .data.MACHINE_ID = strip_whitespace(to_string!(get!(data_line, [10])))
+  .data.SIDE = strip_whitespace(to_string!(get!(data_line, [11])))
+  .data.LANE = strip_whitespace(to_string!(get!(data_line, [12])))
 } else if .equipment_type == "MAOI" {
   # ── MAOI (Manual AOI) ──
   if .log_type == "INSPECTION" {
@@ -209,7 +251,7 @@ if .equipment_type == "SP" {
     detail_lines = slice!(lines, 5)
     for_each(array!(detail_lines)) -> |_idx, row| {
       if row != "" {
-        cols = split!(to_string!(row), ",")
+        cols = split(to_string!(row), ",")
         if length(cols) >= 7 {
           inspection = {
             "MODULE_ID":   get!(cols, [0]),
@@ -263,41 +305,41 @@ if .equipment_type == "SP" {
 
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
-    if strip_whitespace!(to_string!(row)) != "" {
-      cols = split!(to_string!(row), ",")
+    if strip_whitespace(to_string!(row)) != "" {
+      cols = split(to_string!(row), ",")
       if length(cols) >= 31 {
         item = {
-          "BARCODE": strip_whitespace!(to_string!(get!(cols, [0]))),
-          "DEVICE": to_int!(get!(cols, [1])),
-          "RESULT": strip_whitespace!(to_string!(get!(cols, [2]))),
-          "MODEL": strip_whitespace!(to_string!(get!(cols, [3]))),
-          "DATE": strip_whitespace!(to_string!(get!(cols, [4]))),
-          "TIME": strip_whitespace!(to_string!(get!(cols, [5]))),
-          "TYPE": strip_whitespace!(to_string!(get!(cols, [6]))),
-          "VOLT_INPUT_V": to_float!(get!(cols, [7])),
-          "VOLT_VALUE_V": strip_whitespace!(to_string!(get!(cols, [8]))),
-          "CURR_RESULT": strip_whitespace!(to_string!(get!(cols, [9]))),
-          "CURR_MIN_MA": to_int!(get!(cols, [10])),
-          "CURR_MAX_MA": to_int!(get!(cols, [11])),
-          "CURR_VALUE_MA": to_int!(get!(cols, [12])),
-          "LED_RESULT": strip_whitespace!(to_string!(get!(cols, [13]))),
-          "LED_NAME": to_int!(get!(cols, [14])),
-          "SCORE_MIN": to_int!(get!(cols, [15])),
-          "SCORE_MAX": to_int!(get!(cols, [16])),
-          "SCORE_VALUE": to_int!(get!(cols, [17])),
-          "SCORE_RESULT": strip_whitespace!(to_string!(get!(cols, [18]))),
-          "HUE_MIN": to_int!(get!(cols, [19])),
-          "HUE_MAX": to_int!(get!(cols, [20])),
-          "HUE_VALUE": to_int!(get!(cols, [21])),
-          "HUE_RESULT": strip_whitespace!(to_string!(get!(cols, [22]))),
-          "SAT_MIN": to_int!(get!(cols, [23])),
-          "SAT_MAX": to_int!(get!(cols, [24])),
-          "SAT_VALUE": to_int!(get!(cols, [25])),
-          "SAT_RESULT": strip_whitespace!(to_string!(get!(cols, [26]))),
-          "LUM_MIN": to_int!(get!(cols, [27])),
-          "LUM_MAX": to_int!(get!(cols, [28])),
-          "LUM_VALUE": to_int!(get!(cols, [29])),
-          "LUM_RESULT": strip_whitespace!(to_string!(get!(cols, [30])))
+          "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+          "DEVICE": strip_whitespace(to_string!(get!(cols, [1]))),
+          "RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
+          "MODEL": strip_whitespace(to_string!(get!(cols, [3]))),
+          "DATE": strip_whitespace(to_string!(get!(cols, [4]))),
+          "TIME": strip_whitespace(to_string!(get!(cols, [5]))),
+          "TYPE": strip_whitespace(to_string!(get!(cols, [6]))),
+          "VOLT_INPUT_V": strip_whitespace(to_string!(get!(cols, [7]))),
+          "VOLT_VALUE_V": strip_whitespace(to_string!(get!(cols, [8]))),
+          "CURR_RESULT": strip_whitespace(to_string!(get!(cols, [9]))),
+          "CURR_MIN_MA": strip_whitespace(to_string!(get!(cols, [10]))),
+          "CURR_MAX_MA": strip_whitespace(to_string!(get!(cols, [11]))),
+          "CURR_VALUE_MA": strip_whitespace(to_string!(get!(cols, [12]))),
+          "LED_RESULT": strip_whitespace(to_string!(get!(cols, [13]))),
+          "LED_NAME": strip_whitespace(to_string!(get!(cols, [14]))),
+          "SCORE_MIN": strip_whitespace(to_string!(get!(cols, [15]))),
+          "SCORE_MAX": strip_whitespace(to_string!(get!(cols, [16]))),
+          "SCORE_VALUE": strip_whitespace(to_string!(get!(cols, [17]))),
+          "SCORE_RESULT": strip_whitespace(to_string!(get!(cols, [18]))),
+          "HUE_MIN": strip_whitespace(to_string!(get!(cols, [19]))),
+          "HUE_MAX": strip_whitespace(to_string!(get!(cols, [20]))),
+          "HUE_VALUE": strip_whitespace(to_string!(get!(cols, [21]))),
+          "HUE_RESULT": strip_whitespace(to_string!(get!(cols, [22]))),
+          "SAT_MIN": strip_whitespace(to_string!(get!(cols, [23]))),
+          "SAT_MAX": strip_whitespace(to_string!(get!(cols, [24]))),
+          "SAT_VALUE": strip_whitespace(to_string!(get!(cols, [25]))),
+          "SAT_RESULT": strip_whitespace(to_string!(get!(cols, [26]))),
+          "LUM_MIN": strip_whitespace(to_string!(get!(cols, [27]))),
+          "LUM_MAX": strip_whitespace(to_string!(get!(cols, [28]))),
+          "LUM_VALUE": strip_whitespace(to_string!(get!(cols, [29]))),
+          "LUM_RESULT": strip_whitespace(to_string!(get!(cols, [30])))
         }
         .data.ROWS = push(.data.ROWS, item)
       }
@@ -383,56 +425,56 @@ if .equipment_type == "SP" {
 
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
-    if strip_whitespace!(to_string!(row)) != "" {
-      cols = split!(to_string!(row), ",")
+    if strip_whitespace(to_string!(row)) != "" {
+      cols = split(to_string!(row), ",")
       if length(cols) >= 46 {
         item = {
-          "BARCODE": strip_whitespace!(to_string!(get!(cols, [0]))),
-          "DEVICE": to_int!(get!(cols, [1])),
-          "DEVICE_RESULT": strip_whitespace!(to_string!(get!(cols, [2]))),
-          "MODEL": strip_whitespace!(to_string!(get!(cols, [3]))),
-          "DATE": strip_whitespace!(to_string!(get!(cols, [4]))),
-          "TIME": strip_whitespace!(to_string!(get!(cols, [5]))),
-          "MODULE_NAME": strip_whitespace!(to_string!(get!(cols, [6]))),
-          "OUTPUT_VOLTAGE": strip_whitespace!(to_string!(get!(cols, [7]))),
-          "READ_VOLTAGE": strip_whitespace!(to_string!(get!(cols, [8]))),
-          "CURRENT_RESULT": strip_whitespace!(to_string!(get!(cols, [9]))),
-          "CURRENT_LOWER": to_int!(get!(cols, [10])),
-          "CURRENT_UPPER": to_int!(get!(cols, [11])),
-          "CURRENT_VALUE": to_float!(get!(cols, [12])),
-          "LED_RESULT": strip_whitespace!(to_string!(get!(cols, [13]))),
-          "LED_NAME": strip_whitespace!(to_string!(get!(cols, [14]))),
-          "RED_MIN": to_int!(get!(cols, [15])),
-          "RED_MAX": to_int!(get!(cols, [16])),
-          "RED_VALUE": to_int!(get!(cols, [17])),
-          "GREEN_MIN": to_int!(get!(cols, [18])),
-          "GREEN_MAX": to_int!(get!(cols, [19])),
-          "GREEN_VALUE": to_int!(get!(cols, [20])),
-          "BLUE_MIN": to_int!(get!(cols, [21])),
-          "BLUE_MAX": to_int!(get!(cols, [22])),
-          "BLUE_VALUE": to_int!(get!(cols, [23])),
-          "SCORE_LOWER": to_int!(get!(cols, [24])),
-          "SCORE_UPPER": to_int!(get!(cols, [25])),
-          "SCORE_VALUE": to_float!(get!(cols, [26])),
-          "SCORE_RESULT": strip_whitespace!(to_string!(get!(cols, [27]))),
-          "HUE_LOWER": to_int!(get!(cols, [28])),
-          "HUE_UPPER": to_int!(get!(cols, [29])),
-          "HUE_VALUE": to_float!(get!(cols, [30])),
-          "HUE_RESULT": strip_whitespace!(to_string!(get!(cols, [31]))),
-          "SAT_LOWER": to_int!(get!(cols, [32])),
-          "SAT_UPPER": to_int!(get!(cols, [33])),
-          "SAT_VALUE": to_float!(get!(cols, [34])),
-          "SAT_RESULT": strip_whitespace!(to_string!(get!(cols, [35]))),
-          "LUM_LOWER": to_int!(get!(cols, [36])),
-          "LUM_UPPER": to_int!(get!(cols, [37])),
-          "LUM_VALUE": to_float!(get!(cols, [38])),
-          "LUM_RESULT": strip_whitespace!(to_string!(get!(cols, [39]))),
-          "TT_OFF_RESULT": strip_whitespace!(to_string!(get!(cols, [40]))),
-          "TT_ON_RESULT": strip_whitespace!(to_string!(get!(cols, [41]))),
-          "TT_OFF_MIN": to_int!(get!(cols, [42])),
-          "TT_OFF_VALUE": to_int!(get!(cols, [43])),
-          "TT_ON_MAX": to_int!(get!(cols, [44])),
-          "TT_ON_VALUE": to_int!(get!(cols, [45]))
+          "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+          "DEVICE": strip_whitespace(to_string!(get!(cols, [1]))),
+          "DEVICE_RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
+          "MODEL": strip_whitespace(to_string!(get!(cols, [3]))),
+          "DATE": strip_whitespace(to_string!(get!(cols, [4]))),
+          "TIME": strip_whitespace(to_string!(get!(cols, [5]))),
+          "MODULE_NAME": strip_whitespace(to_string!(get!(cols, [6]))),
+          "OUTPUT_VOLTAGE": strip_whitespace(to_string!(get!(cols, [7]))),
+          "READ_VOLTAGE": strip_whitespace(to_string!(get!(cols, [8]))),
+          "CURRENT_RESULT": strip_whitespace(to_string!(get!(cols, [9]))),
+          "CURRENT_LOWER": strip_whitespace(to_string!(get!(cols, [10]))),
+          "CURRENT_UPPER": strip_whitespace(to_string!(get!(cols, [11]))),
+          "CURRENT_VALUE": strip_whitespace(to_string!(get!(cols, [12]))),
+          "LED_RESULT": strip_whitespace(to_string!(get!(cols, [13]))),
+          "LED_NAME": strip_whitespace(to_string!(get!(cols, [14]))),
+          "RED_MIN": strip_whitespace(to_string!(get!(cols, [15]))),
+          "RED_MAX": strip_whitespace(to_string!(get!(cols, [16]))),
+          "RED_VALUE": strip_whitespace(to_string!(get!(cols, [17]))),
+          "GREEN_MIN": strip_whitespace(to_string!(get!(cols, [18]))),
+          "GREEN_MAX": strip_whitespace(to_string!(get!(cols, [19]))),
+          "GREEN_VALUE": strip_whitespace(to_string!(get!(cols, [20]))),
+          "BLUE_MIN": strip_whitespace(to_string!(get!(cols, [21]))),
+          "BLUE_MAX": strip_whitespace(to_string!(get!(cols, [22]))),
+          "BLUE_VALUE": strip_whitespace(to_string!(get!(cols, [23]))),
+          "SCORE_LOWER": strip_whitespace(to_string!(get!(cols, [24]))),
+          "SCORE_UPPER": strip_whitespace(to_string!(get!(cols, [25]))),
+          "SCORE_VALUE": strip_whitespace(to_string!(get!(cols, [26]))),
+          "SCORE_RESULT": strip_whitespace(to_string!(get!(cols, [27]))),
+          "HUE_LOWER": strip_whitespace(to_string!(get!(cols, [28]))),
+          "HUE_UPPER": strip_whitespace(to_string!(get!(cols, [29]))),
+          "HUE_VALUE": strip_whitespace(to_string!(get!(cols, [30]))),
+          "HUE_RESULT": strip_whitespace(to_string!(get!(cols, [31]))),
+          "SAT_LOWER": strip_whitespace(to_string!(get!(cols, [32]))),
+          "SAT_UPPER": strip_whitespace(to_string!(get!(cols, [33]))),
+          "SAT_VALUE": strip_whitespace(to_string!(get!(cols, [34]))),
+          "SAT_RESULT": strip_whitespace(to_string!(get!(cols, [35]))),
+          "LUM_LOWER": strip_whitespace(to_string!(get!(cols, [36]))),
+          "LUM_UPPER": strip_whitespace(to_string!(get!(cols, [37]))),
+          "LUM_VALUE": strip_whitespace(to_string!(get!(cols, [38]))),
+          "LUM_RESULT": strip_whitespace(to_string!(get!(cols, [39]))),
+          "TT_OFF_RESULT": strip_whitespace(to_string!(get!(cols, [40]))),
+          "TT_ON_RESULT": strip_whitespace(to_string!(get!(cols, [41]))),
+          "TT_OFF_MIN": strip_whitespace(to_string!(get!(cols, [42]))),
+          "TT_OFF_VALUE": strip_whitespace(to_string!(get!(cols, [43]))),
+          "TT_ON_MAX": strip_whitespace(to_string!(get!(cols, [44]))),
+          "TT_ON_VALUE": strip_whitespace(to_string!(get!(cols, [45])))
         }
         .data.ROWS = push(.data.ROWS, item)
       }
@@ -453,60 +495,106 @@ if .equipment_type == "SP" {
 
 } else if .equipment_type == "DOWNLOAD" {  lines = split!(.message, "\n")
   .target_table = "LOG_DOWNLOAD"
-  header = split!(to_string!(get!(lines, [0])), ",")
-  .data.BARCODE = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [0])))
-  .data.PCB_NO = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [1])))
-  .data.RESULT = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [2])))
-  .data.MODEL = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [3])))
-  .data.DAY = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [4])))
-  .data.TIME = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [5])))
-  .data.SW_VER = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [6])))
-  .data.MCU_HEX_CRC_1 = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [7])))
-  .data.MCU_HEX_CRC_2 = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [8])))
-  .data.MCU_HEX_CRC_3 = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [9])))
-  .data.MCU_HEX_CRC_4 = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [10])))
-  .data.MCU_HEX_CRC_5 = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [11])))
-  .data.MCU_HEX_CRC_6 = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [12])))
-  .data.MCU_HEX_CRC_7 = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [13])))
-  .data.ROM_CRC = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [14])))
-  .data.NAME = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [15])))
-  .data.MCU_CHKSUM = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [16])))
-  .data.ROM_CHKSUM = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [17])))
-  .data.MCU_READ_CHKSUM = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [18])))
-  .data.ROM_READ_CHKSUM = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [19])))
-  .data.MCU_RESULT = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [20])))
-  .data.ROM_RESULT = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [21])))
-  .data.DRV_IC_RESULT = strip_whitespace!(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [22])))
+  header = split(to_string!(get!(lines, [0])), ",")
+  .data.BARCODE = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [0])))
+  .data.PCB_NO = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [1])))
+  .data.RESULT = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [2])))
+  .data.MODEL = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [3])))
+  .data.DAY = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [4])))
+  .data.TIME = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [5])))
+  .data.SW_VER = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [6])))
+  .data.MCU_HEX_CRC_1 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [7])))
+  .data.MCU_HEX_CRC_2 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [8])))
+  .data.MCU_HEX_CRC_3 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [9])))
+  .data.MCU_HEX_CRC_4 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [10])))
+  .data.MCU_HEX_CRC_5 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [11])))
+  .data.MCU_HEX_CRC_6 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [12])))
+  .data.MCU_HEX_CRC_7 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [13])))
+  .data.ROM_CRC = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [14])))
+  .data.NAME = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [15])))
+  .data.MCU_CHKSUM = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [16])))
+  .data.ROM_CHKSUM = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [17])))
+  .data.MCU_READ_CHKSUM = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [18])))
+  .data.ROM_READ_CHKSUM = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [19])))
+  .data.MCU_RESULT = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [20])))
+  .data.ROM_RESULT = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [21])))
+  .data.DRV_IC_RESULT = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [22])))
 
   .data.DETAILS = []
   detail_lines = slice!(lines, 1)
   for_each(array!(detail_lines)) -> |_idx, row| {
     if row != "" {
-      cols = split!(to_string!(row), ",")
+      cols = split(to_string!(row), ",")
       item = {
-        "BARCODE": strip_whitespace!(to_string!(get!(cols, [0]))),
-        "PCB_NO": strip_whitespace!(to_string!(get!(cols, [1]))),
-        "RESULT": strip_whitespace!(to_string!(get!(cols, [2]))),
-        "MODEL": strip_whitespace!(to_string!(get!(cols, [3]))),
-        "DAY": strip_whitespace!(to_string!(get!(cols, [4]))),
-        "TIME": strip_whitespace!(to_string!(get!(cols, [5]))),
-        "SW_VER": strip_whitespace!(to_string!(get!(cols, [6]))),
-        "MCU_HEX_CRC_1": strip_whitespace!(to_string!(get!(cols, [7]))),
-        "MCU_HEX_CRC_2": strip_whitespace!(to_string!(get!(cols, [8]))),
-        "MCU_HEX_CRC_3": strip_whitespace!(to_string!(get!(cols, [9]))),
-        "MCU_HEX_CRC_4": strip_whitespace!(to_string!(get!(cols, [10]))),
-        "MCU_HEX_CRC_5": strip_whitespace!(to_string!(get!(cols, [11]))),
-        "MCU_HEX_CRC_6": strip_whitespace!(to_string!(get!(cols, [12]))),
-        "MCU_HEX_CRC_7": strip_whitespace!(to_string!(get!(cols, [13]))),
-        "ROM_CRC": strip_whitespace!(to_string!(get!(cols, [14]))),
-        "NAME": strip_whitespace!(to_string!(get!(cols, [15]))),
-        "MCU_CHKSUM": strip_whitespace!(to_string!(get!(cols, [16]))),
-        "ROM_CHKSUM": strip_whitespace!(to_string!(get!(cols, [17]))),
-        "MCU_READ_CHKSUM": strip_whitespace!(to_string!(get!(cols, [18]))),
-        "ROM_READ_CHKSUM": strip_whitespace!(to_string!(get!(cols, [19]))),
-        "MCU_RESULT": strip_whitespace!(to_string!(get!(cols, [20]))),
-        "ROM_RESULT": strip_whitespace!(to_string!(get!(cols, [21]))),
-        "DRV_IC_RESULT": strip_whitespace!(to_string!(get!(cols, [22])))
+        "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+        "PCB_NO": strip_whitespace(to_string!(get!(cols, [1]))),
+        "RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
+        "MODEL": strip_whitespace(to_string!(get!(cols, [3]))),
+        "DAY": strip_whitespace(to_string!(get!(cols, [4]))),
+        "TIME": strip_whitespace(to_string!(get!(cols, [5]))),
+        "SW_VER": strip_whitespace(to_string!(get!(cols, [6]))),
+        "MCU_HEX_CRC_1": strip_whitespace(to_string!(get!(cols, [7]))),
+        "MCU_HEX_CRC_2": strip_whitespace(to_string!(get!(cols, [8]))),
+        "MCU_HEX_CRC_3": strip_whitespace(to_string!(get!(cols, [9]))),
+        "MCU_HEX_CRC_4": strip_whitespace(to_string!(get!(cols, [10]))),
+        "MCU_HEX_CRC_5": strip_whitespace(to_string!(get!(cols, [11]))),
+        "MCU_HEX_CRC_6": strip_whitespace(to_string!(get!(cols, [12]))),
+        "MCU_HEX_CRC_7": strip_whitespace(to_string!(get!(cols, [13]))),
+        "ROM_CRC": strip_whitespace(to_string!(get!(cols, [14]))),
+        "NAME": strip_whitespace(to_string!(get!(cols, [15]))),
+        "MCU_CHKSUM": strip_whitespace(to_string!(get!(cols, [16]))),
+        "ROM_CHKSUM": strip_whitespace(to_string!(get!(cols, [17]))),
+        "MCU_READ_CHKSUM": strip_whitespace(to_string!(get!(cols, [18]))),
+        "ROM_READ_CHKSUM": strip_whitespace(to_string!(get!(cols, [19]))),
+        "MCU_RESULT": strip_whitespace(to_string!(get!(cols, [20]))),
+        "ROM_RESULT": strip_whitespace(to_string!(get!(cols, [21]))),
+        "DRV_IC_RESULT": strip_whitespace(to_string!(get!(cols, [22])))
+      }
+      .data.DETAILS = push(.data.DETAILS, item)
+    }
+  }
+} else if .equipment_type == "LOWCURRENT" {  lines = split!(.message, "\n")
+  .target_table = "LOG_LOWCURRENT"
+  header = split(to_string!(get!(lines, [0])), ",")
+  first_row = split(to_string!(get!(lines, [1])), ",")
+
+  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.MODEL_NAME = strip_whitespace(to_string!(get!(first_row, [1])))
+  .data.DATE = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.START_TIME = strip_whitespace(to_string!(get!(first_row, [3])))
+  .data.END_TIME = strip_whitespace(to_string!(get!(first_row, [4])))
+  .data.CHANNEL = strip_whitespace(to_string!(get!(first_row, [5])))
+  .data.MODE = strip_whitespace(to_string!(get!(first_row, [6])))
+  .data.SET_CURRENT_UA = strip_whitespace(to_string!(get!(first_row, [7])))
+  .data.SET_VOLTAGE_V = strip_whitespace(to_string!(get!(first_row, [8])))
+  .data.MIN_RANGE = strip_whitespace(to_string!(get!(first_row, [9])))
+  .data.MAX_RANGE = strip_whitespace(to_string!(get!(first_row, [10])))
+  .data.MEASURED_VALUE = strip_whitespace(to_string!(get!(first_row, [11])))
+  .data.MEASURE_RESULT = strip_whitespace(to_string!(get!(first_row, [12])))
+  .data.DASH = strip_whitespace(to_string!(get!(first_row, [13])))
+  .data.OVERALL_RESULT = strip_whitespace(to_string!(get!(first_row, [14])))
+
+  .data.DETAILS = []
+  detail_lines = slice!(lines, 1)
+  for_each(array!(detail_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      item = {
+        "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+        "MODEL_NAME": strip_whitespace(to_string!(get!(cols, [1]))),
+        "DATE": strip_whitespace(to_string!(get!(cols, [2]))),
+        "START_TIME": strip_whitespace(to_string!(get!(cols, [3]))),
+        "END_TIME": strip_whitespace(to_string!(get!(cols, [4]))),
+        "CHANNEL": strip_whitespace(to_string!(get!(cols, [5]))),
+        "MODE": strip_whitespace(to_string!(get!(cols, [6]))),
+        "SET_CURRENT_UA": strip_whitespace(to_string!(get!(cols, [7]))),
+        "SET_VOLTAGE_V": strip_whitespace(to_string!(get!(cols, [8]))),
+        "MIN_RANGE": strip_whitespace(to_string!(get!(cols, [9]))),
+        "MAX_RANGE": strip_whitespace(to_string!(get!(cols, [10]))),
+        "MEASURED_VALUE": strip_whitespace(to_string!(get!(cols, [11]))),
+        "MEASURE_RESULT": strip_whitespace(to_string!(get!(cols, [12]))),
+        "DASH": strip_whitespace(to_string!(get!(cols, [13]))),
+        "OVERALL_RESULT": strip_whitespace(to_string!(get!(cols, [14]))),
       }
       .data.DETAILS = push(.data.DETAILS, item)
     }
@@ -574,7 +662,7 @@ source = '''
 # 원본 저장용 파일명 추출 (데이터 내용은 변경하지 않고 .filename만 추가)
 [transforms.tag_filename]
 type = "remap"
-inputs = ["from_agents"]
+inputs = ["route_events._unmatched"]
 source = '''
 .filename = replace!(.file, r'.*[\\/]', "")
 '''
@@ -585,7 +673,7 @@ source = '''
 # -----------------------------------------------------------------------------
 [transforms.file_receive_notify]
 type = "remap"
-inputs = ["from_agents"]
+inputs = ["route_events._unmatched"]
 source = '''
 . = {
   "equipment_id": .equipment_id,

@@ -6,6 +6,7 @@ const VARIANT = {
   secondary: 'bg-card border border-border text-text dark:text-white hover:bg-card-hover',
   ghost: 'bg-transparent text-text dark:text-white hover:bg-black/5 dark:hover:bg-white/5',
   outline: 'bg-transparent border border-border text-text dark:text-white hover:bg-card-hover hover:border-border-hover',
+  danger: 'bg-red-600 text-white shadow-lg shadow-red-600/25 hover:bg-red-700 hover:-translate-y-0.5',
 } as const;
 
 const SIZE = {

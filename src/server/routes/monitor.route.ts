@@ -9,7 +9,7 @@
  */
 
 import { FastifyPluginAsync } from 'fastify';
-import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync, mkdirSync, statSync, copyFileSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync, mkdirSync, statSync, copyFileSync, rmSync } from 'fs';
 import { join, dirname, basename } from 'path';
 import { tmpdir } from 'os';
 import { spawn } from 'child_process';
@@ -19,6 +19,7 @@ import { heartbeatService } from '../../redis/heartbeat.service.js';
 import { getConnection } from '../../database/oracle.pool.js';
 import { getRedisClient } from '../../redis/redis.client.js';
 import { logger } from '../../utils/logger.js';
+import iconv from 'iconv-lite';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
 import { env, updateEnvValue } from '../../config/env.js';
 import type { Env } from '../../config/env.js';
@@ -66,6 +67,23 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     return backupName;
   }
 
+  /** 하트비트 설비 목록에 서버 측 description 병합 (equipment_type ↔ agent name 매칭) */
+  function mergeEquipmentDescriptions(equips: import('../../types/index.js').EquipmentStatus[]) {
+    const descs = loadDescriptions();
+    return equips.map(eq => {
+      const eqType = (eq.metadata as Record<string, string>)?.equipment_type;
+      const entry = eqType ? descs[eqType] : undefined;
+      const desc = getDesc(entry);
+      return {
+        ...eq,
+        metadata: {
+          ...(eq.metadata ?? {}),
+          ...(desc ? { description: desc } : {}),
+        },
+      };
+    });
+  }
+
   /** 통합 모니터링 데이터 */
   app.get('/api/monitor/overview', async (_request, reply) => {
     const [queueStats, equipments, tableStats, recentErrors, redisStatus, vectorStatus, oracleStatus] =
@@ -94,7 +112,8 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       queue: queueStats.status === 'fulfilled'
         ? queueStats.value
         : { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0, error: true },
-      equipments: equipments.status === 'fulfilled' ? equipments.value : [],
+      equipments: equipments.status === 'fulfilled'
+        ? mergeEquipmentDescriptions(equipments.value) : [],
       tables: tableStats.status === 'fulfilled' ? tableStats.value : [],
       recentErrors: recentErrors.status === 'fulfilled' ? recentErrors.value : [],
     });
@@ -306,16 +325,39 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   const agentPath = (name: string) => join(AGENT_CONFIG_DIR, `${name}.toml`);
   const AGENT_DESC_PATH = join(AGENT_CONFIG_DIR, 'descriptions.json');
 
-  const loadDescriptions = (): Record<string, string> => {
+  interface AgentMeta { description?: string; encoding?: string }
+  type DescMap = Record<string, string | AgentMeta>;
+
+  const loadDescriptions = (): DescMap => {
     try { if (existsSync(AGENT_DESC_PATH)) return JSON.parse(readFileSync(AGENT_DESC_PATH, 'utf-8')); }
     catch { /* ignore */ }
     return {};
   };
-  const saveDescriptions = (data: Record<string, string>) => {
+  const saveDescriptions = (data: DescMap) => {
     writeFileSync(AGENT_DESC_PATH, JSON.stringify(data, null, 2), 'utf-8');
   };
+  /** description 문자열 추출 (하위 호환: string | { description }) */
+  const getDesc = (entry: string | AgentMeta | undefined): string =>
+    typeof entry === 'string' ? entry : entry?.description ?? '';
+  /** encoding 추출 (기본값: utf-8) */
+  const getEncoding = (entry: string | AgentMeta | undefined): string =>
+    typeof entry === 'object' && entry?.encoding ? entry.encoding : 'utf-8';
 
-  /** 설비 목록 조회 (설명 포함) */
+  /** TOML 내용에서 설정 완료 단계를 분석 */
+  function analyzeTomlStatus(content: string): Record<string, boolean> {
+    const metaVal = (k: string) => (content.match(new RegExp(`\\.${k}\\s*=\\s*"([^"]*)"`))?.[1] ?? '').trim();
+    const sinkM = content.match(/\[sinks\.to_aggregator\][\s\S]*?address\s*=\s*"([^:]+):(\d+)"/);
+    const includeM = content.match(/include\s*=\s*\[([\s\S]*?)\]/);
+    const paths = includeM ? includeM[1].replace(/[",]/g, '').trim() : '';
+    return {
+      equip: !!(metaVal('equipment_type') && metaVal('equipment_id')),
+      connection: !!(sinkM && sinkM[1] && sinkM[2] && sinkM[1] !== '0.0.0.0'),
+      logPath: paths.length > 0,
+      heartbeat: /\[sources\.heartbeat\]/.test(content),
+    };
+  }
+
+  /** 설비 목록 조회 (설명 + 설정 상태 포함) */
   app.get('/api/monitor/agent/configs', async (_request, reply) => {
     try {
       if (!existsSync(AGENT_CONFIG_DIR)) mkdirSync(AGENT_CONFIG_DIR, { recursive: true });
@@ -323,7 +365,18 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         .filter(f => f.endsWith('.toml') && !f.endsWith('.bak.toml'))
         .map(f => f.replace('.toml', ''))
         .sort();
-      return reply.send({ names: files, descriptions: loadDescriptions() });
+
+      const configStatus: Record<string, Record<string, boolean>> = {};
+      for (const name of files) {
+        try {
+          const toml = readFileSync(agentPath(name), 'utf-8');
+          configStatus[name] = analyzeTomlStatus(toml);
+        } catch {
+          configStatus[name] = { equip: false, connection: false, logPath: false, heartbeat: false };
+        }
+      }
+
+      return reply.send({ names: files, descriptions: loadDescriptions(), configStatus });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -374,7 +427,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   /** 새 설비 생성 (설명 포함) */
   app.post('/api/monitor/agent/configs', async (request, reply) => {
-    const { name, content, description } = request.body as { name: string; content?: string; description?: string };
+    const { name, content, description, encoding } = request.body as { name: string; content?: string; description?: string; encoding?: string };
     if (!name || !isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
     const filePath = agentPath(name);
     if (existsSync(filePath)) return reply.status(409).send({ error: 'Already exists' });
@@ -382,9 +435,9 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       const defaultContent = content || getDefaultAgentToml(name);
       writeFileSync(filePath, defaultContent, 'utf-8');
       addEquipmentToAggregatorVrl(name);
-      if (description) {
+      if (description || encoding) {
         const descs = loadDescriptions();
-        descs[name] = description;
+        descs[name] = { description: description ?? '', encoding: encoding ?? 'utf-8' };
         saveDescriptions(descs);
       }
       logger.info({ name }, 'New agent config created');
@@ -394,14 +447,17 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** 설비 설명 수정 */
+  /** 설비 설명/인코딩 수정 */
   app.put('/api/monitor/agent/description/:name', async (request, reply) => {
     const { name } = request.params as { name: string };
-    const { description } = request.body as { description: string };
+    const { description, encoding } = request.body as { description?: string; encoding?: string };
     if (!isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
     try {
       const descs = loadDescriptions();
-      if (description) descs[name] = description; else delete descs[name];
+      const prev = descs[name];
+      const prevDesc = getDesc(prev);
+      const prevEnc = getEncoding(prev);
+      descs[name] = { description: description ?? prevDesc, encoding: encoding ?? prevEnc };
       saveDescriptions(descs);
       return reply.send({ success: true });
     } catch (err) {
@@ -874,6 +930,78 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
+  // ─── 재전송(Retry) API ───
+
+  /** 선택된 LOG_ID 배열로 개별 재전송 */
+  app.post('/api/monitor/retry', async (request, reply) => {
+    const { logIds } = request.body as { logIds: number[] };
+    if (!Array.isArray(logIds) || logIds.length === 0) {
+      return reply.status(400).send({ error: 'logIds array required' });
+    }
+
+    try {
+      const { logProducer } = await import('../../queue/producers/log.producer.js');
+      const records = errorLogRepository.findByIds(logIds);
+      let retried = 0;
+      let failed = 0;
+      const retriedIds: number[] = [];
+
+      for (const rec of records) {
+        if (!rec.RAW_DATA) { failed++; continue; }
+        try {
+          const logRecord = JSON.parse(rec.RAW_DATA);
+          await logProducer.addBulk([logRecord]);
+          retried++;
+          retriedIds.push(rec.LOG_ID);
+        } catch {
+          failed++;
+        }
+      }
+
+      if (retriedIds.length > 0) {
+        errorLogRepository.updateStatus(retriedIds, 'RETRIED');
+      }
+
+      logger.info({ retried, failed, requested: logIds.length }, 'Retry selected logs');
+      return reply.send({ success: true, retried, failed });
+    } catch (err) {
+      logger.error({ err }, 'Failed to retry selected logs');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** ERROR 상태 전체 재전송 */
+  app.post('/api/monitor/retry/all', async (_request, reply) => {
+    try {
+      const { logProducer } = await import('../../queue/producers/log.producer.js');
+      const records = errorLogRepository.findRetryable();
+      let retried = 0;
+      let failed = 0;
+      const retriedIds: number[] = [];
+
+      for (const rec of records) {
+        try {
+          const logRecord = JSON.parse(rec.RAW_DATA!);
+          await logProducer.addBulk([logRecord]);
+          retried++;
+          retriedIds.push(rec.LOG_ID);
+        } catch {
+          failed++;
+        }
+      }
+
+      if (retriedIds.length > 0) {
+        errorLogRepository.updateStatus(retriedIds, 'RETRIED');
+      }
+
+      logger.info({ retried, failed, total: records.length }, 'Retry all error logs');
+      return reply.send({ success: true, retried, failed });
+    } catch (err) {
+      logger.error({ err }, 'Failed to retry all error logs');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
   // ─── 원본 로그 파일 탐색 API ───
 
   /** 폴더/파일 트리 조회 — path 쿼리로 하위 탐색 */
@@ -921,7 +1049,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const raw = readFileSync(filePath, 'utf-8');
+      // 경로에서 equipment_type 추출 (예: LOWCURRENT/LOWCURRENT-001/... → LOWCURRENT)
+      const parts = relPath.replace(/\\/g, '/').split('/');
+      const eqType = parts[0] || '';
+      const descs = loadDescriptions();
+      const enc = getEncoding(descs[eqType]);
+      const buf = readFileSync(filePath);
+      const raw = enc === 'utf-8' ? buf.toString('utf-8') : iconv.decode(buf, enc);
       const lines = raw.split('\n');
       const total = lines.length;
 
@@ -941,6 +1075,44 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       logger.error({ err, relPath }, 'Failed to read log file');
       return reply.status(500).send({ error: String(err) });
     }
+  });
+
+  /** 로그 파일/폴더 삭제 */
+  app.delete('/api/monitor/log-files', async (request, reply) => {
+    const { paths } = request.body as { paths: string[] };
+    if (!Array.isArray(paths) || paths.length === 0) {
+      return reply.status(400).send({ error: 'paths array required' });
+    }
+    const baseDir = env.RAW_LOG_BASE_PATH;
+    const results: Array<{ path: string; ok: boolean; error?: string }> = [];
+
+    for (const relPath of paths) {
+      if (relPath.includes('..')) {
+        results.push({ path: relPath, ok: false, error: 'Invalid path' });
+        continue;
+      }
+      const fullPath = join(baseDir, relPath);
+      try {
+        if (!existsSync(fullPath)) {
+          results.push({ path: relPath, ok: false, error: 'Not found' });
+          continue;
+        }
+        const st = statSync(fullPath);
+        if (st.isDirectory()) {
+          rmSync(fullPath, { recursive: true, force: true });
+        } else {
+          unlinkSync(fullPath);
+        }
+        results.push({ path: relPath, ok: true });
+      } catch (err) {
+        logger.error({ err, relPath }, 'Failed to delete log file');
+        results.push({ path: relPath, ok: false, error: String(err) });
+      }
+    }
+
+    const deleted = results.filter(r => r.ok).length;
+    const failed = results.filter(r => !r.ok).length;
+    return reply.send({ success: true, deleted, failed, results });
   });
 
   // ─── VRL 파싱 룰 관리 API ───
@@ -1772,46 +1944,47 @@ Your task: parse a raw log into structured .data.FIELD fields.
 
 CRITICAL VRL syntax rules:
 - Input: .message contains the raw log string (may be single-line or multi-line)
-- ALL functions MUST use the infallible form with "!" suffix. This is mandatory.
-  split!(), get!(), strip_whitespace!(), to_string!(), to_int!(), to_float!(), parse_timestamp!()
-- Get element: get!(array, [index]) — returns "any" type
+- Infallible "!" suffix rules:
+  MUST use "!": get!(), to_string!(), slice!(), split!(.message, ...) — these can fail
+  MUST NOT use "!": strip_whitespace(), split() when input is from to_string!() — these are already infallible on string input
+- Get element: get!(array, [index]) — returns "any" type, use "!" because index may be out of bounds
 - To use string functions on get! results, wrap with to_string! first
-- Convert: to_int!(), to_float!() for numbers
+- ALL fields MUST be parsed as STRING. NEVER use to_int!(), to_float!(), or any numeric conversion.
+  Always use: strip_whitespace(to_string!(get!(cols, [N])))
+  Reason: equipment logs contain unexpected values like "CC", "N/A", "-" in numeric columns.
+  Type conversion is handled at the DB insert layer, not in VRL.
 - Use UPPERCASE_SNAKE_CASE for field names
 - Only assign to .data.* fields (NEVER .FIELD directly)
-- NEVER use non-! versions — they cause compile errors
 - for_each requires explicit type via array!(): for_each(array!(items)) -> |_idx, row| { ... }
 - push() returns new array: .data.ITEMS = push(.data.ITEMS, item)
 - NEVER use "if" inside object literals { "key": if ... }. VRL forbids this.
   Instead, compute the value BEFORE the object and use a variable:
     val = if condition { x } else { y }
     item = { "KEY": val }
-- For fields that may be "-" or empty, keep them as string. Do NOT try conditional to_float!/to_int!.
-  Simply use: strip_whitespace!(to_string!(get!(cols, [N])))
-- NEVER use null in VRL. Use "" or 0 as defaults instead.
+- NEVER use null in VRL. Use "" as default instead.
 
 PATTERN 1 — Single-line CSV (no header):
   values = split!(.message, ",")
-  .data.NAME = strip_whitespace!(to_string!(get!(values, [0])))
-  .data.COUNT = to_int!(get!(values, [1]))
+  .data.NAME = strip_whitespace(to_string!(get!(values, [0])))
+  .data.COUNT = strip_whitespace(to_string!(get!(values, [1])))
 
 PATTERN 2 — Multi-line CSV with header row (MOST COMMON for equipment logs):
   lines = split!(.message, "\\n")
   # Skip header (line 0), parse first data row (line 1)
-  first_row = split!(to_string!(get!(lines, [1])), ",")
-  .data.BARCODE = strip_whitespace!(to_string!(get!(first_row, [0])))
-  .data.RESULT = strip_whitespace!(to_string!(get!(first_row, [2])))
-  .data.VALUE = to_float!(get!(first_row, [5]))
+  first_row = split(to_string!(get!(lines, [1])), ",")
+  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.VALUE = strip_whitespace(to_string!(get!(first_row, [5])))
 
   # Parse ALL data rows into array:
   .data.DETAILS = []
   detail_lines = slice!(lines, 1)
   for_each(array!(detail_lines)) -> |_idx, row| {
     if row != "" {
-      cols = split!(to_string!(row), ",")
+      cols = split(to_string!(row), ",")
       item = {
-        "BARCODE": strip_whitespace!(to_string!(get!(cols, [0]))),
-        "RESULT": strip_whitespace!(to_string!(get!(cols, [2]))),
+        "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+        "RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
       }
       .data.DETAILS = push(.data.DETAILS, item)
     }
@@ -1826,6 +1999,7 @@ STRATEGY:
 3. Parse the first data row into individual .data.FIELD values for the board/summary info.
 4. If multiple data rows exist, also parse them into a .data.DETAILS or .data.ITEMS array.
 5. Name fields exactly matching the header column names (converted to UPPERCASE_SNAKE_CASE, spaces/special chars replaced with _).
+6. ALL columns are parsed as strings — no numeric conversion. DB handles type casting at insert time.
 
 IMPORTANT: Return ONLY the VRL code. No markdown, no explanations, no code fences.`;
 }
@@ -1854,6 +2028,25 @@ fingerprint.strategy = "checksum"
 fingerprint.lines = 1
 ignore_older_secs = 86400
 
+# ── [하트비트] 주기적 상태 전송 (30초 간격) ──
+[sources.heartbeat]
+type = "static_metrics"
+interval_secs = 30
+namespace = "agent"
+
+[[sources.heartbeat.metrics]]
+name = "heartbeat"
+kind = "absolute"
+
+[sources.heartbeat.metrics.value.gauge]
+value = 1
+
+[sources.heartbeat.metrics.tags]
+equipment_type = "${name}"
+equipment_id = "${name}-001"
+line_code = "LINE-01"
+log_type = "INSPECTION"
+
 [transforms.add_metadata]
 type = "remap"
 inputs = ["work_logs"]
@@ -1866,7 +2059,7 @@ source = '''
 
 [sinks.to_aggregator]
 type = "vector"
-inputs = ["add_metadata"]
+inputs = ["add_metadata", "heartbeat"]
 address = "127.0.0.1:6000"
 
 [sinks.to_aggregator.buffer]

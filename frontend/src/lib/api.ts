@@ -40,6 +40,13 @@ export interface ProcessLogRow {
   STAGE: string;
   STATUS: string;
   CREATED_AT: string;
+  RAW_DATA?: string;
+}
+
+export interface RetryResponse {
+  success: boolean;
+  retried: number;
+  failed: number;
 }
 
 export interface ProcessLogResponse {

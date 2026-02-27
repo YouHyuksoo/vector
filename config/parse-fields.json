@@ -658,5 +658,87 @@
       "fieldLabel": "data.DETAILS",
       "fieldOrder": 24
     }
+  ],
+  "LOWCURRENT": [
+    {
+      "fieldName": "data.BARCODE",
+      "fieldLabel": "data.BARCODE",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.MODEL_NAME",
+      "fieldLabel": "data.MODEL_NAME",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.DATE",
+      "fieldLabel": "data.DATE",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.START_TIME",
+      "fieldLabel": "data.START_TIME",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.END_TIME",
+      "fieldLabel": "data.END_TIME",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.CHANNEL",
+      "fieldLabel": "data.CHANNEL",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.MODE",
+      "fieldLabel": "data.MODE",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.SET_CURRENT_UA",
+      "fieldLabel": "data.SET_CURRENT_UA",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.SET_VOLTAGE_V",
+      "fieldLabel": "data.SET_VOLTAGE_V",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.MIN_RANGE",
+      "fieldLabel": "data.MIN_RANGE",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.MAX_RANGE",
+      "fieldLabel": "data.MAX_RANGE",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.MEASURED_VALUE",
+      "fieldLabel": "data.MEASURED_VALUE",
+      "fieldOrder": 12
+    },
+    {
+      "fieldName": "data.MEASURE_RESULT",
+      "fieldLabel": "data.MEASURE_RESULT",
+      "fieldOrder": 13
+    },
+    {
+      "fieldName": "data.DASH",
+      "fieldLabel": "data.DASH",
+      "fieldOrder": 14
+    },
+    {
+      "fieldName": "data.OVERALL_RESULT",
+      "fieldLabel": "data.OVERALL_RESULT",
+      "fieldOrder": 15
+    },
+    {
+      "fieldName": "data.DETAILS",
+      "fieldLabel": "data.DETAILS",
+      "fieldOrder": 16
+    }
   ]
 }

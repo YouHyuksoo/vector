@@ -255,7 +255,9 @@ class DynamicInsert {
       return value instanceof Date ? value : new Date(String(value));
     }
     if (upper === 'NUMBER') {
-      return typeof value === 'number' ? value : Number(value);
+      if (typeof value === 'number') return value;
+      const num = Number(value);
+      return isNaN(num) ? null : num;
     }
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);

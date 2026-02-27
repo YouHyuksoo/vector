@@ -44,6 +44,7 @@ class HeartbeatService {
       equipment_id: equipmentId,
       online: true,
       last_seen: parsed.last_seen,
+      metadata: parsed.metadata ?? {},
     };
   }
 
@@ -68,6 +69,7 @@ class HeartbeatService {
           equipment_id: equipmentId,
           online: true,
           last_seen: parsed.last_seen,
+          metadata: parsed.metadata ?? {},
         } as EquipmentStatus;
       })
       .filter((s): s is EquipmentStatus => s !== null);

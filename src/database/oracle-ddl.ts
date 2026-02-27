@@ -115,6 +115,8 @@ export function fieldToColumnName(fieldName: string, index?: number): string {
 
 /**
  * 필드명 패턴으로 Oracle 데이터 타입 추론
+ * VRL은 모든 필드를 문자열로 파싱하므로 NUMBER 타입은 사용하지 않음.
+ * DB 레벨 타입 변환이 필요하면 프로시져에서 TO_NUMBER() 사용.
  * @example inferOracleType('INSPECTIONS') → { dataType: 'CLOB', nullable: true }
  */
 export function inferOracleType(fieldName: string): OracleTypeDef {
@@ -122,9 +124,6 @@ export function inferOracleType(fieldName: string): OracleTypeDef {
 
   if (upper === 'INSPECTIONS' || upper.endsWith('_JSON') || upper.endsWith('_DATA')) {
     return { dataType: 'CLOB', nullable: true };
-  }
-  if (upper.endsWith('_COUNT') || upper.endsWith('_QTY') || upper.endsWith('_NUM')) {
-    return { dataType: 'NUMBER', nullable: true };
   }
   if (upper.endsWith('_DATE') || upper.endsWith('_TIME')) {
     return { dataType: 'VARCHAR2(100)', nullable: true };

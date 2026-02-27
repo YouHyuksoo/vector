@@ -43,6 +43,28 @@ condition_pattern = "^$$NEVER_MATCH"
 mode = "halt_before"
 timeout_ms = 1000
 
+# ── [하트비트] 주기적 상태 전송 (30초 간격) ──
+# Aggregator를 통해 Node.js API로 전달되어 Redis에 TTL 저장됩니다.
+# TTL 내 하트비트가 없으면 오프라인으로 판정됩니다.
+
+[sources.heartbeat]
+type = "static_metrics"
+interval_secs = 30
+namespace = "agent"
+
+[[sources.heartbeat.metrics]]
+name = "heartbeat"
+kind = "absolute"
+
+[sources.heartbeat.metrics.value.gauge]
+value = 1
+
+[sources.heartbeat.metrics.tags]
+equipment_type = "AOI"
+equipment_id = "AOI-001"
+line_code = "LINE-01"
+log_type = "INSPECTION"
+
 # ── [설비 설정] ──
 
 [transforms.add_metadata]
@@ -59,7 +81,7 @@ source = '''
 
 [sinks.to_aggregator]
 type = "vector"
-inputs = ["add_metadata"]
+inputs = ["add_metadata", "heartbeat"]
 address = "127.0.0.1:6000"
 
 [sinks.to_aggregator.buffer]

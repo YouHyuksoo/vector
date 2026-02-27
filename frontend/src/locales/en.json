@@ -12,6 +12,7 @@
     "logFileSearch": "Log File Search",
     "help": "Help",
     "menu": "Menu",
+    "retry": "Retry",
     "footer": "Vector Log Collector"
   },
   "header": {
@@ -57,7 +58,11 @@
     "offline": "Offline",
     "empty": "No collectors registered",
     "emptyDesc": "Equipment agents will appear here when they send heartbeats",
-    "lastSeen": "Last Seen"
+    "lastSeen": "Last Seen",
+    "line": "Line",
+    "success": "Success",
+    "fail": "Fail",
+    "rate": "Rate"
   },
   "errors": {
     "title": "PROCESSING LOGS",
@@ -313,8 +318,19 @@
         "bufType": "Buffer storage location. disk is safe but slower, memory is fast but lost on process exit.",
         "bufPolicy": "Behavior when buffer is full. block waits until sent, drop_newest discards new data.",
         "compression": "Compression method for data sent to Aggregator. Use gzip if network bandwidth is limited.",
-        "acknowledgements": "Enable delivery acknowledgements. Retains data until the Aggregator confirms receipt."
-      }
+        "acknowledgements": "Enable delivery acknowledgements. Retains data until the Aggregator confirms receipt.",
+        "heartbeat": "Enable heartbeat to periodically send status via Aggregator. Allows the dashboard to monitor equipment online/offline status in real-time.",
+        "heartbeatInterval": "Heartbeat interval in seconds. Lower values detect status faster but increase network load. Recommended: 30s"
+      },
+      "encoding": "File Encoding",
+      "heartbeat": "Heartbeat",
+      "heartbeatInterval": "Interval"
+    },
+    "status": {
+      "equip": "Equipment Info",
+      "connection": "Server Connection",
+      "logPath": "Log Path",
+      "heartbeat": "Heartbeat"
     }
   },
   "download": {
@@ -531,6 +547,24 @@
       "menuSettings": "Settings"
     }
   },
+  "retry": {
+    "title": "RETRY",
+    "subtitle": "Reprocess Failed Logs",
+    "retrySelected": "Retry Selected",
+    "retryAll": "Retry All",
+    "confirmAll": "Retry all logs with ERROR status?",
+    "noRawData": "No raw data (cannot retry)",
+    "retried": "{count} retried",
+    "failed": "{count} failed",
+    "noSelection": "Select items to retry",
+    "retrying": "Retrying...",
+    "logId": "LOG ID",
+    "sourceTable": "Table",
+    "equipment": "Equipment",
+    "message": "Error Message",
+    "time": "Time",
+    "hasRawData": "Raw Data"
+  },
   "logFiles": {
     "title": "LOG FILE SEARCH",
     "subtitle": "Process Log File Browser",
@@ -541,7 +575,12 @@
     "noFiles": "No log files",
     "size": "Size",
     "records": "records",
-    "total": "Showing {filtered} of {total}"
+    "total": "Showing {filtered} of {total}",
+    "delete": "Delete",
+    "deleteSelected": "Delete Selected",
+    "confirmDelete": "Delete {count} item(s)? This cannot be undone.",
+    "deleted": "{count} item(s) deleted",
+    "deleteFailed": "{count} item(s) failed to delete"
   },
   "vrlSim": {
     "title": "VRL Simulator",

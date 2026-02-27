@@ -33,6 +33,67 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
+/** CSV 내용을 테이블로 렌더링 */
+function CsvTableView({ content }: { content: string }) {
+  if (!content.trim()) return null;
+  const lines = content.split('\n').filter(l => l.trim());
+  const rows = lines.map(line => {
+    const cols: string[] = [];
+    let cur = '';
+    let inQuote = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuote = !inQuote; continue; }
+      if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    cols.push(cur.trim());
+    return cols;
+  });
+  const header = rows[0] ?? [];
+  const data = rows.slice(1);
+
+  return (
+    <Card noPadding className="flex-1 overflow-hidden">
+      <div className="overflow-auto max-h-[calc(100vh-340px)]">
+        <table className="w-full text-xs font-mono border-collapse">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-surface dark:bg-surface-dark border-b border-border dark:border-border-dark">
+              <th className="px-3 py-2 text-left text-muted-foreground font-bold w-10">#</th>
+              {header.map((col, i) => (
+                <th key={i} className="px-3 py-2 text-left font-bold text-text dark:text-white whitespace-nowrap
+                  border-l border-border/30 dark:border-border-dark/30">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, ri) => (
+              <tr key={ri} className="border-b border-border/20 dark:border-border-dark/20
+                hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
+                <td className="px-3 py-1.5 text-muted-foreground">{ri + 1}</td>
+                {header.map((_, ci) => (
+                  <td key={ci} className="px-3 py-1.5 text-text dark:text-white whitespace-nowrap
+                    border-l border-border/20 dark:border-border-dark/20">
+                    {row[ci] ?? ''}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {data.length === 0 && (
+              <tr>
+                <td colSpan={header.length + 1} className="px-3 py-8 text-center text-muted-foreground">
+                  No data rows
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
 export default function LogFilesPage() {
   const { t } = useI18n();
 
@@ -44,6 +105,8 @@ export default function LogFilesPage() {
   const [fileContent, setFileContent] = useState<FileContent | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   /** 디렉토리 내용 조회 */
   const loadDir = useCallback(async (path: string) => {
@@ -85,6 +148,7 @@ export default function LogFilesPage() {
       setSelectedFile(null);
       setFileContent(null);
       setSearch('');
+      setChecked(new Set());
       loadDir(newPath);
     } else {
       setSelectedFile(newPath);
@@ -99,11 +163,62 @@ export default function LogFilesPage() {
     setSelectedFile(null);
     setFileContent(null);
     setSearch('');
+    setChecked(new Set());
     loadDir(parentPath);
   };
 
   const handleSearch = () => {
     if (selectedFile) loadFile(selectedFile, search || undefined);
+  };
+
+  const toggleCheck = (name: string) => {
+    setChecked(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (checked.size === entries.length) {
+      setChecked(new Set());
+    } else {
+      setChecked(new Set(entries.map(e => e.name)));
+    }
+  };
+
+  /** 선택된 파일/폴더 삭제 */
+  const handleDelete = async () => {
+    if (checked.size === 0) return;
+    const msg = t('logFiles.confirmDelete').replace('{count}', String(checked.size));
+    if (!confirm(msg)) return;
+
+    setDeleting(true);
+    try {
+      const paths = Array.from(checked).map(name =>
+        currentPath ? `${currentPath}/${name}` : name,
+      );
+      const res = await apiFetch<{ deleted: number; failed: number }>(
+        '/api/monitor/log-files',
+        { method: 'DELETE', body: JSON.stringify({ paths }) },
+      );
+      if (res.deleted > 0) {
+        alert(t('logFiles.deleted').replace('{count}', String(res.deleted)));
+      }
+      if (res.failed > 0) {
+        alert(t('logFiles.deleteFailed').replace('{count}', String(res.failed)));
+      }
+      // 삭제된 파일이 현재 보고있는 파일이면 뷰어 초기화
+      if (selectedFile && checked.has(selectedFile.split('/').pop() || '')) {
+        setSelectedFile(null);
+        setFileContent(null);
+      }
+      setChecked(new Set());
+      loadDir(currentPath);
+    } catch {
+      alert('Delete failed');
+    }
+    setDeleting(false);
   };
 
   /** 경로를 breadcrumb 세그먼트로 분리 */
@@ -114,6 +229,7 @@ export default function LogFilesPage() {
     setSelectedFile(null);
     setFileContent(null);
     setSearch('');
+    setChecked(new Set());
     loadDir(newPath);
   };
 
@@ -132,41 +248,70 @@ export default function LogFilesPage() {
         </h1>
       </div>
 
-      <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 180px)' }}>
-        {/* 좌측: 폴더 탐색 */}
-        <Card className="w-64 shrink-0 flex flex-col overflow-hidden">
-          {/* Breadcrumb */}
-          <div className="px-3 pt-3 pb-2 border-b border-border/50 dark:border-border-dark/50">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto whitespace-nowrap">
+      {/* 경로 탐색 바 — 상단 고정 */}
+      <Card className="flex items-center gap-3 px-4 py-2.5">
+        <Icon name="folder_open" size="sm" className="text-warning shrink-0" />
+        <div className="flex items-center gap-1.5 text-sm font-mono overflow-x-auto whitespace-nowrap flex-1">
+          <button
+            onClick={() => { setSelectedFile(null); setFileContent(null); setSearch(''); setChecked(new Set()); loadDir(''); }}
+            className="px-2 py-0.5 rounded-md font-bold text-primary hover:bg-primary/10 transition-colors shrink-0"
+          >
+            ROOT
+          </button>
+          {pathSegments.map((seg, i) => (
+            <span key={i} className="flex items-center gap-1 shrink-0">
+              <Icon name="chevron_right" size="xs" className="text-muted-foreground/50" />
               <button
-                onClick={() => { setSelectedFile(null); setFileContent(null); setSearch(''); loadDir(''); }}
-                className="hover:text-primary font-bold shrink-0"
+                onClick={() => handleBreadcrumb(i)}
+                className={`px-2 py-0.5 rounded-md font-medium transition-colors
+                  ${i === pathSegments.length - 1
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'text-text dark:text-white hover:bg-surface dark:hover:bg-surface-dark'
+                  }`}
               >
-                ROOT
+                {seg}
               </button>
-              {pathSegments.map((seg, i) => (
-                <span key={i} className="flex items-center gap-1 shrink-0">
-                  <span>/</span>
-                  <button onClick={() => handleBreadcrumb(i)} className="hover:text-primary font-medium">
-                    {seg}
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
+            </span>
+          ))}
+          {pathSegments.length === 0 && (
+            <span className="text-muted-foreground/60 italic ml-1">/</span>
+          )}
+        </div>
+        {currentPath && (
+          <button
+            onClick={handleGoUp}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium
+              text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0
+              border border-border/50 dark:border-border-dark/50"
+          >
+            <Icon name="arrow_upward" size="xs" />
+            ..
+          </button>
+        )}
+        {checked.size > 0 && (
+          <Button variant="danger" leftIcon="delete" size="sm" onClick={handleDelete} disabled={deleting}>
+            {deleting ? '...' : `${t('logFiles.deleteSelected')} (${checked.size})`}
+          </Button>
+        )}
+      </Card>
 
+      <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 230px)' }}>
+        {/* 좌측: 폴더 탐색 */}
+        <Card className="w-72 shrink-0 flex flex-col overflow-hidden">
+          {/* 전체 선택 헤더 */}
+          {entries.length > 0 && !dirLoading && (
+            <div className="px-3 py-1.5 border-b border-border/50 dark:border-border-dark/50 flex items-center gap-2">
+              <input type="checkbox"
+                checked={checked.size === entries.length && entries.length > 0}
+                onChange={toggleAll}
+                className="w-3.5 h-3.5 rounded border-border accent-primary shrink-0" />
+              <span className="text-[11px] text-muted-foreground">
+                {checked.size > 0 ? `${checked.size} / ${entries.length}` : `${entries.length} items`}
+              </span>
+            </div>
+          )}
           {/* 파일/폴더 목록 */}
           <div className="flex-1 overflow-y-auto">
-            {currentPath && (
-              <button
-                onClick={handleGoUp}
-                className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-surface dark:hover:bg-surface-dark transition-colors border-b border-border/30 dark:border-border-dark/30"
-              >
-                <Icon name="arrow_upward" size="xs" className="text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">..</span>
-              </button>
-            )}
-
             {dirLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Icon name="progress_activity" size="md" className="animate-spin text-primary" />
@@ -178,31 +323,41 @@ export default function LogFilesPage() {
             ) : entries.map(entry => {
               const fullPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
               const isSelected = selectedFile === fullPath;
+              const isChecked = checked.has(entry.name);
               return (
-                <button
+                <div
                   key={entry.name}
-                  onClick={() => handleEntryClick(entry)}
                   className={`w-full text-left px-3 py-2 flex items-center gap-2 transition-colors border-b border-border/30 dark:border-border-dark/30
                     ${isSelected
                       ? 'bg-primary/10 text-primary font-bold'
                       : 'hover:bg-surface dark:hover:bg-surface-dark text-text dark:text-white'
                     }`}
                 >
-                  <Icon
-                    name={entry.type === 'dir' ? 'folder' : 'description'}
-                    size="xs"
-                    className={entry.type === 'dir' ? 'text-warning' : 'text-muted-foreground'}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm truncate">{entry.name}</p>
-                    {entry.type === 'file' && entry.size != null && (
-                      <p className="text-xs text-muted-foreground">{formatSize(entry.size)}</p>
+                  <input type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleCheck(entry.name)}
+                    onClick={e => e.stopPropagation()}
+                    className="w-3.5 h-3.5 rounded border-border accent-primary shrink-0" />
+                  <button
+                    onClick={() => handleEntryClick(entry)}
+                    className="flex items-center gap-2 min-w-0 flex-1"
+                  >
+                    <Icon
+                      name={entry.type === 'dir' ? 'folder' : 'description'}
+                      size="xs"
+                      className={entry.type === 'dir' ? 'text-warning' : 'text-muted-foreground'}
+                    />
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="text-sm truncate">{entry.name}</p>
+                      {entry.type === 'file' && entry.size != null && (
+                        <p className="text-xs text-muted-foreground">{formatSize(entry.size)}</p>
+                      )}
+                    </div>
+                    {entry.type === 'dir' && (
+                      <Icon name="chevron_right" size="xs" className="text-muted-foreground shrink-0" />
                     )}
-                  </div>
-                  {entry.type === 'dir' && (
-                    <Icon name="chevron_right" size="xs" className="text-muted-foreground shrink-0" />
-                  )}
-                </button>
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -261,13 +416,17 @@ export default function LogFilesPage() {
                 </div>
               )}
 
-              {/* 원본 텍스트 뷰어 */}
+              {/* 파일 뷰어 — CSV는 테이블, 그 외는 원본 텍스트 */}
               {fileContent && (
-                <Card noPadding className="flex-1 overflow-hidden">
-                  <pre className="overflow-auto p-4 text-xs font-mono leading-relaxed text-text dark:text-white whitespace-pre max-h-[calc(100vh-340px)]">
-                    {fileContent.content || t('logFiles.noFiles')}
-                  </pre>
-                </Card>
+                selectedFile?.toLowerCase().endsWith('.csv') ? (
+                  <CsvTableView content={fileContent.content} />
+                ) : (
+                  <Card noPadding className="flex-1 overflow-hidden">
+                    <pre className="overflow-auto p-4 text-xs font-mono leading-relaxed text-text dark:text-white whitespace-pre max-h-[calc(100vh-340px)]">
+                      {fileContent.content || t('logFiles.noFiles')}
+                    </pre>
+                  </Card>
+                )
               )}
             </>
           )}

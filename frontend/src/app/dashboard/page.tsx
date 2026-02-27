@@ -56,7 +56,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="lg:col-span-3 space-y-6">
-          <CollectorGrid equipments={data.equipments} />
+          <CollectorGrid equipments={data.equipments} logs={data.recentErrors} />
         </div>
       </div>
 

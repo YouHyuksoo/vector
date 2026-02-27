@@ -12,6 +12,8 @@ import { logger } from './logger.js';
 import { closeAllQueues } from '../queue/queue.manager.js';
 import { closeOraclePool } from '../database/oracle.pool.js';
 import { closeRedis } from '../redis/redis.client.js';
+import { stopVector } from '../services/vector-process.service.js';
+
 export function setupGracefulShutdown(app: { close(): Promise<void> }): void {
   let isShuttingDown = false;
 
@@ -22,19 +24,23 @@ export function setupGracefulShutdown(app: { close(): Promise<void> }): void {
     logger.info({ signal }, 'Graceful shutdown initiated');
 
     try {
-      // 1. 새 요청 수신 중단
+      // 1. Vector aggregator 중지 (데이터 유입 차단 먼저)
+      await stopVector().catch(() => {});
+      logger.info('Vector aggregator stopped');
+
+      // 2. 새 요청 수신 중단
       await app.close();
       logger.info('Fastify server closed');
 
-      // 2. BullMQ 워커 및 큐 종료
+      // 3. BullMQ 워커 및 큐 종료
       await closeAllQueues();
       logger.info('All queues and workers closed');
 
-      // 3. Oracle 커넥션 풀 종료
+      // 4. Oracle 커넥션 풀 종료
       await closeOraclePool();
       logger.info('Oracle pool closed');
 
-      // 4. Redis 연결 종료
+      // 5. Redis 연결 종료
       await closeRedis();
       logger.info('Redis connection closed');
 

@@ -9,7 +9,7 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Icon, Card, Button, Modal } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
@@ -20,10 +20,12 @@ interface Props {
   name: string;
   onDownload: () => void;
   description?: string;
-  onDescriptionSave?: (desc: string) => void;
+  encoding?: string;
+  onDescriptionSave?: (desc: string, enc?: string) => void;
+  onSaved?: () => void;
 }
 
-export function AgentConfigPanel({ name, onDownload, description = '', onDescriptionSave }: Props) {
+export function AgentConfigPanel({ name, onDownload, description = '', encoding = 'utf-8', onDescriptionSave, onSaved }: Props) {
   const { t } = useI18n();
   const [content, setContent] = useState('');
   const [original, setOriginal] = useState('');
@@ -31,9 +33,12 @@ export function AgentConfigPanel({ name, onDownload, description = '', onDescrip
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showToml, setShowToml] = useState(false);
   const [desc, setDesc] = useState(description);
+  const [enc, setEnc] = useState(encoding);
+  const tomlRef = useRef<HTMLTextAreaElement>(null);
 
-  const hasChanges = content !== original || desc !== description;
+  const hasChanges = content !== original || desc !== description || enc !== encoding;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,8 +65,9 @@ export function AgentConfigPanel({ name, onDownload, description = '', onDescrip
         body: JSON.stringify({ content }),
       });
       setOriginal(content);
-      if (onDescriptionSave && desc !== description) onDescriptionSave(desc);
+      if (onDescriptionSave && (desc !== description || enc !== encoding)) onDescriptionSave(desc, enc);
       setResult({ ok: true, msg: t('aggregator.saved') });
+      onSaved?.();
     } catch (err) {
       setResult({ ok: false, msg: err instanceof Error ? err.message : 'Save failed' });
     }
@@ -103,26 +109,34 @@ export function AgentConfigPanel({ name, onDownload, description = '', onDescrip
         </div>
       </div>
 
-      {/* 폼 + TOML 에디터 좌우 분할 */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* 좌측: 폼 입력 필드 */}
-        <AgentConfigForm content={content} onChange={setContent} description={desc} onDescriptionChange={setDesc} />
+      {/* 폼 입력 필드 — 전체 너비 */}
+      <AgentConfigForm content={content} onChange={setContent}
+        description={desc} onDescriptionChange={setDesc}
+        encoding={enc} onEncodingChange={setEnc} />
 
-        {/* 우측: Raw TOML 에디터 */}
-        <Card noPadding>
-          <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border dark:border-border-dark">
-            <Icon name="code" size="xs" className="text-muted-foreground" />
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              {t('sender.form.rawToml')}
-            </span>
-          </div>
-          <textarea value={content} onChange={e => setContent(e.target.value)}
+      {/* TOML 원본 에디터 — 접이식 */}
+      <Card noPadding>
+        <button
+          onClick={() => setShowToml(v => !v)}
+          className="w-full flex items-center gap-1.5 px-4 py-2.5 hover:bg-surface dark:hover:bg-surface-dark transition-colors"
+        >
+          <Icon name={showToml ? 'expand_less' : 'expand_more'} size="xs" className="text-muted-foreground" />
+          <Icon name="code" size="xs" className="text-muted-foreground" />
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            {t('sender.form.rawToml')}
+          </span>
+          <span className="text-[10px] text-muted-foreground/60 ml-auto">
+            {content.split('\n').length} lines
+          </span>
+        </button>
+        {showToml && (
+          <textarea ref={tomlRef} value={content} onChange={e => setContent(e.target.value)}
             spellCheck={false}
-            className="w-full min-h-[500px] p-4 font-mono text-xs leading-relaxed resize-y
+            className="w-full min-h-[300px] p-4 font-mono text-xs leading-relaxed resize-y
               bg-background-white dark:bg-background-dark text-text dark:text-white
-              border-0 outline-none focus:ring-0 rounded-b-xl" />
-        </Card>
-      </div>
+              border-t border-border dark:border-border-dark outline-none focus:ring-0 rounded-b-xl" />
+        )}
+      </Card>
 
       {hasChanges && (
         <p className="text-[10px] text-warning flex items-center gap-1">

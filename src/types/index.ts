@@ -37,6 +37,7 @@ export interface EquipmentStatus {
   equipment_id: string;
   online: boolean;
   last_seen?: string;
+  metadata?: Record<string, string>;
 }
 
 /** TABLE_COLUMN_REGISTRY 테이블 행 */

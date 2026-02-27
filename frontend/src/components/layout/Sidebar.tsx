@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { labelKey: 'nav.targetMapping', icon: 'swap_horiz', href: '/dashboard/mapping' },
   { labelKey: 'nav.logViewer', icon: 'description', href: '/dashboard/logs' },
   { labelKey: 'nav.errors', icon: 'error', href: '/dashboard/errors' },
+  { labelKey: 'nav.retry', icon: 'replay', href: '/dashboard/retry' },
   { labelKey: 'nav.logFileSearch', icon: 'folder_open', href: '/dashboard/log-files' },
   { labelKey: 'nav.download', icon: 'file_download', href: '/dashboard/download' },
   { labelKey: 'nav.settings', icon: 'settings', href: '/dashboard/settings' },

@@ -13,7 +13,7 @@
 import { useMemo } from 'react';
 import { useI18n } from '@/contexts/I18nContext';
 import { Sec, F, SF } from '@/app/dashboard/receiver/components/FormFields';
-import { getVal, setVal } from './AgentConfigForm';
+import { getVal, setVal } from './agent-toml-helpers';
 
 interface Props {
   content: string;
