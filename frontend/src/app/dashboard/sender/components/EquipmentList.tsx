@@ -1,11 +1,11 @@
 /**
  * @file src/app/dashboard/sender/components/EquipmentList.tsx
- * @description 설비 목록 좌측 패널 — 설비 선택, 설정 상태 표시, 설명 인라인 편집
+ * @description 설비 목록 좌측 패널 — 설비 선택, 통합 5단계 파이프라인 진행률 표시, 설명 인라인 편집
  *
  * 초보자 가이드:
  * 1. **names**: 등록된 설비 이름 배열
  * 2. **descriptions**: 설비명 → 설명 매핑 (descriptions.json 기반)
- * 3. **configStatus**: 설비별 설정 완료 단계 (equip, connection, logPath, heartbeat)
+ * 3. **pipelineStatus**: 설비별 통합 5단계 파이프라인 상태
  * 4. **인라인 편집**: 설명 영역 클릭 시 입력 모드, Enter/blur로 저장
  */
 'use client';
@@ -13,20 +13,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Icon, Button, Card } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
-
-type ConfigStatus = Record<string, boolean>;
-
-const STATUS_STEPS = [
-  { key: 'equip', icon: 'precision_manufacturing', labelKey: 'sender.status.equip' },
-  { key: 'connection', icon: 'dns', labelKey: 'sender.status.connection' },
-  { key: 'logPath', icon: 'folder_open', labelKey: 'sender.status.logPath' },
-  { key: 'heartbeat', icon: 'favorite', labelKey: 'sender.status.heartbeat' },
-] as const;
+import { PipelineStepBar } from '@/components/pipeline';
+import type { PipelineStatusMap } from '@/hooks/usePipelineStatus';
 
 interface EquipmentListProps {
   names: string[];
   descriptions: Record<string, string>;
-  configStatus: Record<string, ConfigStatus>;
+  pipelineStatus: PipelineStatusMap;
   selected: string | null;
   onSelect: (name: string) => void;
   onAdd: () => void;
@@ -34,7 +27,7 @@ interface EquipmentListProps {
   onDescriptionUpdate: (name: string, desc: string) => void;
 }
 
-export function EquipmentList({ names, descriptions, configStatus, selected, onSelect, onAdd, onDelete, onDescriptionUpdate }: EquipmentListProps) {
+export function EquipmentList({ names, descriptions, pipelineStatus, selected, onSelect, onAdd, onDelete, onDescriptionUpdate }: EquipmentListProps) {
   const { t } = useI18n();
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -87,10 +80,9 @@ export function EquipmentList({ names, descriptions, configStatus, selected, onS
           const desc = descriptions[name];
           const isSel = selected === name;
           const isEditing = editing === name;
-          const status = configStatus[name];
-          const doneCount = status ? Object.values(status).filter(Boolean).length : 0;
-          const totalSteps = STATUS_STEPS.length;
-          const isComplete = doneCount === totalSteps;
+          const pipeline = pipelineStatus[name];
+          const doneCount = pipeline?.doneCount ?? 0;
+          const isComplete = doneCount === 5;
 
           return (
             <button
@@ -135,24 +127,8 @@ export function EquipmentList({ names, descriptions, configStatus, selected, onS
               ) : desc ? (
                 <p className="text-[10px] text-muted-foreground leading-tight truncate">{desc}</p>
               ) : null}
-              {status && (
-                <div className="flex items-center gap-0.5">
-                  {STATUS_STEPS.map(step => (
-                    <span key={step.key} title={t(step.labelKey)}
-                      className={`inline-flex items-center justify-center w-4 h-4 rounded-full
-                        ${status[step.key]
-                          ? 'bg-success/20 text-success'
-                          : 'bg-border/30 dark:bg-border-dark/30 text-muted-foreground/40'
-                        }`}
-                    >
-                      <Icon name={step.icon} size="xs" className="!text-[10px]" />
-                    </span>
-                  ))}
-                  <span className={`text-[9px] ml-0.5 font-medium
-                    ${doneCount === totalSteps ? 'text-success' : doneCount > 0 ? 'text-warning' : 'text-muted-foreground/50'}`}>
-                    {doneCount}/{totalSteps}
-                  </span>
-                </div>
+              {pipeline && (
+                <PipelineStepBar agents={pipelineStatus} agentName={name} compact />
               )}
             </button>
           );

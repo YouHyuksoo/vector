@@ -9,16 +9,12 @@
  */
 'use client';
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Icon, Card, Button } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
-
-/** 기본 설비 유형 (폴백) */
-const DEFAULT_TYPES = [
-  'SP', 'SPI', 'MAOI', 'AOI', 'REFLOW', 'ICT', 'FCT',
-  'BURNIN', 'HIPOT', 'EOL', 'METALMASK', 'MOUNTER', 'VISCOSITY',
-];
+import { usePipelineStatus } from '@/hooks/usePipelineStatus';
+import { EquipmentTypeChips, PipelineStepBar } from '@/components/pipeline';
 
 
 interface SimResult {
@@ -33,7 +29,7 @@ interface VrlSimulatorProps { onApplied?: () => void; }
 
 export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
   const { t } = useI18n();
-  const [equipmentType, setEquipmentType] = useState('');
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [logType, setLogType] = useState('');
   const [sampleLog, setSampleLog] = useState('');
   const [vrlCode, setVrlCode] = useState('');
@@ -44,13 +40,15 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
   const [loadingCode, setLoadingCode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 파이프라인 상태 (매핑/송신기와 동일 소스)
+  const { agents } = usePipelineStatus();
+
   // AI 관련 상태
   const [aiModels, setAiModels] = useState<AiModel[]>([]);
   const [selectedAi, setSelectedAi] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState('');
-  const [dynamicTypes, setDynamicTypes] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
@@ -66,34 +64,8 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
   const [kvDelimiter, setKvDelimiter] = useState(':');
   const [sectionMarkers, setSectionMarkers] = useState('');
 
-  /** 파싱 룰 + Agent 설정에서 설비 유형 동적 로드 (매핑 페이지와 동일 소스) */
-  useEffect(() => {
-    (async () => {
-      try {
-        const [rulesRes, agentRes] = await Promise.allSettled([
-          apiFetch<{ rules: Record<string, unknown> }>('/api/monitor/parse-rules'),
-          apiFetch<{ names: string[] }>('/api/monitor/agent/configs'),
-        ]);
-        const fromRules = rulesRes.status === 'fulfilled' ? Object.keys(rulesRes.value.rules) : [];
-        const agentNames = agentRes.status === 'fulfilled' ? agentRes.value.names : [];
-        const fromAgents = (await Promise.all(
-          agentNames.map(n =>
-            apiFetch<{ content: string }>(`/api/monitor/agent/config/${n}`)
-              .then(r => r.content.match(/\.equipment_type\s*=\s*"([^"]*)"/)?.[1] ?? '')
-              .catch(() => ''),
-          ),
-        )).filter(Boolean);
-        setDynamicTypes([...new Set([...fromRules, ...fromAgents])]);
-      } catch { /* 폴백: DEFAULT_TYPES 사용 */ }
-    })();
-  }, []);
-
-  /** DEFAULT_TYPES 순서 유지 + 동적 타입 병합 (중복 제거) */
-  const allTypes = useMemo(() => {
-    const ordered = DEFAULT_TYPES.filter(t => dynamicTypes.includes(t));
-    const extra = dynamicTypes.filter(t => !DEFAULT_TYPES.includes(t));
-    return ordered.length + extra.length > 0 ? [...ordered, ...extra] : DEFAULT_TYPES;
-  }, [dynamicTypes]);
+  /** 선택된 에이전트의 equipmentType 추출 */
+  const equipmentType = selectedAgent ? (agents[selectedAgent]?.equipmentType || '') : '';
 
   /** 활성화된 AI 모델 목록 + 시스템 프롬프트 로드 */
   useEffect(() => {
@@ -117,7 +89,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
     setLoadingCode(false);
   }, []);
 
-  useEffect(() => { if (equipmentType) loadExistingCode(equipmentType); }, []);
+  useEffect(() => { if (equipmentType) loadExistingCode(equipmentType); }, [equipmentType, loadExistingCode]);
 
   /** 파일 → 텍스트 변환 (UTF-8 / EUC-KR 자동 감지) */
   const readFileAsText = useCallback(async (file: File) => {
@@ -151,12 +123,11 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
     if (file) await readFileAsText(file);
   }, [readFileAsText]);
 
-  const handleTypeChange = (type: string) => {
-    setEquipmentType(type);
+  const handleAgentSelect = (name: string) => {
+    setSelectedAgent(prev => prev === name ? null : name);
     setResult(null);
     setApplyMsg(null);
     setAiError('');
-    loadExistingCode(type);
   };
 
   /** AI로 VRL 코드 생성 */
@@ -247,27 +218,18 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
         {/* 좌측: 설비 유형 + 샘플 로그 + AI */}
         <Card noPadding className="flex-1 min-w-0">
           <div className="flex flex-col gap-3 p-4">
-            {/* 설비 유형 */}
+            {/* 설비 유형 (pipeline-status 동기화) */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
                 {t('vrlSim.equipType')}
               </label>
-              <div className="flex flex-wrap gap-1">
-                {allTypes.map(type => (
-                  <button
-                    key={type}
-                    onClick={() => handleTypeChange(type)}
-                    className={`px-2 py-0.5 text-xs rounded-md transition-colors ${
-                      equipmentType === type
-                        ? 'bg-primary text-white'
-                        : 'bg-muted dark:bg-muted/50 text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
+              <EquipmentTypeChips agents={agents} selected={selectedAgent} onSelect={handleAgentSelect} />
             </div>
+
+            {/* 파이프라인 스텝 바 */}
+            {selectedAgent && agents[selectedAgent] && (
+              <PipelineStepBar agents={agents} agentName={selectedAgent} />
+            )}
 
             {/* 로그 유형 */}
             <div>
