@@ -19,3 +19,6 @@ vector-data-agent/
 
 # Backup files
 *.bak
+
+# PM2 logs
+logs/

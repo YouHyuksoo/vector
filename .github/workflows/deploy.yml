@@ -1,0 +1,84 @@
+# @file .github/workflows/deploy.yml
+# @description GitHub Actions — Windows self-hosted runner 배포 파이프라인
+#
+# 초보자 가이드:
+# 1. main 브랜치에 push 시 자동 실행
+# 2. 백엔드 빌드(tsc) + 프론트엔드 빌드(next build)
+# 3. PM2로 무중단 재시작 (ecosystem.config.cjs)
+#
+# 사전 준비:
+# - Windows 서버에 GitHub self-hosted runner 설치
+#   (Settings > Actions > Runners > New self-hosted runner)
+# - Node.js, PM2, Redis 설치 완료
+# - Oracle Instant Client 설치 완료
+# - .env 파일을 서버의 프로젝트 루트에 수동 배치
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 동시 배포 방지
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Windows]
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Build backend (TypeScript)
+        run: npm run build
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Build frontend (Next.js)
+        run: npm run build:frontend
+
+      - name: Create logs directory
+        run: mkdir -p logs
+
+      - name: Restart services with PM2
+        run: |
+          # PM2가 이미 실행 중이면 reload, 아니면 start
+          if pm2 describe vector-backend > /dev/null 2>&1; then
+            echo "Reloading existing PM2 processes..."
+            pm2 reload ecosystem.config.cjs --update-env
+          else
+            echo "Starting PM2 processes for the first time..."
+            pm2 start ecosystem.config.cjs
+          fi
+          pm2 save
+
+      - name: Health check
+        run: |
+          echo "Waiting for services to start..."
+          sleep 5
+          # 백엔드 헬스체크
+          curl -sf http://localhost:3100/api/monitor/pipeline-status > /dev/null && echo "Backend OK" || echo "Backend not ready yet"
+          # 프론트엔드 헬스체크
+          curl -sf http://localhost:3000 > /dev/null && echo "Frontend OK" || echo "Frontend not ready yet"
+
+      - name: Show PM2 status
+        if: always()
+        run: pm2 status
