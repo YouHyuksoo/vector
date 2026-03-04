@@ -21,7 +21,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# 동시 배포 방지
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -35,7 +34,7 @@ jobs:
 
     defaults:
       run:
-        shell: bash
+        shell: powershell
 
     steps:
       - name: Checkout
@@ -60,48 +59,53 @@ jobs:
         run: npm run build:frontend
 
       - name: Stop PM2 before sync
-        run: pm2 stop ecosystem.config.cjs --silent 2>/dev/null || true
+        run: |
+          try { pm2 stop ecosystem.config.cjs 2>$null } catch {}
         working-directory: D:\Project\vector
 
       - name: Sync to deploy directory
-        shell: powershell
         run: |
           $src = "${{ github.workspace }}"
           $dst = "${{ env.DEPLOY_DIR }}"
 
-          # 배포 디렉토리 생성
           if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force }
 
-          # robocopy로 동기화 (node_modules, dist, .next 포함 / .env, data, logs 보존)
           robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
             /XF ".env" `
             /XD ".git" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
 
-          # robocopy 종료코드 0~7은 정상
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
 
       - name: Create logs directory
-        run: mkdir -p logs
-        working-directory: D:\Project\vector
+        run: |
+          if (!(Test-Path "D:\Project\vector\logs")) {
+            New-Item -ItemType Directory -Path "D:\Project\vector\logs" -Force
+          }
 
       - name: Restart services with PM2
         working-directory: D:\Project\vector
         run: |
-          if pm2 describe vector-backend > /dev/null 2>&1; then
-            echo "Reloading existing PM2 processes..."
+          $desc = pm2 describe vector-backend 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Reloading existing PM2 processes..."
             pm2 reload ecosystem.config.cjs --update-env
-          else
-            echo "Starting PM2 processes for the first time..."
+          } else {
+            Write-Host "Starting PM2 processes for the first time..."
             pm2 start ecosystem.config.cjs
-          fi
+          }
           pm2 save
 
       - name: Health check
         run: |
-          echo "Waiting for services to start..."
-          sleep 5
-          curl -sf http://localhost:3110/api/monitor/pipeline-status > /dev/null && echo "Backend OK" || echo "Backend not ready yet"
-          curl -sf http://localhost:3100 > /dev/null && echo "Frontend OK" || echo "Frontend not ready yet"
+          Start-Sleep -Seconds 5
+          try {
+            $r = Invoke-WebRequest -Uri "http://localhost:3110/api/monitor/pipeline-status" -UseBasicParsing -TimeoutSec 5
+            Write-Host "Backend OK (status: $($r.StatusCode))"
+          } catch { Write-Host "Backend not ready yet" }
+          try {
+            $r = Invoke-WebRequest -Uri "http://localhost:3100" -UseBasicParsing -TimeoutSec 5
+            Write-Host "Frontend OK (status: $($r.StatusCode))"
+          } catch { Write-Host "Frontend not ready yet" }
 
       - name: Show PM2 status
         if: always()
