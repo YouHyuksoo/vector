@@ -1,20 +1,4 @@
 {
-  "PROC_1771538008473": {
-    "targetType": "PROCEDURE",
-    "procedureName": "PKG_LOG.INSERT_AOI_LOG",
-    "params": [
-      {
-        "PARAM_ORDER": 1,
-        "SOURCE_FIELD": "equipment_id",
-        "IS_REQUIRED": "N"
-      },
-      {
-        "PARAM_ORDER": 2,
-        "SOURCE_FIELD": "data.INSPECTOR",
-        "IS_REQUIRED": "N"
-      }
-    ]
-  },
   "PKG_BATCH.P_PBA_FT_SUMMARY": {
     "targetType": "PROCEDURE",
     "procedureName": "PKG_BATCH.P_PBA_FT_SUMMARY",
@@ -218,115 +202,6 @@
       "SOURCE_FIELD": "data.ORGANIZATION_ID",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 27
-    }
-  ],
-  "LOG_FCT_TEST999": [
-    {
-      "COLUMN_NAME": "EQUIPMENT_ID",
-      "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "equipment_id",
-      "IS_REQUIRED": "Y",
-      "COLUMN_ORDER": 1
-    },
-    {
-      "COLUMN_NAME": "LOG_TIMESTAMP",
-      "DATA_TYPE": "TIMESTAMP",
-      "SOURCE_FIELD": "timestamp",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 2
-    },
-    {
-      "COLUMN_NAME": "BARCODE",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "BARCODE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 3
-    },
-    {
-      "COLUMN_NAME": "DEVICE",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "DEVICE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 4
-    },
-    {
-      "COLUMN_NAME": "RESULT",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "RESULT",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 5
-    }
-  ],
-  "LOG_FCT_TEST_V2": [
-    {
-      "COLUMN_NAME": "EQUIPMENT_ID",
-      "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "equipment_id",
-      "IS_REQUIRED": "Y",
-      "COLUMN_ORDER": 1
-    },
-    {
-      "COLUMN_NAME": "LOG_TIMESTAMP",
-      "DATA_TYPE": "TIMESTAMP",
-      "SOURCE_FIELD": "timestamp",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 2
-    },
-    {
-      "COLUMN_NAME": "BARCODE",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.BARCODE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 3
-    },
-    {
-      "COLUMN_NAME": "DEVICE",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.DEVICE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 4
-    },
-    {
-      "COLUMN_NAME": "RESULT",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.RESULT",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 5
-    },
-    {
-      "COLUMN_NAME": "MODEL",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MODEL",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 6
-    },
-    {
-      "COLUMN_NAME": "LOG_DATE",
-      "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.DATE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 7
-    },
-    {
-      "COLUMN_NAME": "LOG_TIME",
-      "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.TIME",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 8
-    },
-    {
-      "COLUMN_NAME": "LOG_TYPE",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.TYPE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 9
-    },
-    {
-      "COLUMN_NAME": "VOLT_INPUT",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.VOLT_INPUT",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 10
     }
   ],
   "LOG_FCT": [
@@ -1210,6 +1085,240 @@
       "SOURCE_FIELD": "data.DETAILS",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 18
+    }
+  ],
+  "SP_LOG_INS_SPI": {
+    "targetType": "PROCEDURE",
+    "procedureName": "SP_LOG_INS_SPI",
+    "callMode": "NAMED",
+    "params": [
+      {
+        "PARAM_ORDER": 1,
+        "ARGUMENT_NAME": "P_EQUIPMENT_ID",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "equipment_id",
+        "IS_REQUIRED": "Y"
+      },
+      {
+        "PARAM_ORDER": 2,
+        "ARGUMENT_NAME": "P_LOG_TIMESTAMP",
+        "DATA_TYPE": "TIMESTAMP",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "timestamp",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 3,
+        "ARGUMENT_NAME": "P_MASTER_BARCODE",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.MASTER_BARCODE",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 4,
+        "ARGUMENT_NAME": "P_PCB_ID",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.PCB_ID",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 5,
+        "ARGUMENT_NAME": "P_INSPECTION_DATE",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.INSPECTION_DATE",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 6,
+        "ARGUMENT_NAME": "P_INSPECTION_START_TIME",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.INSPECTION_START_TIME",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 7,
+        "ARGUMENT_NAME": "P_INSPECTION_END_TIME",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.INSPECTION_END_TIME",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 8,
+        "ARGUMENT_NAME": "P_TOTAL_PANEL_COUNT",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.TOTAL_PANEL_COUNT",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 9,
+        "ARGUMENT_NAME": "P_JOB_NAME",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.JOB_NAME",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 10,
+        "ARGUMENT_NAME": "P_PCB_RESULT",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.PCB_RESULT",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 11,
+        "ARGUMENT_NAME": "P_USER_ID",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.USER_ID",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 12,
+        "ARGUMENT_NAME": "P_LOT_INFO",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.LOT_INFO",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 13,
+        "ARGUMENT_NAME": "P_MACHINE_ID",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.MACHINE_ID",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 14,
+        "ARGUMENT_NAME": "P_SIDE",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.SIDE",
+        "IS_REQUIRED": "N"
+      },
+      {
+        "PARAM_ORDER": 15,
+        "ARGUMENT_NAME": "P_LANE",
+        "DATA_TYPE": "VARCHAR2",
+        "IN_OUT": "IN",
+        "SOURCE_FIELD": "data.LANE",
+        "IS_REQUIRED": "N"
+      }
+    ]
+  },
+  "LOG_SPI": [
+    {
+      "COLUMN_NAME": "EQUIPMENT_ID",
+      "DATA_TYPE": "VARCHAR2(50)",
+      "SOURCE_FIELD": "equipment_id",
+      "IS_REQUIRED": "Y",
+      "COLUMN_ORDER": 1
+    },
+    {
+      "COLUMN_NAME": "LOG_TIMESTAMP",
+      "DATA_TYPE": "TIMESTAMP",
+      "SOURCE_FIELD": "timestamp",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 2
+    },
+    {
+      "COLUMN_NAME": "MASTER_BARCODE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MASTER_BARCODE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 3
+    },
+    {
+      "COLUMN_NAME": "PCB_ID",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.PCB_ID",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 4
+    },
+    {
+      "COLUMN_NAME": "INSPECTION_DATE",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.INSPECTION_DATE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 5
+    },
+    {
+      "COLUMN_NAME": "INSPECTION_START_TIME",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.INSPECTION_START_TIME",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 6
+    },
+    {
+      "COLUMN_NAME": "INSPECTION_END_TIME",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.INSPECTION_END_TIME",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 7
+    },
+    {
+      "COLUMN_NAME": "TOTAL_PANEL_COUNT",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.TOTAL_PANEL_COUNT",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 8
+    },
+    {
+      "COLUMN_NAME": "JOB_NAME",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.JOB_NAME",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 9
+    },
+    {
+      "COLUMN_NAME": "PCB_RESULT",
+      "DATA_TYPE": "VARCHAR2(50)",
+      "SOURCE_FIELD": "data.PCB_RESULT",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 10
+    },
+    {
+      "COLUMN_NAME": "USER_ID",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.USER_ID",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 11
+    },
+    {
+      "COLUMN_NAME": "LOT_INFO",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.LOT_INFO",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 12
+    },
+    {
+      "COLUMN_NAME": "MACHINE_ID",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.MACHINE_ID",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 13
+    },
+    {
+      "COLUMN_NAME": "SIDE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.SIDE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 14
+    },
+    {
+      "COLUMN_NAME": "LANE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.LANE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 15
     }
   ]
 }

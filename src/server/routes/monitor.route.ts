@@ -543,6 +543,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       logType: string;
       fields: FieldDef[];
       preview?: boolean;
+      forceRecreate?: boolean;
     };
     if (!body.tableName || !body.logType || !Array.isArray(body.fields) || body.fields.length === 0) {
       return reply.status(400).send({ error: 'tableName, logType, fields required' });
@@ -555,23 +556,45 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: 'nameTooLong' });
     }
 
-    const { ddl, columns } = buildCreateTableDDL(upperName, body.fields);
+    const { ddl, commentsDDL, columns } = buildCreateTableDDL(upperName, body.fields);
 
     if (body.preview) {
-      return reply.send({ ddl, columns });
+      const fullDDL = [ddl, '', ...commentsDDL.map(c => `${c};`)].join('\n');
+      return reply.send({ ddl: fullDDL, columns });
     }
 
     const conn = await getConnection();
     try {
-      await conn.execute(ddl);
+      /* 테이블 존재 여부 확인 */
+      const chk = await conn.execute(
+        `SELECT COUNT(*) AS CNT FROM USER_TABLES WHERE TABLE_NAME = :t`,
+        { t: upperName },
+      );
+      const exists = Number((chk.rows as Array<{ CNT: number }>)?.[0]?.CNT ?? 0) > 0;
+
+      let created = false;
+      if (exists && body.forceRecreate) {
+        await conn.execute(`DROP TABLE ${upperName} CASCADE CONSTRAINTS PURGE`).catch(() => {});
+        await conn.execute(ddl);
+        created = true;
+      } else if (!exists) {
+        await conn.execute(ddl);
+        created = true;
+      }
+
+      /* 컬럼 코멘트는 테이블이 생성/재생성됐을 때 + 이미 존재할 때 모두 실행 (덮어쓰기 안전) */
+      for (const stmt of commentsDDL) {
+        await conn.execute(stmt).catch(() => {});
+      }
+
       const regCols = buildRegistryColumns(upperName, body.fields);
       setTableColumns(upperName, regCols);
 
       let tomlSync: { success: boolean; backupName?: string } | undefined;
       tomlSync = syncTomlRouting(body.logType, 'TABLE', upperName, createTomlBackup);
 
-      logger.info({ tableName: upperName, logType: body.logType, colCount: regCols.length }, 'Auto-created Oracle table + registry');
-      return reply.send({ success: true, tableName: upperName, ddl, columns, tomlSync });
+      logger.info({ tableName: upperName, logType: body.logType, existed: exists, created }, 'Auto-created/synced Oracle table + registry');
+      return reply.send({ success: true, tableName: upperName, ddl, columns, tomlSync, alreadyExisted: exists && !body.forceRecreate });
     } catch (err) {
       const parsed = parseOracleError(err);
       logger.error({ err, tableName: upperName }, 'Failed to auto-create Oracle table');
@@ -622,7 +645,14 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         const t = String(a.TABLE_NAME).localeCompare(String(b.TABLE_NAME));
         return t !== 0 ? t : (Number(a.COLUMN_ORDER) - Number(b.COLUMN_ORDER));
       });
-      return reply.send({ rows });
+      // 프로시져 엔트리도 SOURCE_FIELD 매핑 여부 포함하여 반환
+      const procRows: Array<Record<string, unknown>> = [];
+      for (const [key, entry] of Object.entries(tables)) {
+        if (!isProcedureEntry(entry)) continue;
+        const hasMapped = entry.params.some(p => !!p.SOURCE_FIELD);
+        procRows.push({ PROC_KEY: key, PROCEDURE_NAME: entry.procedureName, HAS_MAPPING: hasMapped });
+      }
+      return reply.send({ rows, procRows });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -655,6 +685,21 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
 
     try {
+      /* Oracle에 실제 테이블이 존재하는지 확인 — 없는 테이블 등록 방지 */
+      const conn = await getConnection();
+      try {
+        const chk = await conn.execute(
+          `SELECT COUNT(*) AS CNT FROM USER_TABLES WHERE TABLE_NAME = :t`,
+          { t: body.table.toUpperCase() },
+        );
+        const exists = Number((chk.rows as Array<{ CNT: number }>)?.[0]?.CNT ?? 0) > 0;
+        if (!exists) {
+          return reply.status(400).send({ error: 'tableNotFound', table: body.table });
+        }
+      } finally {
+        await conn.close();
+      }
+
       const columns: RegistryColumn[] = body.columns.map((col) => ({
         COLUMN_NAME: col.COLUMN_NAME,
         DATA_TYPE: col.DATA_TYPE,
@@ -711,6 +756,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       logType: string;
       fields: FieldDef[];
       preview?: boolean;
+      forceRecreate?: boolean;
     };
     if (!body.procedureName || !body.tableName || !body.logType || !Array.isArray(body.fields) || body.fields.length === 0) {
       return reply.status(400).send({ error: 'procedureName, tableName, logType, fields required' });
@@ -732,6 +778,39 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
     const conn = await getConnection();
     try {
+      /* --- 대상 테이블 존재 여부 확인 → 없으면 자동 생성, forceRecreate면 재생성 --- */
+      let tableCreated = false;
+      const tblCheck = await conn.execute(
+        `SELECT COUNT(*) AS CNT FROM USER_TABLES WHERE TABLE_NAME = :t`,
+        { t: upperTable },
+      );
+      const tblExists = Number((tblCheck.rows as Array<{ CNT: number }>)?.[0]?.CNT ?? 0) > 0;
+      let tblComments: string[] = [];
+      if (tblExists && body.forceRecreate) {
+        await conn.execute(`DROP TABLE ${upperTable} CASCADE CONSTRAINTS PURGE`).catch(() => {});
+        const tblResult = buildCreateTableDDL(upperTable, body.fields);
+        await conn.execute(tblResult.ddl);
+        tblComments = tblResult.commentsDDL;
+        tableCreated = true;
+      } else if (!tblExists) {
+        const tblResult = buildCreateTableDDL(upperTable, body.fields);
+        await conn.execute(tblResult.ddl);
+        tblComments = tblResult.commentsDDL;
+        tableCreated = true;
+      }
+      /* 컬럼 코멘트 실행 */
+      for (const stmt of tblComments) {
+        await conn.execute(stmt).catch(() => {});
+      }
+      if (tableCreated) {
+        const regCols = buildRegistryColumns(upperTable, body.fields);
+        setTableColumns(upperTable, regCols);
+        logger.info({ tableName: upperTable, logType: body.logType, force: !!body.forceRecreate }, 'Auto-created target table for procedure');
+      }
+
+      if (body.forceRecreate) {
+        await conn.execute(`DROP PROCEDURE ${upperProc}`).catch(() => {});
+      }
       await conn.execute(ddl);
       const regProc = buildRegistryProcedure(upperProc, body.fields);
       setProcedure(upperProc, regProc);
@@ -740,7 +819,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       tomlSync = syncTomlRouting(body.logType, 'PROCEDURE', upperProc, createTomlBackup);
 
       logger.info({ procedureName: upperProc, tableName: upperTable, logType: body.logType }, 'Auto-created Oracle procedure + registry');
-      return reply.send({ success: true, procedureName: upperProc, ddl, params, tomlSync });
+      return reply.send({ success: true, procedureName: upperProc, ddl, params, tomlSync, tableCreated, tableName: upperTable });
     } catch (err) {
       const parsed = parseOracleError(err);
       logger.error({ err, procedureName: upperProc }, 'Failed to auto-create Oracle procedure');
@@ -2091,6 +2170,51 @@ function getTableStats() {
     return [];
   }
 }
+
+/** 서버 시작 시 1회 실행 — Oracle에 없는 테이블/프로시져를 레지스트리에서 제거 */
+async function cleanupOrphanedRegistry() {
+  try {
+    const registry = readRegistry();
+    const keys = Object.keys(registry);
+    if (keys.length === 0) return;
+
+    const conn = await getConnection();
+    try {
+      const tblRes = await conn.execute(`SELECT TABLE_NAME FROM USER_TABLES`);
+      const tables = new Set((tblRes.rows as Array<{ TABLE_NAME: string }>).map(r => r.TABLE_NAME));
+
+      const objRes = await conn.execute(`SELECT OBJECT_NAME FROM USER_OBJECTS WHERE OBJECT_TYPE IN ('PROCEDURE','PACKAGE')`);
+      const procs = new Set((objRes.rows as Array<{ OBJECT_NAME: string }>).map(r => r.OBJECT_NAME));
+
+      const removed: string[] = [];
+      for (const [key, entry] of Object.entries(registry)) {
+        if (isProcedureEntry(entry)) {
+          const procName = entry.procedureName.split('.')[0];
+          if (!procs.has(procName)) {
+            deleteTarget(key);
+            removed.push(key);
+          }
+        } else {
+          if (!tables.has(key)) {
+            deleteTarget(key);
+            removed.push(key);
+          }
+        }
+      }
+
+      if (removed.length > 0) {
+        logger.info({ removed }, 'Startup cleanup: removed orphaned registry entries');
+      }
+    } finally {
+      await conn.close();
+    }
+  } catch (err) {
+    logger.warn({ err }, 'Startup registry cleanup skipped (Oracle unavailable)');
+  }
+}
+
+// 서버 시작 시 1회 정리
+cleanupOrphanedRegistry();
 
 function getRecentErrors() {
   return errorLogRepository.query({ status: 'ERROR', limit: 20 }).logs;

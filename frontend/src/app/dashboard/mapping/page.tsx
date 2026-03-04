@@ -23,7 +23,6 @@ import { useProcedureMapping } from './hooks/useProcedureMapping';
 import SelectionPanel from './components/SelectionPanel';
 import MappingTable from './components/MappingTable';
 import ProcedureMapping from './components/ProcedureMapping';
-import ParseRuleEditor from './components/ParseRuleEditor';
 import AutoCreateModal from './components/AutoCreateModal';
 import PipelineStatus from './components/PipelineStatus';
 
@@ -36,8 +35,8 @@ export default function MappingPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [parseRules, setParseRules] = useState<Record<string, ParseField[]>>({});
-  const [editorOpen, setEditorOpen] = useState(false);
   const [autoCreateOpen, setAutoCreateOpen] = useState(false);
+  const [forceRecreate, setForceRecreate] = useState(false);
   const [pipelineKey, setPipelineKey] = useState(0);
   const [targetMap, setTargetMap] = useState<Record<string, TargetMapEntry>>({});
   const autoSelecting = useRef(false);
@@ -101,8 +100,11 @@ export default function MappingPage() {
           if (targetType !== 'PROCEDURE') { setTargetType('PROCEDURE'); tbl.reset(); }
           const found = proc.oracleProcs.find(p =>
             p.DISPLAY_NAME === entry.targetTable || p.OBJECT_NAME === entry.targetTable,
-          );
-          if (found) await proc.loadProcedure(found);
+          ) ?? {
+            DISPLAY_NAME: entry.targetTable, OBJECT_NAME: entry.targetTable,
+            PACKAGE_NAME: null, OBJECT_TYPE: 'PROCEDURE', ARG_COUNT: 0,
+          };
+          await proc.loadProcedure(found);
         } else {
           if (targetType !== 'TABLE') { setTargetType('TABLE'); proc.reset(); }
           await tbl.loadTable(entry.targetTable);
@@ -121,9 +123,11 @@ export default function MappingPage() {
       setLogType(createdLogType);
       setTimeout(() => tbl.handleAutoMap(), 300);
     } else {
-      await proc.refreshProcs();
-      const found = proc.oracleProcs.find(p => p.DISPLAY_NAME === name || p.OBJECT_NAME === name);
-      if (found) await proc.loadProcedure(found);
+      const freshProcs = await proc.refreshProcs();
+      const found = freshProcs.find(p => p.DISPLAY_NAME === name || p.OBJECT_NAME === name)
+        ?? { DISPLAY_NAME: name, OBJECT_NAME: name, PACKAGE_NAME: null, OBJECT_TYPE: 'PROCEDURE', ARG_COUNT: 0 };
+      await proc.loadProcedure(found);
+      setLogType(createdLogType);
     }
   }, [targetType, tbl, proc, t]);
 
@@ -152,14 +156,6 @@ export default function MappingPage() {
               {saveMsg}
             </span>
           )}
-          <Button variant="outline" size="sm" leftIcon="edit_note" onClick={() => setEditorOpen(true)}>
-            {t('parseRule.edit')}
-          </Button>
-          {hasSelection && targetType === 'TABLE' && logType && (
-            <Button variant="outline" size="sm" leftIcon="auto_fix_high" onClick={tbl.handleAutoMap}>
-              {t('mapping.autoMap')}
-            </Button>
-          )}
           {hasSelection && (
             <Button variant="primary" size="sm" leftIcon="save" onClick={handleSave} disabled={saving}>
               {saving ? t('mapping.saving') : t('mapping.save')}
@@ -170,29 +166,40 @@ export default function MappingPage() {
 
       <PipelineStatus refreshKey={pipelineKey} onEquipmentSelect={setLogType} />
 
-      {/* 타겟 유형 토글 */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-          {t('mapping.targetType')}
-        </span>
-        <div className="flex rounded-lg border border-border dark:border-border-dark overflow-hidden">
-          <button onClick={() => switchTargetType('TABLE')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold transition-all
-              ${targetType === 'TABLE'
-                ? 'bg-primary text-white'
-                : 'bg-surface dark:bg-surface-dark text-muted-foreground hover:text-text dark:hover:text-white'}`}>
-            <Icon name="table_chart" size="xs" />
-            {t('mapping.targetTable')}
-          </button>
-          <button onClick={() => switchTargetType('PROCEDURE')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold transition-all border-l border-border dark:border-border-dark
-              ${targetType === 'PROCEDURE'
-                ? 'bg-primary text-white'
-                : 'bg-surface dark:bg-surface-dark text-muted-foreground hover:text-text dark:hover:text-white'}`}>
-            <Icon name="terminal" size="xs" />
-            {t('mapping.targetProcedure')}
-          </button>
+      {/* 타겟 유형 토글 + 강제 재생성 옵션 */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+            {t('mapping.targetType')}
+          </span>
+          <div className="flex rounded-lg border border-border dark:border-border-dark overflow-hidden">
+            <button onClick={() => switchTargetType('TABLE')}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold transition-all
+                ${targetType === 'TABLE'
+                  ? 'bg-primary text-white'
+                  : 'bg-surface dark:bg-surface-dark text-muted-foreground hover:text-text dark:hover:text-white'}`}>
+              <Icon name="table_chart" size="xs" />
+              {t('mapping.targetTable')}
+            </button>
+            <button onClick={() => switchTargetType('PROCEDURE')}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold transition-all border-l border-border dark:border-border-dark
+                ${targetType === 'PROCEDURE'
+                  ? 'bg-primary text-white'
+                  : 'bg-surface dark:bg-surface-dark text-muted-foreground hover:text-text dark:hover:text-white'}`}>
+              <Icon name="terminal" size="xs" />
+              {t('mapping.targetProcedure')}
+            </button>
+          </div>
         </div>
+        <label className={`flex items-center gap-1.5 cursor-pointer select-none
+          ${forceRecreate ? 'text-error' : 'text-muted-foreground'}`}>
+          <input type="checkbox" checked={forceRecreate} onChange={e => setForceRecreate(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-border accent-error cursor-pointer" />
+          <Icon name="warning" size="xs" className={forceRecreate ? 'text-error' : 'text-muted-foreground/50'} />
+          <span className="text-xs font-bold">
+            {targetType === 'TABLE' ? t('mapping.forceRecreateTable') : t('mapping.forceRecreateProc')}
+          </span>
+        </label>
       </div>
 
       {/* 메인 레이아웃 */}
@@ -250,14 +257,10 @@ export default function MappingPage() {
         </div>
       </div>
 
-      <ParseRuleEditor
-        isOpen={editorOpen} onClose={() => setEditorOpen(false)}
-        parseRules={parseRules} onSaved={loadParseRules} selectedType={logType}
-      />
-
       <AutoCreateModal
         isOpen={autoCreateOpen} onClose={() => setAutoCreateOpen(false)}
         targetType={targetType} parseRules={parseRules} onCreated={handleAutoCreated}
+        initialLogType={logType ?? undefined} forceRecreate={forceRecreate}
       />
     </>
   );

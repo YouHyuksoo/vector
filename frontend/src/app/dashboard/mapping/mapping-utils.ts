@@ -89,7 +89,7 @@ export function generateDefaultTableName(logType: string): string {
 
 /** 기본 프로시져명 생성 (설비 유형 기반) */
 export function generateDefaultProcName(logType: string): string {
-  return `SP_INSERT_${logType.toUpperCase()}`;
+  return `SP_LOG_INS_${logType.toUpperCase()}`;
 }
 
 /** 한글 필드명 → 영문 컬럼명 매핑 (백엔드 oracle-ddl.ts 와 동일) */

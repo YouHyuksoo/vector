@@ -10,7 +10,7 @@
  */
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { Modal, Icon, Button } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
@@ -26,9 +26,13 @@ interface Props {
   targetType: TargetType;
   parseRules: Record<string, ParseField[]>;
   onCreated: (name: string, logType: string) => void;
+  /** 상위에서 이미 선택된 설비 유형 — 전달되면 선택 UI를 건너뜀 */
+  initialLogType?: string;
+  /** 강제 재생성 모드 — DROP 후 재생성 */
+  forceRecreate?: boolean;
 }
 
-export default function AutoCreateModal({ isOpen, onClose, targetType, parseRules, onCreated }: Props) {
+export default function AutoCreateModal({ isOpen, onClose, targetType, parseRules, onCreated, initialLogType, forceRecreate = false }: Props) {
   const { t } = useI18n();
   const [logType, setLogType] = useState('');
   const [name, setName] = useState('');
@@ -37,6 +41,13 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
   const [ddlText, setDdlText] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+
+  /** initialLogType이 전달되면 모달 열릴 때 자동 설정 */
+  const prevOpen = useRef(false);
+  if (isOpen && !prevOpen.current && initialLogType) {
+    setLogType(initialLogType);
+  }
+  prevOpen.current = isOpen;
 
   const logTypes = useMemo(() => {
     const all = getLogTypesFromRules(parseRules);
@@ -96,7 +107,7 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
     }
   }, [showDDL, logType, nameValid, targetType, effectiveName, effectiveTable, fields]);
 
-  const handleCreate = useCallback(async () => {
+  const doCreate = useCallback(async () => {
     if (!logType || !nameValid || creating) return;
     setCreating(true);
     setError('');
@@ -105,9 +116,9 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
         ? '/api/monitor/tables/oracle/create'
         : '/api/monitor/procedures/oracle/create';
       const payload = targetType === 'TABLE'
-        ? { tableName: effectiveName, logType, fields, preview: false }
-        : { procedureName: effectiveName, tableName: effectiveTable, logType, fields, preview: false };
-      const res = await apiFetch<{ success: boolean; error?: string }>(url, {
+        ? { tableName: effectiveName, logType, fields, preview: false, forceRecreate }
+        : { procedureName: effectiveName, tableName: effectiveTable, logType, fields, preview: false, forceRecreate };
+      const res = await apiFetch<{ success: boolean; error?: string; alreadyExisted?: boolean; tableCreated?: boolean }>(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -129,6 +140,8 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
     setCreating(false);
   }, [logType, nameValid, creating, targetType, effectiveName, effectiveTable, fields, onCreated, onClose, t]);
 
+  const handleCreate = useCallback(() => doCreate(), [doCreate]);
+
   const resetState = () => {
     setLogType('');
     setName('');
@@ -143,21 +156,34 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
   return (
     <Modal isOpen={isOpen} onClose={() => { onClose(); resetState(); }} title={title} size="lg">
       <div className="space-y-4">
-        {/* 설비 유형 선택 */}
+        {/* 설비 유형 선택 — initialLogType이 있으면 선택된 상태만 표시 */}
         <div>
           <label className="block text-sm font-bold text-muted-foreground mb-2">{t('mapping.logType')}</label>
-          <div className="flex flex-wrap gap-2">
-            {logTypes.map(lt => (
-              <button key={lt} onClick={() => { setLogType(lt); setShowDDL(false); setDdlText(''); setError(''); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all
-                  ${logType === lt
-                    ? 'bg-primary text-white'
-                    : 'bg-surface dark:bg-surface-dark text-muted-foreground hover:text-text dark:hover:text-white border border-border dark:border-border-dark'}`}>
-                <Icon name={getEquipmentIcon(lt)} size="xs" />
-                {lt}
+          {initialLogType && logType ? (
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-primary text-white">
+                <Icon name={getEquipmentIcon(logType)} size="xs" />
+                {logType}
+              </span>
+              <button onClick={() => { setLogType(''); }}
+                className="text-xs text-muted-foreground hover:text-text dark:hover:text-white transition-colors underline">
+                {t('mapping.changeLogType')}
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {logTypes.map(lt => (
+                <button key={lt} onClick={() => { setLogType(lt); setShowDDL(false); setDdlText(''); setError(''); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold transition-all
+                    ${logType === lt
+                      ? 'bg-primary text-white'
+                      : 'bg-surface dark:bg-surface-dark text-muted-foreground hover:text-text dark:hover:text-white border border-border dark:border-border-dark'}`}>
+                  <Icon name={getEquipmentIcon(lt)} size="xs" />
+                  {lt}
+                </button>
+              ))}
+            </div>
+          )}
           {logTypes.length === 0 && (
             <p className="text-sm text-muted-foreground mt-2">{t('mapping.noFields')}</p>
           )}
@@ -266,21 +292,15 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
               </div>
             )}
 
-            {/* 경고 + 버튼 */}
-            <div className="flex items-center justify-between pt-2 border-t border-border dark:border-border-dark">
-              <div className="flex items-center gap-1.5 text-warning text-xs">
-                <Icon name="warning" size="xs" />
-                {t('mapping.createWarning')}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => { onClose(); resetState(); }}>
-                  {t('settings.cancel')}
-                </Button>
-                <Button variant="primary" size="sm" leftIcon="add_circle"
-                  onClick={handleCreate} disabled={creating || !nameValid || fields.length === 0}>
-                  {creating ? t('mapping.creating') : (targetType === 'TABLE' ? t('mapping.createTableBtn') : t('mapping.createProcBtn'))}
-                </Button>
-              </div>
+            {/* 버튼 */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border dark:border-border-dark">
+              <Button variant="outline" size="sm" onClick={() => { onClose(); resetState(); }}>
+                {t('settings.cancel')}
+              </Button>
+              <Button variant="primary" size="sm" leftIcon="add_circle"
+                onClick={handleCreate} disabled={creating || !nameValid || fields.length === 0}>
+                {creating ? t('mapping.creating') : (targetType === 'TABLE' ? t('mapping.createTableBtn') : t('mapping.createProcBtn'))}
+              </Button>
             </div>
           </>
         )}

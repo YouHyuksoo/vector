@@ -90,6 +90,7 @@ export function EquipmentList({ names, descriptions, configStatus, selected, onS
           const status = configStatus[name];
           const doneCount = status ? Object.values(status).filter(Boolean).length : 0;
           const totalSteps = STATUS_STEPS.length;
+          const isComplete = doneCount === totalSteps;
 
           return (
             <button
@@ -98,14 +99,16 @@ export function EquipmentList({ names, descriptions, configStatus, selected, onS
               className={`flex flex-col gap-1 px-2.5 py-2 rounded-lg text-left transition-all duration-200 group
                 ${isSel
                   ? 'bg-accent/10 text-accent border border-accent/30 font-bold'
-                  : 'bg-surface dark:bg-surface-dark hover:bg-accent/5 dark:hover:bg-accent/5 text-text dark:text-white border border-transparent'
+                  : isComplete
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-2 border-emerald-400/60 dark:border-emerald-500/40 shadow-sm shadow-emerald-200/50 dark:shadow-emerald-900/30'
+                    : 'bg-surface dark:bg-surface-dark hover:bg-accent/5 dark:hover:bg-accent/5 text-text dark:text-white border border-transparent'
                 }`}
             >
               <div className="flex items-center gap-1.5 min-w-0">
                 <Icon
-                  name={isSel ? 'radio_button_checked' : 'radio_button_unchecked'}
+                  name={isSel ? 'radio_button_checked' : isComplete ? 'check_circle' : 'radio_button_unchecked'}
                   size="xs"
-                  className={`shrink-0 ${isSel ? 'text-accent' : 'text-muted-foreground'}`}
+                  className={`shrink-0 ${isSel ? 'text-accent' : isComplete ? 'text-success' : 'text-muted-foreground'}`}
                 />
                 <span className="text-xs font-bold truncate">{name}</span>
                 {!isEditing && (

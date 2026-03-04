@@ -56,21 +56,31 @@ export function useProcedureMapping({ logType, setLoading, setSaving, setSaveMsg
       setCallMode(saved?.callMode || 'NAMED');
       setArrayTypeName(saved?.arrayTypeName || '');
       const pkgParam = proc.PACKAGE_NAME ? `?package=${encodeURIComponent(proc.PACKAGE_NAME)}` : '';
-      const argRes = await apiFetch<{ arguments: Array<{ ARGUMENT_NAME: string; POSITION: number; DATA_TYPE: string; IN_OUT: string }> }>(
-        `/api/monitor/procedures/oracle/${encodeURIComponent(proc.OBJECT_NAME)}/arguments${pkgParam}`,
-      );
-      const oracleArgs = (argRes.arguments || []).map((a: any) => ({
-        ARGUMENT_NAME: a.ARGUMENT_NAME || a[0], POSITION: a.POSITION ?? a[1],
-        DATA_TYPE: a.DATA_TYPE || a[2], IN_OUT: a.IN_OUT || a[3],
-      }));
-      setProcParams(oracleArgs.map(arg => {
-        const sp = saved?.params.find(p => p.ARGUMENT_NAME === arg.ARGUMENT_NAME);
-        return {
-          PARAM_ORDER: arg.POSITION, ARGUMENT_NAME: arg.ARGUMENT_NAME,
-          DATA_TYPE: arg.DATA_TYPE, IN_OUT: arg.IN_OUT,
-          SOURCE_FIELD: sp?.SOURCE_FIELD || '', IS_REQUIRED: sp?.IS_REQUIRED || 'N',
-        };
-      }));
+      let oracleArgs: Array<{ ARGUMENT_NAME: string; POSITION: number; DATA_TYPE: string; IN_OUT: string }> = [];
+      try {
+        const argRes = await apiFetch<{ arguments: Array<{ ARGUMENT_NAME: string; POSITION: number; DATA_TYPE: string; IN_OUT: string }> }>(
+          `/api/monitor/procedures/oracle/${encodeURIComponent(proc.OBJECT_NAME)}/arguments${pkgParam}`,
+        );
+        oracleArgs = (argRes.arguments || []).map((a: any) => ({
+          ARGUMENT_NAME: a.ARGUMENT_NAME || a[0], POSITION: a.POSITION ?? a[1],
+          DATA_TYPE: a.DATA_TYPE || a[2], IN_OUT: a.IN_OUT || a[3],
+        }));
+      } catch { /* Oracle 미연결 시 무시 — saved 기반 폴백 */ }
+
+      if (oracleArgs.length > 0) {
+        setProcParams(oracleArgs.map(arg => {
+          const sp = saved?.params.find(p => p.ARGUMENT_NAME === arg.ARGUMENT_NAME);
+          return {
+            PARAM_ORDER: arg.POSITION, ARGUMENT_NAME: arg.ARGUMENT_NAME,
+            DATA_TYPE: arg.DATA_TYPE, IN_OUT: arg.IN_OUT,
+            SOURCE_FIELD: sp?.SOURCE_FIELD || '', IS_REQUIRED: sp?.IS_REQUIRED || 'N',
+          };
+        }));
+      } else if (saved?.params && saved.params.length > 0) {
+        setProcParams(saved.params);
+      } else {
+        setProcParams([]);
+      }
     } catch { setProcParams([]); }
     setLoading(false);
   };
@@ -111,14 +121,16 @@ export function useProcedureMapping({ logType, setLoading, setSaving, setSaveMsg
     }
   };
 
-  const refreshProcs = async () => {
+  const refreshProcs = async (): Promise<OracleProc[]> => {
     try {
       const d = await apiFetch<{ procedures: OracleProc[] }>('/api/monitor/procedures/oracle/all');
-      setOracleProcs((d.procedures || []).map((p: any) => ({
+      const list = (d.procedures || []).map((p: any) => ({
         DISPLAY_NAME: p.DISPLAY_NAME || p[0], OBJECT_NAME: p.OBJECT_NAME || p[1],
         PACKAGE_NAME: p.PACKAGE_NAME || p[2] || null, OBJECT_TYPE: p.OBJECT_TYPE || p[3], ARG_COUNT: 0,
-      })));
-    } catch { /* ignore */ }
+      }));
+      setOracleProcs(list);
+      return list;
+    } catch { return []; }
   };
 
   const reset = () => {

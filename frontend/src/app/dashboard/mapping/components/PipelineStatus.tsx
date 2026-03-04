@@ -25,6 +25,7 @@ interface BaseData {
   registryTables: string[];
   registryProcs: string[];
   registryRows: Array<{ TABLE_NAME: string; SOURCE_FIELD?: string | null }>;
+  registryProcRows: Array<{ PROC_KEY: string; HAS_MAPPING: boolean }>;
 }
 
 const ICONS = ['cell_tower', 'router', 'code', 'table_chart', 'check_circle'] as const;
@@ -67,6 +68,7 @@ export default function PipelineStatus({ refreshKey = 0, onEquipmentSelect }: Pr
         registryTables: keys.status === 'fulfilled' ? keys.value.tables : [],
         registryProcs: keys.status === 'fulfilled' ? keys.value.procedures : [],
         registryRows: reg.status === 'fulfilled' ? reg.value.rows : [],
+        registryProcRows: reg.status === 'fulfilled' ? (reg.value as { procRows?: Array<{ PROC_KEY: string; HAS_MAPPING: boolean }> }).procRows ?? [] : [],
       };
       setBase(data);
     })();
@@ -105,7 +107,9 @@ export default function PipelineStatus({ refreshKey = 0, onEquipmentSelect }: Pr
     const mT = base.registryTables.filter(t => matchesType(t, et));
     const mP = base.registryProcs.filter(p => matchesType(p, et));
     if (mT.length + mP.length > 0) n++;
-    if (base.registryRows.some(r => r.SOURCE_FIELD && mT.includes(r.TABLE_NAME))) n++;
+    const tblMapped = base.registryRows.some(r => r.SOURCE_FIELD && mT.includes(r.TABLE_NAME));
+    const procMapped = base.registryProcRows.some(r => r.HAS_MAPPING && mP.includes(r.PROC_KEY));
+    if (tblMapped || procMapped) n++;
     return n;
   };
 
@@ -116,9 +120,13 @@ export default function PipelineStatus({ refreshKey = 0, onEquipmentSelect }: Pr
     const fields = et ? base.parseRules[et] ?? [] : [];
     const mTbl = base.registryTables.filter(n => matchesType(n, et));
     const mProc = base.registryProcs.filter(n => matchesType(n, et));
-    const mapped = new Set(
+    const mappedTbls = new Set(
       base.registryRows.filter(r => r.SOURCE_FIELD && mTbl.includes(r.TABLE_NAME)).map(r => r.TABLE_NAME),
     );
+    const mappedProcs = new Set(
+      base.registryProcRows.filter(r => r.HAS_MAPPING && mProc.includes(r.PROC_KEY)).map(r => r.PROC_KEY),
+    );
+    const totalMapped = mappedTbls.size + mappedProcs.size;
     const fmt = (a: string[], max = 1) =>
       a.length <= max ? a.join(', ') : `${a[0]} +${a.length - 1}`;
     return [
@@ -126,7 +134,7 @@ export default function PipelineStatus({ refreshKey = 0, onEquipmentSelect }: Pr
       { done: true, detail: selected ?? '' },
       { done: fields.length > 0, detail: fields.length > 0 ? `${et} · ${fields.length}${t('mapping.pipeline.fieldsUnit')}` : et || '-' },
       { done: mTbl.length + mProc.length > 0, detail: mTbl.length + mProc.length > 0 ? fmt([...mTbl, ...mProc]) : '-' },
-      { done: mapped.size > 0, detail: mapped.size > 0 ? `${mapped.size}${t('mapping.pipeline.targets')}` : '-' },
+      { done: totalMapped > 0, detail: totalMapped > 0 ? `${totalMapped}${t('mapping.pipeline.targets')}` : '-' },
     ];
   };
 
@@ -151,12 +159,8 @@ export default function PipelineStatus({ refreshKey = 0, onEquipmentSelect }: Pr
 
   return (
     <div className="rounded-xl bg-surface dark:bg-surface-dark border border-border dark:border-border-dark">
-      {/* 송신기 선택 — 완료/미완료 섹션 분리 */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-border dark:border-border-dark flex-wrap">
-        <Icon name="router" size="xs" className="text-muted-foreground shrink-0" />
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">
-          {t('mapping.pipeline.selectSender')}
-        </span>
+      {/* 송신기 선택 — 완료/미완료 그룹별 버튼 */}
+      <div className="px-4 py-3 border-b border-border dark:border-border-dark space-y-2">
         {(() => {
           const done = base.agentNames.filter(n => countDone(n) >= 5);
           const prog = base.agentNames.filter(n => countDone(n) < 5);
@@ -167,39 +171,55 @@ export default function PipelineStatus({ refreshKey = 0, onEquipmentSelect }: Pr
               onEquipmentSelect(deselect ? null : (equipCache[name] || null));
             }
           };
-          const renderChip = (name: string) => {
+          const renderBtn = (name: string) => {
             const c = countDone(name);
             const isSel = selected === name;
             return (
               <button key={name} onClick={() => handleChip(name)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all whitespace-nowrap
-                  ${isSel ? 'bg-primary text-white' : chipColor(name)}`}>
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold transition-all whitespace-nowrap border
+                  ${isSel
+                    ? 'bg-primary text-white border-primary'
+                    : c >= 5
+                      ? 'bg-success/5 text-success border-success/30 hover:bg-success/10 dark:bg-success/10 dark:hover:bg-success/15'
+                      : c >= 3
+                        ? 'bg-warning/5 text-warning border-warning/30 hover:bg-warning/10 dark:bg-warning/10 dark:hover:bg-warning/15'
+                        : 'bg-background dark:bg-background-dark text-muted-foreground border-border dark:border-border-dark hover:bg-muted-foreground/5'
+                  }`}>
                 {!isSel && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor(name)}`} />}
                 {name}
-                {!isSel && c >= 0 && <span className="opacity-60">{c}/5</span>}
+                {!isSel && c >= 0 && <span className="opacity-50 ml-0.5">{c}/5</span>}
               </button>
             );
           };
           return (
             <>
               {done.length > 0 && (
-                <>
-                  <span className="text-[10px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded shrink-0">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] font-bold text-success uppercase tracking-wider mr-1 shrink-0 w-10">
                     {t('mapping.pipeline.complete')}
                   </span>
-                  {done.map(renderChip)}
-                </>
-              )}
-              {done.length > 0 && prog.length > 0 && (
-                <div className="w-px h-5 bg-border dark:bg-border-dark shrink-0 mx-1" />
+                  <div className="flex flex-wrap -space-x-px">
+                    {done.map((name, i) => (
+                      <div key={name} className={i === 0 ? 'rounded-l overflow-hidden' : i === done.length - 1 ? 'rounded-r overflow-hidden' : ''}>
+                        {renderBtn(name)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
               {prog.length > 0 && (
-                <>
-                  <span className="text-[10px] font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded shrink-0">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] font-bold text-warning uppercase tracking-wider mr-1 shrink-0 w-10">
                     {t('mapping.pipeline.incomplete')}
                   </span>
-                  {prog.map(renderChip)}
-                </>
+                  <div className="flex flex-wrap -space-x-px">
+                    {prog.map((name, i) => (
+                      <div key={name} className={i === 0 ? 'rounded-l overflow-hidden' : i === prog.length - 1 ? 'rounded-r overflow-hidden' : ''}>
+                        {renderBtn(name)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </>
           );
