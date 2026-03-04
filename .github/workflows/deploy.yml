@@ -3,15 +3,16 @@
 #
 # 초보자 가이드:
 # 1. main 브랜치에 push 시 자동 실행
-# 2. 백엔드 빌드(tsc) + 프론트엔드 빌드(next build)
-# 3. PM2로 무중단 재시작 (ecosystem.config.cjs)
+# 2. runner 작업폴더에서 checkout + 빌드
+# 3. D:\Project\vector 로 동기화 배포
+# 4. PM2로 무중단 재시작 (ecosystem.config.cjs)
 #
 # 사전 준비:
 # - Windows 서버에 GitHub self-hosted runner 설치
 #   (Settings > Actions > Runners > New self-hosted runner)
 # - Node.js, PM2, Redis 설치 완료
 # - Oracle Instant Client 설치 완료
-# - .env 파일을 서버의 프로젝트 루트에 수동 배치
+# - D:\Project\vector\.env 파일 수동 배치 (최초 1회)
 
 name: Deploy to Production
 
@@ -24,6 +25,9 @@ on:
 concurrency:
   group: deploy-production
   cancel-in-progress: false
+
+env:
+  DEPLOY_DIR: D:\Project\vector
 
 jobs:
   deploy:
@@ -55,12 +59,34 @@ jobs:
       - name: Build frontend (Next.js)
         run: npm run build:frontend
 
+      - name: Stop PM2 before sync
+        run: pm2 stop ecosystem.config.cjs --silent 2>/dev/null || true
+        working-directory: D:\Project\vector
+
+      - name: Sync to deploy directory
+        shell: powershell
+        run: |
+          $src = "${{ github.workspace }}"
+          $dst = "${{ env.DEPLOY_DIR }}"
+
+          # 배포 디렉토리 생성
+          if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force }
+
+          # robocopy로 동기화 (node_modules, dist, .next 포함 / .env, data, logs 보존)
+          robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
+            /XF ".env" `
+            /XD ".git" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
+
+          # robocopy 종료코드 0~7은 정상
+          if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
+
       - name: Create logs directory
         run: mkdir -p logs
+        working-directory: D:\Project\vector
 
       - name: Restart services with PM2
+        working-directory: D:\Project\vector
         run: |
-          # PM2가 이미 실행 중이면 reload, 아니면 start
           if pm2 describe vector-backend > /dev/null 2>&1; then
             echo "Reloading existing PM2 processes..."
             pm2 reload ecosystem.config.cjs --update-env
@@ -74,9 +100,7 @@ jobs:
         run: |
           echo "Waiting for services to start..."
           sleep 5
-          # 백엔드 헬스체크
           curl -sf http://localhost:3110/api/monitor/pipeline-status > /dev/null && echo "Backend OK" || echo "Backend not ready yet"
-          # 프론트엔드 헬스체크
           curl -sf http://localhost:3100 > /dev/null && echo "Frontend OK" || echo "Frontend not ready yet"
 
       - name: Show PM2 status
