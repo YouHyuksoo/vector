@@ -103,6 +103,15 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
                   className={`shrink-0 ${isSel ? 'text-accent' : isComplete ? 'text-success' : 'text-muted-foreground'}`}
                 />
                 <span className="text-xs font-bold truncate">{name}</span>
+                {pipeline?.targetType && (
+                  <span className={`shrink-0 px-1 py-px rounded text-[8px] font-bold uppercase leading-none
+                    ${pipeline.targetType === 'PROCEDURE'
+                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300'
+                      : 'bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300'
+                    }`}>
+                    {pipeline.targetType === 'PROCEDURE' ? 'PROC' : 'TBL'}
+                  </span>
+                )}
                 {!isEditing && (
                   <span
                     onClick={e => startEdit(name, e)}

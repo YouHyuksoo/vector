@@ -778,34 +778,23 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
     const conn = await getConnection();
     try {
-      /* --- 대상 테이블 존재 여부 확인 → 없으면 자동 생성, forceRecreate면 재생성 --- */
+      /* --- 대상 테이블 존재 여부 확인 → 없으면 자동 생성 (forceRecreate여도 테이블은 건들지 않음) --- */
       let tableCreated = false;
       const tblCheck = await conn.execute(
         `SELECT COUNT(*) AS CNT FROM USER_TABLES WHERE TABLE_NAME = :t`,
         { t: upperTable },
       );
       const tblExists = Number((tblCheck.rows as Array<{ CNT: number }>)?.[0]?.CNT ?? 0) > 0;
-      let tblComments: string[] = [];
-      if (tblExists && body.forceRecreate) {
-        await conn.execute(`DROP TABLE ${upperTable} CASCADE CONSTRAINTS PURGE`).catch(() => {});
+      if (!tblExists) {
         const tblResult = buildCreateTableDDL(upperTable, body.fields);
         await conn.execute(tblResult.ddl);
-        tblComments = tblResult.commentsDDL;
-        tableCreated = true;
-      } else if (!tblExists) {
-        const tblResult = buildCreateTableDDL(upperTable, body.fields);
-        await conn.execute(tblResult.ddl);
-        tblComments = tblResult.commentsDDL;
-        tableCreated = true;
-      }
-      /* 컬럼 코멘트 실행 */
-      for (const stmt of tblComments) {
-        await conn.execute(stmt).catch(() => {});
-      }
-      if (tableCreated) {
+        for (const stmt of tblResult.commentsDDL) {
+          await conn.execute(stmt).catch(() => {});
+        }
         const regCols = buildRegistryColumns(upperTable, body.fields);
         setTableColumns(upperTable, regCols);
-        logger.info({ tableName: upperTable, logType: body.logType, force: !!body.forceRecreate }, 'Auto-created target table for procedure');
+        tableCreated = true;
+        logger.info({ tableName: upperTable, logType: body.logType }, 'Auto-created target table for procedure');
       }
 
       if (body.forceRecreate) {
@@ -1901,6 +1890,121 @@ Generate VRL parsing code for this log.`;
         ttlSeconds: env.HEARTBEAT_TTL_SECONDS,
       },
     });
+  });
+
+  // ─── 통합 파이프라인 상태 API ───
+
+  /** 모든 agent의 5단계 파이프라인 진행률을 한 번에 조회 */
+  app.get('/api/monitor/pipeline-status', async (_request, reply) => {
+    try {
+      // 1) agent TOML 목록 + 각 TOML에서 equipment_type 추출
+      if (!existsSync(AGENT_CONFIG_DIR)) mkdirSync(AGENT_CONFIG_DIR, { recursive: true });
+      const files = readdirSync(AGENT_CONFIG_DIR)
+        .filter(f => f.endsWith('.toml') && !f.endsWith('.bak.toml'))
+        .map(f => f.replace('.toml', ''))
+        .sort();
+
+      const agentToml: Record<string, string> = {};
+      const equipTypes: Record<string, string> = {};
+      for (const name of files) {
+        try {
+          const content = readFileSync(agentPath(name), 'utf-8');
+          agentToml[name] = content;
+          equipTypes[name] = (content.match(/\.equipment_type\s*=\s*"([^"]*)"/)?.[1] ?? '').trim();
+        } catch { agentToml[name] = ''; equipTypes[name] = ''; }
+      }
+
+      // 2) aggregator config 존재 여부
+      let aggOk = false;
+      try { aggOk = readFileSync(VECTOR_CONFIG, 'utf-8').trim().length > 0; } catch { /* */ }
+
+      // 3) parseRules
+      const parseRules = readParseFields();
+
+      // 4) registry
+      const registry = readRegistry();
+      const registryTables = getRegisteredTableNames();
+      const registryProcs = getRegisteredProcedureKeys();
+
+      // matchesType 유틸
+      const matchType = (name: string, type: string) => {
+        if (!type) return false;
+        return new RegExp(`(^|[_.])${type}([_.]|$)`, 'i').test(name);
+      };
+
+      // 5) VRL target-map (설비별 TABLE/PROCEDURE 설정)
+      let targetMap: Record<string, { targetTable: string; targetType: string }> = {};
+      try {
+        const aggToml = readFileSync(VECTOR_CONFIG, 'utf-8');
+        const srcMatch = aggToml.match(/\[transforms\.parse_logs\][\s\S]*?source\s*=\s*'''([\s\S]*?)'''/);
+        if (srcMatch) {
+          const vrlSrc = srcMatch[1];
+          const eqMatches = vrlSrc.matchAll(/\.equipment_type\s*==\s*"([^"]+)"/g);
+          for (const m of eqMatches) {
+            const block = extractEquipmentBlock(vrlSrc, m[1]);
+            if (!block) continue;
+            const tblM = block.match(/\.target_table\s*=\s*"([^"]+)"/);
+            const typM = block.match(/\.target_type\s*=\s*"([^"]+)"/);
+            targetMap[m[1]] = { targetTable: tblM?.[1] || `LOG_INSPECTION`, targetType: typM?.[1] || 'TABLE' };
+          }
+        }
+      } catch { /* ignore */ }
+
+      // 6) 각 agent별 5단계 판정
+      const agents: Record<string, {
+        steps: { sender: boolean; receiver: boolean; vrl: boolean; table: boolean; mapping: boolean };
+        equipmentType: string;
+        doneCount: number;
+        targetType?: string;
+        targetTable?: string;
+      }> = {};
+
+      for (const name of files) {
+        const et = equipTypes[name];
+        const toml = agentToml[name];
+        const tomlStatus = analyzeTomlStatus(toml);
+        const senderOk = tomlStatus.equip && tomlStatus.connection && tomlStatus.logPath;
+
+        const vrlOk = et ? (parseRules[et]?.length ?? 0) > 0 : false;
+
+        const mTbl = registryTables.filter(t => matchType(t, et));
+        const mProc = registryProcs.filter(p => matchType(p, et));
+        const tableOk = mTbl.length + mProc.length > 0;
+
+        let mappingOk = false;
+        if (tableOk) {
+          for (const tName of mTbl) {
+            const entry = registry[tName];
+            if (entry && !isProcedureEntry(entry)) {
+              if (entry.some((col: RegistryColumn) => !!col.SOURCE_FIELD)) { mappingOk = true; break; }
+            }
+          }
+          if (!mappingOk) {
+            for (const pKey of mProc) {
+              const entry = registry[pKey];
+              if (entry && isProcedureEntry(entry)) {
+                if (entry.params.some((p: ProcedureParam) => !!p.SOURCE_FIELD)) { mappingOk = true; break; }
+              }
+            }
+          }
+        }
+
+        const steps = {
+          sender: senderOk,
+          receiver: aggOk,
+          vrl: vrlOk,
+          table: tableOk,
+          mapping: mappingOk,
+        };
+        const doneCount = Object.values(steps).filter(Boolean).length;
+        const tm = et ? targetMap[et] : undefined;
+        agents[name] = { steps, equipmentType: et, doneCount, targetType: tm?.targetType, targetTable: tm?.targetTable };
+      }
+
+      return reply.send({ agents });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
   });
 };
 

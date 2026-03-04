@@ -33,14 +33,23 @@ function dotColor(doneCount: number): string {
   return 'bg-muted-foreground/30';
 }
 
-function ChipButton({ name, doneCount, isSel, onClick }: {
-  name: string; doneCount: number; isSel: boolean; onClick: () => void;
+function ChipButton({ name, doneCount, isSel, targetType, onClick }: {
+  name: string; doneCount: number; isSel: boolean; targetType?: string; onClick: () => void;
 }) {
   return (
     <button onClick={onClick}
       className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold transition-all whitespace-nowrap border ${chipColor(doneCount, isSel)}`}>
       {!isSel && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor(doneCount)}`} />}
       {name}
+      {targetType && (
+        <span className={`px-1 py-px rounded text-[8px] font-bold uppercase leading-none
+          ${targetType === 'PROCEDURE'
+            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300'
+            : 'bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300'
+          }`}>
+          {targetType === 'PROCEDURE' ? 'PROC' : 'TBL'}
+        </span>
+      )}
       {!isSel && <span className="opacity-50 ml-0.5">{doneCount}/5</span>}
     </button>
   );
@@ -61,6 +70,7 @@ export function EquipmentTypeChips({ agents, selected, onSelect, groupByStatus =
           <ChipButton key={name} name={name}
             doneCount={agents[name]?.doneCount ?? 0}
             isSel={selected === name}
+            targetType={agents[name]?.targetType}
             onClick={() => onSelect(name)} />
         ))}
       </div>
@@ -81,7 +91,7 @@ export function EquipmentTypeChips({ agents, selected, onSelect, groupByStatus =
             {done.map((name, i) => (
               <div key={name} className={i === 0 ? 'rounded-l overflow-hidden' : i === done.length - 1 ? 'rounded-r overflow-hidden' : ''}>
                 <ChipButton name={name} doneCount={agents[name]?.doneCount ?? 0}
-                  isSel={selected === name} onClick={() => onSelect(name)} />
+                  isSel={selected === name} targetType={agents[name]?.targetType} onClick={() => onSelect(name)} />
               </div>
             ))}
           </div>
@@ -96,7 +106,7 @@ export function EquipmentTypeChips({ agents, selected, onSelect, groupByStatus =
             {prog.map((name, i) => (
               <div key={name} className={i === 0 ? 'rounded-l overflow-hidden' : i === prog.length - 1 ? 'rounded-r overflow-hidden' : ''}>
                 <ChipButton name={name} doneCount={agents[name]?.doneCount ?? 0}
-                  isSel={selected === name} onClick={() => onSelect(name)} />
+                  isSel={selected === name} targetType={agents[name]?.targetType} onClick={() => onSelect(name)} />
               </div>
             ))}
           </div>

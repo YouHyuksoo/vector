@@ -40,6 +40,7 @@ export default function MappingPage() {
   const [pipelineKey, setPipelineKey] = useState(0);
   const [targetMap, setTargetMap] = useState<Record<string, TargetMapEntry>>({});
   const autoSelecting = useRef(false);
+  const userSwitched = useRef(false);
   const { t } = useI18n();
 
   /** 자동 선택 중 loadTable/loadProcedure 내부 setLogType(null) 차단 */
@@ -85,9 +86,10 @@ export default function MappingPage() {
     ? tbl.registry.filter(r => r.SOURCE_FIELD).length
     : proc.procParams.filter(p => p.SOURCE_FIELD).length;
 
-  /** 설비 유형 선택 시 targetMap 기반 테이블/프로시져 자동 선택 */
+  /** 설비 유형 선택 시 targetMap 기반 테이블/프로시져 자동 선택 (사용자가 수동 전환한 경우 건너뜀) */
   useEffect(() => {
     if (!logType || autoSelecting.current) return;
+    if (userSwitched.current) { userSwitched.current = false; return; }
     const entry = targetMap[logType];
     if (!entry) return;
     const isProc = entry.targetType === 'PROCEDURE';
@@ -132,11 +134,12 @@ export default function MappingPage() {
   }, [targetType, tbl, proc, t]);
 
   const switchTargetType = (type: TargetType) => {
+    if (type === targetType) return;
+    userSwitched.current = true;
     setTargetType(type);
     tbl.reset();
     proc.reset();
     setSaveMsg('');
-    setLogType(null);
   };
 
   return (
