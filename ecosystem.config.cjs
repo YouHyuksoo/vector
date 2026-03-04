@@ -18,7 +18,7 @@ module.exports = {
       interpreter: 'node',
       env: {
         NODE_ENV: 'production',
-        PORT: 3100,
+        PORT: 3110,
         HOST: '0.0.0.0',
       },
       instances: 1,
@@ -36,12 +36,12 @@ module.exports = {
     {
       name: 'vector-frontend',
       script: 'node_modules/.bin/next',
-      args: 'start --port 3000',
+      args: 'start --port 3100',
       cwd: __dirname + '/frontend',
       interpreter: 'node',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000,
+        PORT: 3100,
       },
       instances: 1,
       exec_mode: 'fork',

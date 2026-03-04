@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   async rewrites() {
     return [
-      { source: '/api/:path*', destination: 'http://localhost:3100/api/:path*' },
+      { source: '/api/:path*', destination: 'http://localhost:3110/api/:path*' },
     ];
   },
   turbopack: {

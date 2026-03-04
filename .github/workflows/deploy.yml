@@ -75,9 +75,9 @@ jobs:
           echo "Waiting for services to start..."
           sleep 5
           # 백엔드 헬스체크
-          curl -sf http://localhost:3100/api/monitor/pipeline-status > /dev/null && echo "Backend OK" || echo "Backend not ready yet"
+          curl -sf http://localhost:3110/api/monitor/pipeline-status > /dev/null && echo "Backend OK" || echo "Backend not ready yet"
           # 프론트엔드 헬스체크
-          curl -sf http://localhost:3000 > /dev/null && echo "Frontend OK" || echo "Frontend not ready yet"
+          curl -sf http://localhost:3100 > /dev/null && echo "Frontend OK" || echo "Frontend not ready yet"
 
       - name: Show PM2 status
         if: always()

@@ -14,7 +14,7 @@ import { config } from 'dotenv';
 config();
 
 const envSchema = z.object({
-  PORT: z.coerce.number().default(3100),
+  PORT: z.coerce.number().default(3110),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
