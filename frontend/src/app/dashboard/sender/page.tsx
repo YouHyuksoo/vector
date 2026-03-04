@@ -4,7 +4,7 @@
  *
  * 초보자 가이드:
  * 1. **주요 개념**: 설비 유형별(SP, SPI, MAOI 등) 독립 TOML 설정 관리
- * 2. **좌측 패널**: 설비 목록 + 추가/삭제
+ * 2. **좌측 패널**: 설비 목록 + 통합 5단계 파이프라인 진행률
  * 3. **우측 패널**: 선택된 설비의 TOML 에디터 + 다운로드
  */
 'use client';
@@ -15,15 +15,14 @@ import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import { EquipmentList } from './components/EquipmentList';
 import { AgentConfigPanel } from './components/AgentConfigPanel';
+import { usePipelineStatus } from '@/hooks/usePipelineStatus';
 
 export default function SenderPage() {
   const [names, setNames] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   type DescEntry = string | { description?: string; encoding?: string };
-  type ConfigStatus = Record<string, boolean>;
   const [rawDescs, setRawDescs] = useState<Record<string, DescEntry>>({});
-  const [configStatus, setConfigStatus] = useState<Record<string, ConfigStatus>>({});
   const getDescStr = (e?: DescEntry) => typeof e === 'string' ? e : e?.description ?? '';
   const getEncStr = (e?: DescEntry) => typeof e === 'object' && e?.encoding ? e.encoding : 'utf-8';
   const descriptions: Record<string, string> = Object.fromEntries(
@@ -34,14 +33,16 @@ export default function SenderPage() {
   const [newDesc, setNewDesc] = useState('');
   const [addError, setAddError] = useState('');
   const [showDelete, setShowDelete] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { t } = useI18n();
+
+  const { agents: pipelineStatus, refresh: refreshPipeline } = usePipelineStatus(refreshKey);
 
   const fetchNames = useCallback(async () => {
     try {
-      const data = await apiFetch<{ names: string[]; descriptions?: Record<string, DescEntry>; configStatus?: Record<string, ConfigStatus> }>('/api/monitor/agent/configs');
+      const data = await apiFetch<{ names: string[]; descriptions?: Record<string, DescEntry> }>('/api/monitor/agent/configs');
       setNames(data.names);
       setRawDescs(data.descriptions || {});
-      setConfigStatus(data.configStatus || {});
       if (!selected && data.names.length > 0) setSelected(data.names[0]);
     } catch { /* ignore */ }
     setLoading(false);
@@ -67,6 +68,7 @@ export default function SenderPage() {
       setAddError('');
       await fetchNames();
       setSelected(trimmed);
+      setRefreshKey(k => k + 1);
     } catch {
       setAddError(t('sender.addFailed'));
     }
@@ -80,6 +82,7 @@ export default function SenderPage() {
       const remaining = names.filter(n => n !== selected);
       setSelected(remaining.length > 0 ? remaining[0] : null);
       await fetchNames();
+      setRefreshKey(k => k + 1);
     } catch { /* ignore */ }
   };
 
@@ -100,6 +103,11 @@ export default function SenderPage() {
   const handleDownload = () => {
     if (!selected) return;
     window.open(`/api/monitor/agent/config/${selected}/download`, '_blank');
+  };
+
+  const handleSaved = async () => {
+    await fetchNames();
+    setRefreshKey(k => k + 1);
   };
 
   if (loading) {
@@ -126,7 +134,7 @@ export default function SenderPage() {
         <EquipmentList
           names={names}
           descriptions={descriptions}
-          configStatus={configStatus}
+          pipelineStatus={pipelineStatus}
           selected={selected}
           onSelect={setSelected}
           onAdd={() => setShowAdd(true)}
@@ -142,7 +150,7 @@ export default function SenderPage() {
               description={descriptions[selected] || ''}
               encoding={getEncStr(rawDescs[selected])}
               onDescriptionSave={(desc, enc) => handleDescUpdate(selected, desc, enc)}
-              onSaved={fetchNames}
+              onSaved={handleSaved}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-2">
