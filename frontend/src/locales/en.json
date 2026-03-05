@@ -89,7 +89,9 @@
     "line": "Line",
     "success": "Success",
     "fail": "Fail",
-    "rate": "Rate"
+    "rate": "Rate",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No activity"
   },
   "errors": {
     "title": "PROCESSING LOGS",

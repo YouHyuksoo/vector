@@ -89,7 +89,9 @@
     "line": "라인",
     "success": "성공",
     "fail": "실패",
-    "rate": "성공률"
+    "rate": "성공률",
+    "recentActivity": "최근 처리 내역",
+    "noActivity": "처리 내역 없음"
   },
   "errors": {
     "title": "처리 로그",
