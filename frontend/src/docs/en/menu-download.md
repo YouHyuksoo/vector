@@ -18,6 +18,7 @@ Click **Download vector.zip** to download the Vector engine archive.
 
 - File size: ~40MB
 - Extract on the equipment PC before use
+- Included files: `bin/vector.exe`, `start-vector.bat`, `stop-vector.bat`, `install-service.bat`, `uninstall-service.bat`
 
 ### 2. Equipment Config Files
 
@@ -43,7 +44,8 @@ A 5-step installation guide is shown at the bottom:
 2. Download equipment TOML → Place in same folder
 3. Edit TOML file:
    - include = ["C:/actual/log/path/*.csv"]
-   - address = "actual-server-ip:9000"
-4. Run: vector.exe --config EQUIP-01.toml
+   - address = "actual-server-ip:6000"
+4. Run: double-click start-vector.bat (data_dir auto-created)
+   Or register service: run install-service.bat as admin
 5. Verify Agent online status on Dashboard
 ```

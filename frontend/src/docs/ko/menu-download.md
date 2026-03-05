@@ -18,6 +18,7 @@
 
 - 파일 크기: 약 40MB
 - 설비 PC에 압축 해제 후 사용합니다
+- zip에 포함된 파일: `bin/vector.exe`, `start-vector.bat`, `stop-vector.bat`, `install-service.bat`, `uninstall-service.bat`
 
 ### 2. 설비별 설정 파일
 
@@ -43,7 +44,8 @@
 2. 설비 TOML 다운로드 → 같은 폴더에 배치
 3. TOML 파일 편집:
    - include = ["C:/실제/로그/경로/*.csv"]
-   - address = "실제서버IP:9000"
-4. 실행: vector.exe --config EQUIP-01.toml
+   - address = "실제서버IP:6000"
+4. 실행: start-vector.bat 더블클릭 (data_dir 자동 생성)
+   또는 서비스 등록: install-service.bat 관리자 실행
 5. 대시보드에서 Agent 온라인 확인
 ```

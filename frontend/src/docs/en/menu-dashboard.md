@@ -25,6 +25,21 @@ Displays the status of 4 core system components.
 
 - The Vector item has **Start/Stop** buttons to directly control the collection engine
 
+### Server Resource Monitoring
+
+Hardware resource usage is displayed as progress bars below the infrastructure status card.
+
+| Item | Display | Warning |
+|------|---------|---------|
+| **CPU** | Usage %, core count | Red at 90%+ |
+| **Memory** | Used / Total (GB) | Warning message at 90%+ |
+| **Disk** | Used / Total (GB) | Warning message at 90%+ |
+
+- Below 70%: **Green** (Normal)
+- 70% ~ 90%: **Yellow** (Caution)
+- 90% and above: **Red** + blinking warning message
+- Auto-refreshes every 5 seconds
+
 ### Queue Status
 
 Shows the BullMQ job queue processing status.
