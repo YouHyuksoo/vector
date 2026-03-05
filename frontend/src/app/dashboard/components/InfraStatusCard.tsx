@@ -22,6 +22,11 @@ export function InfraStatusCard({ data }: Props) {
     { label: t('infra.oracle'), icon: 'database', ok: data.oracle.connected, val: data.oracle.connected ? (data.tables.length > 0 ? `${data.tables.length} ${t('infra.tables')}` : t('infra.connected')) : t('infra.down') },
   ];
 
+  const disk = data.server.disk;
+  const diskPercent = disk?.percent ?? 0;
+  const diskWarning = diskPercent >= 90;
+  const fmtGB = (b: number) => `${(b / 1024 / 1024 / 1024).toFixed(1)}G`;
+
   const toggleVector = async () => {
     setVecLoading(true);
     const ep = data.vector.running ? '/api/monitor/vector/stop' : '/api/monitor/vector/start';
@@ -56,6 +61,29 @@ export function InfraStatusCard({ data }: Props) {
             {vecLoading ? t('infra.loading') : data.vector.running ? t('infra.stop') : t('infra.start')}
           </button>
         </div>
+        {disk && (
+          <div className="pt-2 border-t border-border/50">
+            <div className="flex items-center gap-3 px-1 py-1">
+              <span className={`size-2 rounded-full ${diskWarning ? 'bg-error shadow-[0_0_6px_rgba(239,68,68,0.4)] animate-pulse' : 'bg-success shadow-[0_0_6px_rgba(34,197,94,0.5)]'}`} />
+              <Icon name="hard_drive" size="xs" className="text-muted-foreground" />
+              <span className="text-base font-medium flex-1">{t('infra.disk')}</span>
+              <span className={`font-mono text-sm ${diskWarning ? 'text-error font-bold' : 'text-muted-foreground'}`}>
+                {fmtGB(disk.used)} / {fmtGB(disk.total)} ({diskPercent}%)
+              </span>
+            </div>
+            <div className="mx-1 mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${diskPercent >= 90 ? 'bg-error' : diskPercent >= 70 ? 'bg-warning' : 'bg-success'}`}
+                style={{ width: `${diskPercent}%` }}
+              />
+            </div>
+            {diskWarning && (
+              <p className="text-xs text-error font-medium mt-1 px-1 animate-pulse">
+                ⚠ {t('infra.diskWarning')}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </Card>
   );

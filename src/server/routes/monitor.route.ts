@@ -11,8 +11,8 @@
 import { FastifyPluginAsync } from 'fastify';
 import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync, mkdirSync, statSync, copyFileSync, rmSync } from 'fs';
 import { join, dirname, basename } from 'path';
-import { tmpdir } from 'os';
-import { spawn } from 'child_process';
+import { tmpdir, platform } from 'os';
+import { spawn, execSync } from 'child_process';
 import { getQueue } from '../../queue/queue.manager.js';
 import { QUEUE_NAMES } from '../../config/constants.js';
 import { heartbeatService } from '../../redis/heartbeat.service.js';
@@ -98,12 +98,14 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         checkOracle(),
       ]);
 
+    const disk = getDiskInfo();
     return reply.send({
       server: {
         status: 'ok',
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
         nodeEnv: process.env.NODE_ENV ?? 'development',
+        ...(disk && { disk }),
       },
       oracle: oracleStatus.status === 'fulfilled' ? oracleStatus.value : { connected: false },
       redis: redisStatus.status === 'fulfilled' ? redisStatus.value : { connected: false },
@@ -2328,6 +2330,26 @@ function getRecentErrors() {
 
 function getRecentLogs() {
   return errorLogRepository.query({ limit: 100 }).logs;
+}
+
+/** 서버 디스크 사용량 조회 (C: 드라이브 기준, Linux는 /) */
+function getDiskInfo(): { total: number; used: number; free: number; percent: number } | null {
+  try {
+    if (platform() === 'win32') {
+      const out = execSync('wmic logicaldisk where "DeviceID=\'C:\'" get Size,FreeSpace /format:csv', { encoding: 'utf-8' });
+      const lines = out.trim().split('\n').filter(l => l.trim());
+      const last = lines[lines.length - 1].split(',');
+      const free = Number(last[1]);
+      const total = Number(last[2]);
+      const used = total - free;
+      return { total, used, free, percent: Math.round((used / total) * 100) };
+    }
+    const out = execSync("df -B1 / | tail -1 | awk '{print $2,$3,$4}'", { encoding: 'utf-8' });
+    const [t, u, f] = out.trim().split(/\s+/).map(Number);
+    return { total: t, used: u, free: f, percent: Math.round((u / t) * 100) };
+  } catch {
+    return null;
+  }
 }
 
 async function checkOracle() {

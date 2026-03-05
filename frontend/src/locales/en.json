@@ -69,7 +69,9 @@
     "stopped": "stopped",
     "loading": "Loading...",
     "stop": "STOP",
-    "start": "START"
+    "start": "START",
+    "disk": "Disk",
+    "diskWarning": "Low disk space!"
   },
   "queue": {
     "title": "Queue",

@@ -69,7 +69,9 @@
     "stopped": "정지",
     "loading": "처리 중...",
     "stop": "정지",
-    "start": "시작"
+    "start": "시작",
+    "disk": "디스크",
+    "diskWarning": "디스크 공간 부족!"
   },
   "queue": {
     "title": "큐 현황",
