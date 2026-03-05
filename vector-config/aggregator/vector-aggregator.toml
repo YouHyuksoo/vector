@@ -230,7 +230,7 @@ if .equipment_type == "SP" {
 
     # ── BoardInfo 파싱 (줄3) ──
     board_line = get!(lines, [2])
-    board = split(board_line, ",")
+    board = split!(board_line, ",")
     .data.INSPECTOR    = get!(board, [0])
     .data.MODEL        = get!(board, [1])
     .data.LOT_ID       = get!(board, [2])
