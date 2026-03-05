@@ -30,6 +30,7 @@ export interface MonitorOverview {
   equipments: Array<{ equipment_id: string; online: boolean; last_seen: string; metadata: Record<string, string> }>;
   tables: Array<{ TABLE_NAME: string; COLUMN_COUNT: number }>;
   recentErrors: Array<{ LOG_ID: number; SOURCE_TABLE: string; EQUIPMENT_ID: string; MESSAGE: string; STAGE: string; STATUS: string; CREATED_AT: string }>;
+  recentLogs: Array<{ LOG_ID: number; SOURCE_TABLE: string; EQUIPMENT_ID: string; MESSAGE: string; STAGE: string; STATUS: string; CREATED_AT: string }>;
 }
 
 export interface ProcessLogRow {
