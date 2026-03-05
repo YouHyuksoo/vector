@@ -144,7 +144,7 @@ source = '''
 .raw_message = .message
 
 # Windows 줄바꿈(\r) 제거 — CSV 파일의 \r\n을 \n으로 통일
-.message = replace(.message, r'\r', "")
+.message = replace!(to_string!(.message), r'\r', "")
 
 # 원본 파일명 추출
 .filename = ""
@@ -158,7 +158,7 @@ if err == null {
 
 # 대상 Oracle 테이블명 설정 (로그 유형 기준)
 # LOG_INSPECTION, LOG_ALARM, LOG_PROCESS
-.target_table = "LOG_" + to_string(.log_type)
+.target_table = "LOG_" + to_string!(.log_type)
 
 # =================================================
 # 1단계: 설비유형별 분기 (equipment_type)
@@ -187,7 +187,7 @@ if .equipment_type == "SP" {
 } else if .equipment_type == "SPI" {
   .target_table = "LOG_SPI"
   # PROCEDURE 모드 사용 시 아래 두 줄의 주석을 해제하세요
-  values = split(.message, "\n")
+  values = split!(to_string!(.message), "\n")
   data_line = split(to_string(get!(values, [1])), ",")
   .data.MASTER_BARCODE = strip_whitespace(to_string(get!(data_line, [0])))
   .data.PCB_ID = strip_whitespace(to_string(get!(data_line, [1])))
@@ -226,7 +226,7 @@ if .equipment_type == "SP" {
     #   줄5: ModuleID,RefID,WindowNo,DefectType,...
     #   줄6~: 0,_COMP_61462_,5,WrongPart,...  (N행)
 
-    lines = split(.message, "\n")
+    lines = split!(to_string!(.message), "\n")
 
     # ── BoardInfo 파싱 (줄3) ──
     board_line = get!(lines, [2])
@@ -296,7 +296,7 @@ if .equipment_type == "SP" {
   }
 
 } else if .equipment_type == "FCT" {
-  lines = split(.message, "\n")
+  lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_FCT"
   .data.ROWS = []
 
@@ -416,7 +416,7 @@ if .equipment_type == "SP" {
   }
 
 } else if .equipment_type == "VISION_LEGACY" {
-  lines = split(.message, "\n")
+  lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_VISION_LEGACY"
   .data.ROWS = []
 
@@ -490,7 +490,8 @@ if .equipment_type == "SP" {
     .data = {}
   }
 
-} else if .equipment_type == "DOWNLOAD" {  lines = split(.message, "\n")
+} else if .equipment_type == "DOWNLOAD" {
+  lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_DOWNLOAD"
   .data.BARCODE = strip_whitespace(to_string(get!(split(to_string(get!(lines, [1])), ","), [0])))
   .data.PCB_NO = strip_whitespace(to_string(get!(split(to_string(get!(lines, [1])), ","), [1])))
@@ -549,7 +550,8 @@ if .equipment_type == "SP" {
       .data.DETAILS = push(.data.DETAILS, item)
     }
   }
-} else if .equipment_type == "LOWCURRENT" {  lines = split(.message, "\n")
+} else if .equipment_type == "LOWCURRENT" {
+  lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_LOWCURRENT"
   first_row = split(to_string(get!(lines, [1])), ",")
 
@@ -595,7 +597,7 @@ if .equipment_type == "SP" {
     }
   }
 } else {
-  log("Unknown equipment_type: " + to_string(.equipment_type), level: "warn")
+  log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
   .data = {}
 }
 
