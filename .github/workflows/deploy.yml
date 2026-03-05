@@ -32,7 +32,7 @@ jobs:
 
     defaults:
       run:
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
 
     steps:
       - name: Verify DEPLOY_DIR
