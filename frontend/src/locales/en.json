@@ -36,12 +36,24 @@
   },
   "serviceFlow": {
     "title": "Service Connection Flow",
+    "online": "online",
     "agent": "Agent",
     "aggregator": "Aggregator",
     "backend": "Backend",
     "oracle": "Oracle",
     "redis": "Redis",
-    "frontend": "Frontend"
+    "frontend": "Frontend",
+    "agentDesc": "Equipment log collector",
+    "aggregatorDesc": "Log receiver & VRL parser",
+    "backendDesc": "API server (Fastify)",
+    "oracleDesc": "Persistent data store",
+    "redisDesc": "Queue / Cache",
+    "frontendDesc": "Dashboard UI",
+    "arrowLog": "RAW logs",
+    "arrowParsed": "Parsed data",
+    "arrowStore": "Store & Cache",
+    "arrowCache": "Bi-directional",
+    "arrowServe": "API response"
   },
   "infra": {
     "title": "Infrastructure",

@@ -36,12 +36,24 @@
   },
   "serviceFlow": {
     "title": "서비스 연결 흐름",
+    "online": "온라인",
     "agent": "Agent",
     "aggregator": "Aggregator",
     "backend": "Backend",
     "oracle": "Oracle",
     "redis": "Redis",
-    "frontend": "Frontend"
+    "frontend": "Frontend",
+    "agentDesc": "설비 PC 로그 수집",
+    "aggregatorDesc": "로그 수신 및 VRL 파싱",
+    "backendDesc": "API 서버 (Fastify)",
+    "oracleDesc": "데이터 영구 저장",
+    "redisDesc": "큐 / 캐시",
+    "frontendDesc": "대시보드 UI",
+    "arrowLog": "RAW 로그",
+    "arrowParsed": "파싱 데이터",
+    "arrowStore": "저장 및 캐싱",
+    "arrowCache": "양방향",
+    "arrowServe": "API 응답"
   },
   "infra": {
     "title": "인프라 현황",

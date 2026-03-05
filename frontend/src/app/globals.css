@@ -261,6 +261,7 @@
   --animate-slide-in-right: slide-in-right 0.35s ease-out;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
   --animate-flow-right: flow-right 1.5s linear infinite;
+  --animate-flow-left: flow-left 1.5s linear infinite;
 }
 
 /* ── Base Styles ──────────────────────────────────────────────────────── */
@@ -372,5 +373,14 @@ body {
   }
   100% {
     transform: translateX(100%);
+  }
+}
+
+@keyframes flow-left {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
   }
 }
