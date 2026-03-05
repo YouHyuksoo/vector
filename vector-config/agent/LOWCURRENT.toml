@@ -60,7 +60,7 @@ source = '''
 [sinks.to_aggregator]
 type = "vector"
 inputs = ["add_metadata", "heartbeat"]
-address = "127.0.0.1:6000"
+address = "20.10.30.231:6000"
 
 [sinks.to_aggregator.buffer]
 type = "disk"

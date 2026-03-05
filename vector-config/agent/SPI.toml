@@ -45,6 +45,26 @@ timeout_ms = 1000
 
 # ── [설비 설정] ──
 
+
+# ── [하트비트] 주기적 상태 전송 (30초 간격) ──
+[sources.heartbeat]
+type = "static_metrics"
+interval_secs = 30
+namespace = "agent"
+
+[[sources.heartbeat.metrics]]
+name = "heartbeat"
+kind = "absolute"
+
+[sources.heartbeat.metrics.value.gauge]
+value = 1
+
+[sources.heartbeat.metrics.tags]
+equipment_type = "SPI"
+equipment_id = "SPI-001"
+line_code = "LINE-01"
+log_type = "INSPECTION"
+
 [transforms.add_metadata]
 type = "remap"
 inputs = ["work_logs"]
@@ -59,8 +79,8 @@ source = '''
 
 [sinks.to_aggregator]
 type = "vector"
-inputs = ["add_metadata"]
-address = "127.0.0.1:6000"
+inputs = ["add_metadata", "heartbeat"]
+address = "20.10.30.231:6000"
 
 [sinks.to_aggregator.buffer]
 type = "disk"

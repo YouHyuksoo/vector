@@ -13,8 +13,8 @@ import { useState, useEffect } from 'react';
 import { Icon, Card } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
+import { QuickGuide } from './components/QuickGuide';
 
-const STEPS = ['step1', 'step2', 'step3', 'step4', 'step5'] as const;
 
 export default function DownloadPage() {
   const [agents, setAgents] = useState<string[]>([]);
@@ -39,6 +39,8 @@ export default function DownloadPage() {
           </span>
         </h1>
       </div>
+
+      <QuickGuide />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Vector 실행파일 다운로드 */}
@@ -99,24 +101,6 @@ export default function DownloadPage() {
         </Card>
       </div>
 
-      {/* 설치 가이드 */}
-      <Card>
-        <p className="text-base font-bold text-text dark:text-white mb-4 flex items-center gap-2">
-          <Icon name="checklist" className="text-primary" />
-          {t('download.steps')}
-        </p>
-        <ol className="space-y-3">
-          {STEPS.map((step, i) => (
-            <li key={step} className="flex gap-3 text-sm">
-              <span className="flex-shrink-0 size-6 rounded-full bg-primary/10 text-primary
-                flex items-center justify-center text-xs font-bold">
-                {i + 1}
-              </span>
-              <span className="text-text dark:text-white pt-0.5">{t(`download.${step}`)}</span>
-            </li>
-          ))}
-        </ol>
-      </Card>
     </>
   );
 }
