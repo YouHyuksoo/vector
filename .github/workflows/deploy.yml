@@ -28,7 +28,7 @@ jobs:
   deploy:
     strategy:
       matrix:
-        server: [server1, server2]
+        server: [MesServer, LogServer]
       fail-fast: false
 
     runs-on: [self-hosted, Windows, "${{ matrix.server }}"]
