@@ -20,7 +20,15 @@ import { monitorRoute } from './routes/monitor.route.js';
 export async function buildApp() {
   const app = Fastify({
     loggerInstance: logger,
+    disableRequestLogging: true,
     bodyLimit: 10 * 1024 * 1024, // 10MB
+  });
+
+  // 간결한 요청 로그 (한 줄로 요약)
+  app.addHook('onResponse', (req, reply, done) => {
+    const ms = reply.elapsedTime.toFixed(1);
+    req.log.info(`${req.method} ${req.url} → ${reply.statusCode} (${ms}ms)`);
+    done();
   });
 
   // Plugins

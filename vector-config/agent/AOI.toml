@@ -27,6 +27,7 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
+  "C:\\logs\\aoi\\*.txt",
   "C:\\logs\\aoi\\*.csv",
 ]
 read_from = "beginning"
@@ -39,7 +40,7 @@ ignore_older_secs = 86400
 # 이후 모든 줄을 계속 이어붙임. 1초간 새 줄이 없으면 전송 완료.
 [sources.work_logs.multiline]
 start_pattern = "^"
-condition_pattern = "^$$NEVER_MATCH"
+condition_pattern = '^$$NEVER_MATCH'
 mode = "halt_before"
 timeout_ms = 1000
 
@@ -82,7 +83,7 @@ source = '''
 [sinks.to_aggregator]
 type = "vector"
 inputs = ["add_metadata", "heartbeat"]
-address = "20.10.30.231:6000"
+address = "20.10.30.112:6000"
 
 [sinks.to_aggregator.buffer]
 type = "disk"

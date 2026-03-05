@@ -49,7 +49,8 @@
       "Bash(sleep 3:*)",
       "Bash(head:*)",
       "Bash(C:/Project/vector/vector-bin/bin/vector.exe:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "WebFetch(domain:docs.rs)"
     ]
   }
 }

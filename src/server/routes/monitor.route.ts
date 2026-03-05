@@ -86,12 +86,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   /** 통합 모니터링 데이터 */
   app.get('/api/monitor/overview', async (_request, reply) => {
-    const [queueStats, equipments, tableStats, recentErrors, redisStatus, vectorStatus, oracleStatus] =
+    const [queueStats, equipments, tableStats, recentErrors, recentLogs, redisStatus, vectorStatus, oracleStatus] =
       await Promise.allSettled([
         getQueueStats(),
         heartbeatService.getAllStatuses(),
         getTableStats(),
         getRecentErrors(),
+        getRecentLogs(),
         checkRedis(),
         getVectorStatus(),
         checkOracle(),
@@ -116,6 +117,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         ? mergeEquipmentDescriptions(equipments.value) : [],
       tables: tableStats.status === 'fulfilled' ? tableStats.value : [],
       recentErrors: recentErrors.status === 'fulfilled' ? recentErrors.value : [],
+      recentLogs: recentLogs.status === 'fulfilled' ? recentLogs.value : [],
     });
   });
 
@@ -2322,6 +2324,10 @@ cleanupOrphanedRegistry();
 
 function getRecentErrors() {
   return errorLogRepository.query({ status: 'ERROR', limit: 20 }).logs;
+}
+
+function getRecentLogs() {
+  return errorLogRepository.query({ limit: 100 }).logs;
 }
 
 async function checkOracle() {

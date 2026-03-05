@@ -191,7 +191,46 @@ EPERM: operation not permitted, unlink '...node.napi.node'
 **원인**: Windows self-hosted runner에 gzip이 없어서 npm 캐시 저장 실패
 **해결**: `setup-node`에서 `cache: 'npm'` 제거 완료. 동작에 영향 없음
 
-### 5-8. PM2 wmic ENOENT
+### 5-8. Agent TOML 환경변수 오류 ($NEVER_MATCH)
+```
+Configuration error. error=Missing environment variable in config. name = "NEVER_MATCH"
+```
+**원인**: multiline의 `condition_pattern = "^$NEVER_MATCH"` 에서 Vector가 `$NEVER_MATCH`를 환경변수로 해석.
+Vector는 TOML 파싱 **전에** 텍스트 레벨에서 `$VAR`를 환경변수 치환함. 홑따옴표/쌍따옴표 무관.
+**해결**: `$$`로 이스케이프 → `condition_pattern = '^$$NEVER_MATCH'`
+
+### 5-9. Agent 파일 감지는 되지만 데이터가 서버에 안 올라옴
+**증상**: `Found new file to watch` 또는 `Resuming to watch file` 로그는 나오지만 서버에 데이터 없음
+**원인 1 — 체크포인트**: Vector는 읽은 위치를 `data_dir`에 기록함. 이전 실행에서 이미 끝까지 읽은 파일은 재시작해도 다시 안 읽음.
+**해결**:
+```powershell
+# 1. Vector 중지 (반드시 먼저!)
+stop-vector.bat
+
+# 2. data_dir 삭제 (체크포인트 초기화)
+rd /s /q C:\vector-data-{설비명}
+
+# 3. Vector 재시작 (data_dir은 start-vector.bat이 자동 생성)
+start-vector.bat
+```
+> **주의**: Vector 실행 중에 data_dir을 삭제하면 안 됨!
+
+**원인 2 — Aggregator 포트**: Agent의 `address`가 Aggregator 수신 포트(6000)가 아닌 다른 포트(예: 3100)로 설정됨
+**해결**: `[sinks.to_aggregator]`의 `address`가 `서버IP:6000`인지 확인
+
+### 5-10. Agent 전송 확인 방법 (GraphQL API)
+Agent가 데이터를 실제로 전송했는지 확인하려면:
+```powershell
+# Agent 측 (로컬 PC) — 소스별 이벤트 수
+curl http://127.0.0.1:8686/graphql -H "Content-Type: application/json" -d "{\"query\":\"{ sources { edges { node { componentId metrics { sentEventsTotal { sentEventsTotal } } } } } }\"}"
+
+# Aggregator 측 (서버) — Sink별 전송 수
+curl http://서버IP:8687/graphql -H "Content-Type: application/json" -d "{\"query\":\"{ sinks { edges { node { componentId metrics { sentEventsTotal { sentEventsTotal } } } } } }\"}"
+```
+- `work_logs.sentEventsTotal = 0` → multiline이 파일을 묶고 있는 중이거나 체크포인트 문제
+- Agent는 전송했는데 서버 `to_api = null` → Aggregator VRL 파싱 실패 (데이터 구조 불일치)
+
+### 5-11. PM2 wmic ENOENT
 ```
 Error: spawn wmic ENOENT
 ```

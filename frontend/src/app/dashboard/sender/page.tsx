@@ -43,7 +43,7 @@ export default function SenderPage() {
       const data = await apiFetch<{ names: string[]; descriptions?: Record<string, DescEntry> }>('/api/monitor/agent/configs');
       setNames(data.names);
       setRawDescs(data.descriptions || {});
-      if (!selected && data.names.length > 0) setSelected(data.names[0]);
+      setSelected(prev => (!prev && data.names.length > 0) ? data.names[0] : prev);
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
