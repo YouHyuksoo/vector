@@ -184,7 +184,7 @@ if .equipment_type == "SP" {
     .data = {}
   }
 
-} else if .equipment_type == "SPI" {  # PROCEDURE 모드 사용 시 아래 두 줄의 주석을 해제하세요  values = split(.message, "\n")  data_line = split(to_string(get!(values, [1])), ",")  .data.MASTER_BARCODE = strip_whitespace(to_string(get!(data_line, [0])))
+} else if .equipment_type == "SPI" {  # PROCEDURE 모드 사용 시 아래 두 줄의 주석을 해제하세요  values = split(.message, "\n")  data_line = split(to_string(get!(values, [1])), ",")  .data.MASTER_BARCODE = strip_whitespace(to_string(get!(data_line, [0])))
   .target_table = "LOG_SPI"
   .data.PCB_ID = strip_whitespace(to_string(get!(data_line, [1])))
   .data.INSPECTION_DATE = strip_whitespace(to_string(get!(data_line, [2])))
