@@ -47,6 +47,9 @@ jobs:
           }
           Write-Host "[${{ matrix.server }}] Deploy target: $env:DEPLOY_DIR"
 
+      - name: Disable autocrlf
+        run: git config --global core.autocrlf false
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -90,6 +93,17 @@ jobs:
             /XD ".git" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
 
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
+
+      - name: Fix TOML line endings (CRLF to LF)
+        run: |
+          Get-ChildItem "$env:DEPLOY_DIR\vector-config" -Recurse -Filter "*.toml" | ForEach-Object {
+            $content = [System.IO.File]::ReadAllText($_.FullName)
+            if ($content -match "`r") {
+              $content = $content -replace "`r`n", "`n"
+              [System.IO.File]::WriteAllText($_.FullName, $content, [System.Text.UTF8Encoding]::new($false))
+              Write-Host "Fixed: $($_.Name)"
+            }
+          }
 
       - name: Create logs directory
         run: |
