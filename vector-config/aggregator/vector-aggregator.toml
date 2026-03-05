@@ -655,7 +655,7 @@ source = '''
 type = "remap"
 inputs = ["route_events._unmatched"]
 source = '''
-.filename = replace(.file, r'.*[\\/]', "")
+.filename = replace!(to_string!(.file), r'.*[\\/]', "")
 '''
 
 # -----------------------------------------------------------------------------
@@ -670,7 +670,7 @@ source = '''
   "equipment_id": .equipment_id,
   "equipment_type": .equipment_type,
   "log_type": .log_type,
-  "filename": replace(.file, r'.*[\\/]', "")
+  "filename": replace!(to_string!(.file), r'.*[\\/]', "")
 }
 '''
 
