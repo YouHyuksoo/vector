@@ -71,7 +71,10 @@
     "stop": "STOP",
     "start": "START",
     "disk": "Disk",
-    "diskWarning": "Low disk space!"
+    "diskWarning": "Low disk space!",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "memWarning": "Low memory!"
   },
   "queue": {
     "title": "Queue",

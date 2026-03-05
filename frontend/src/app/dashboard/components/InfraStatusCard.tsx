@@ -10,6 +10,26 @@ function ago(sec: number) {
   return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
 }
 
+function ResourceBar({ label, icon, percent, detail, warning, warningText }: {
+  label: string; icon: string; percent: number; detail: string; warning?: boolean; warningText?: string;
+}) {
+  const color = percent >= 90 ? 'bg-error' : percent >= 70 ? 'bg-warning' : 'bg-success';
+  return (
+    <div>
+      <div className="flex items-center gap-3 px-1 py-1">
+        <span className={`size-2 rounded-full ${warning ? 'bg-error shadow-[0_0_6px_rgba(239,68,68,0.4)] animate-pulse' : 'bg-success shadow-[0_0_6px_rgba(34,197,94,0.5)]'}`} />
+        <Icon name={icon} size="xs" className="text-muted-foreground" />
+        <span className="text-base font-medium flex-1">{label}</span>
+        <span className={`font-mono text-sm ${warning ? 'text-error font-bold' : 'text-muted-foreground'}`}>{detail}</span>
+      </div>
+      <div className="mx-1 mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${Math.min(percent, 100)}%` }} />
+      </div>
+      {warning && warningText && <p className="text-xs text-error font-medium mt-1 px-1 animate-pulse">⚠ {warningText}</p>}
+    </div>
+  );
+}
+
 interface Props { data: MonitorOverview }
 
 export function InfraStatusCard({ data }: Props) {
@@ -23,8 +43,13 @@ export function InfraStatusCard({ data }: Props) {
   ];
 
   const disk = data.server.disk;
+  const mem = data.server.memory;
+  const cpu = data.server.cpu;
   const diskPercent = disk?.percent ?? 0;
+  const memPercent = mem?.percent ?? 0;
+  const cpuPercent = cpu?.percent ?? 0;
   const diskWarning = diskPercent >= 90;
+  const memWarning = memPercent >= 90;
   const fmtGB = (b: number) => `${(b / 1024 / 1024 / 1024).toFixed(1)}G`;
 
   const toggleVector = async () => {
@@ -61,29 +86,11 @@ export function InfraStatusCard({ data }: Props) {
             {vecLoading ? t('infra.loading') : data.vector.running ? t('infra.stop') : t('infra.start')}
           </button>
         </div>
-        {disk && (
-          <div className="pt-2 border-t border-border/50">
-            <div className="flex items-center gap-3 px-1 py-1">
-              <span className={`size-2 rounded-full ${diskWarning ? 'bg-error shadow-[0_0_6px_rgba(239,68,68,0.4)] animate-pulse' : 'bg-success shadow-[0_0_6px_rgba(34,197,94,0.5)]'}`} />
-              <Icon name="hard_drive" size="xs" className="text-muted-foreground" />
-              <span className="text-base font-medium flex-1">{t('infra.disk')}</span>
-              <span className={`font-mono text-sm ${diskWarning ? 'text-error font-bold' : 'text-muted-foreground'}`}>
-                {fmtGB(disk.used)} / {fmtGB(disk.total)} ({diskPercent}%)
-              </span>
-            </div>
-            <div className="mx-1 mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${diskPercent >= 90 ? 'bg-error' : diskPercent >= 70 ? 'bg-warning' : 'bg-success'}`}
-                style={{ width: `${diskPercent}%` }}
-              />
-            </div>
-            {diskWarning && (
-              <p className="text-xs text-error font-medium mt-1 px-1 animate-pulse">
-                ⚠ {t('infra.diskWarning')}
-              </p>
-            )}
-          </div>
-        )}
+        <div className="pt-2 border-t border-border/50 space-y-2">
+          <ResourceBar label={t('infra.cpu')} icon="memory" percent={cpuPercent} detail={cpu ? `${cpuPercent}% (${cpu.cores} cores)` : ''} />
+          {mem && <ResourceBar label={t('infra.memory')} icon="analytics" percent={memPercent} detail={`${fmtGB(mem.used)} / ${fmtGB(mem.total)}`} warning={memWarning} warningText={t('infra.memWarning')} />}
+          {disk && <ResourceBar label={t('infra.disk')} icon="hard_drive" percent={diskPercent} detail={`${fmtGB(disk.used)} / ${fmtGB(disk.total)}`} warning={diskWarning} warningText={t('infra.diskWarning')} />}
+        </div>
       </div>
     </Card>
   );

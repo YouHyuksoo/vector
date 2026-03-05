@@ -11,7 +11,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync, mkdirSync, statSync, copyFileSync, rmSync } from 'fs';
 import { join, dirname, basename } from 'path';
-import { tmpdir, platform } from 'os';
+import { tmpdir, platform, cpus, totalmem, freemem } from 'os';
 import { spawn, execSync } from 'child_process';
 import { getQueue } from '../../queue/queue.manager.js';
 import { QUEUE_NAMES } from '../../config/constants.js';
@@ -99,6 +99,8 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       ]);
 
     const disk = getDiskInfo();
+    const mem = getMemoryInfo();
+    const cpu = getCpuInfo();
     return reply.send({
       server: {
         status: 'ok',
@@ -106,6 +108,8 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         timestamp: new Date().toISOString(),
         nodeEnv: process.env.NODE_ENV ?? 'development',
         ...(disk && { disk }),
+        memory: mem,
+        cpu,
       },
       oracle: oracleStatus.status === 'fulfilled' ? oracleStatus.value : { connected: false },
       redis: redisStatus.status === 'fulfilled' ? redisStatus.value : { connected: false },
@@ -2330,6 +2334,37 @@ function getRecentErrors() {
 
 function getRecentLogs() {
   return errorLogRepository.query({ limit: 100 }).logs;
+}
+
+/** 시스템 메모리 사용량 조회 */
+function getMemoryInfo() {
+  const total = totalmem();
+  const free = freemem();
+  const used = total - free;
+  return { total, used, free, percent: Math.round((used / total) * 100) };
+}
+
+/** CPU 사용률 조회 (직전 1초 평균) */
+let prevCpuIdle = 0;
+let prevCpuTotal = 0;
+let cachedCpuPercent = 0;
+
+function getCpuInfo() {
+  const cores = cpus();
+  let idle = 0;
+  let total = 0;
+  for (const c of cores) {
+    idle += c.times.idle;
+    total += c.times.user + c.times.nice + c.times.sys + c.times.idle + c.times.irq;
+  }
+  if (prevCpuTotal > 0) {
+    const dTotal = total - prevCpuTotal;
+    const dIdle = idle - prevCpuIdle;
+    cachedCpuPercent = dTotal > 0 ? Math.round(((dTotal - dIdle) / dTotal) * 100) : 0;
+  }
+  prevCpuIdle = idle;
+  prevCpuTotal = total;
+  return { percent: cachedCpuPercent, cores: cores.length, model: cores[0]?.model ?? '' };
 }
 
 /** 서버 디스크 사용량 조회 (C: 드라이브 기준, Linux는 /) */

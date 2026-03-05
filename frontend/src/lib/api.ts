@@ -22,7 +22,12 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 }
 
 export interface MonitorOverview {
-  server: { status: string; uptime: number; timestamp: string; nodeEnv: string; disk?: { total: number; used: number; free: number; percent: number } };
+  server: {
+    status: string; uptime: number; timestamp: string; nodeEnv: string;
+    disk?: { total: number; used: number; free: number; percent: number };
+    memory?: { total: number; used: number; free: number; percent: number };
+    cpu?: { percent: number; cores: number; model: string };
+  };
   oracle: { connected: boolean };
   redis: { connected: boolean };
   vector: { running: boolean; pid: number | null; apiReachable: boolean; uptime: string | null; version: string | null };

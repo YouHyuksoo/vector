@@ -71,7 +71,10 @@
     "stop": "정지",
     "start": "시작",
     "disk": "디스크",
-    "diskWarning": "디스크 공간 부족!"
+    "diskWarning": "디스크 공간 부족!",
+    "cpu": "CPU",
+    "memory": "메모리",
+    "memWarning": "메모리 부족!"
   },
   "queue": {
     "title": "큐 현황",
