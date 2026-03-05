@@ -1,5 +1,7 @@
 {
   "nav": {
+    "serverDashboard": "Server Dashboard",
+    "equipmentDashboard": "Equipment Dashboard",
     "dashboard": "Dashboard",
     "logViewer": "Data Viewer",
     "targetMapping": "Target Mapping",
@@ -27,6 +29,19 @@
     "cols": "cols",
     "copyright": "Vector Log Collection",
     "updated": "Updated"
+  },
+  "equipmentDashboard": {
+    "title": "Equipment Dashboard",
+    "subtitle": "Equipment Collector Status"
+  },
+  "serviceFlow": {
+    "title": "Service Connection Flow",
+    "agent": "Agent",
+    "aggregator": "Aggregator",
+    "backend": "Backend",
+    "oracle": "Oracle",
+    "redis": "Redis",
+    "frontend": "Frontend"
   },
   "infra": {
     "title": "Infrastructure",

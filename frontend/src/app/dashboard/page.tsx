@@ -2,7 +2,7 @@
 import { useMonitor } from '@/hooks/useMonitor';
 import { InfraStatusCard } from './components/InfraStatusCard';
 import { QueueStats } from './components/QueueStats';
-import { CollectorGrid } from './components/CollectorGrid';
+import { ServiceFlowDiagram } from './components/ServiceFlowDiagram';
 
 import { Card, Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
@@ -56,7 +56,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="lg:col-span-3 space-y-6">
-          <CollectorGrid equipments={data.equipments} logs={data.recentErrors} />
+          <ServiceFlowDiagram data={data} />
         </div>
       </div>
 

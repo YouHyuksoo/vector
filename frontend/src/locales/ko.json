@@ -1,5 +1,7 @@
 {
   "nav": {
+    "serverDashboard": "서버 대시보드",
+    "equipmentDashboard": "장비 대시보드",
     "dashboard": "대시보드",
     "logViewer": "데이터 조회",
     "targetMapping": "타겟 매핑",
@@ -27,6 +29,19 @@
     "cols": "컬럼",
     "copyright": "Vector 로그 수집 시스템",
     "updated": "업데이트"
+  },
+  "equipmentDashboard": {
+    "title": "장비 대시보드",
+    "subtitle": "장비 수집기 현황"
+  },
+  "serviceFlow": {
+    "title": "서비스 연결 흐름",
+    "agent": "Agent",
+    "aggregator": "Aggregator",
+    "backend": "Backend",
+    "oracle": "Oracle",
+    "redis": "Redis",
+    "frontend": "Frontend"
   },
   "infra": {
     "title": "인프라 현황",

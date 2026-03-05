@@ -260,6 +260,7 @@
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-slide-in-right: slide-in-right 0.35s ease-out;
   --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-flow-right: flow-right 1.5s linear infinite;
 }
 
 /* ── Base Styles ──────────────────────────────────────────────────────── */
@@ -362,5 +363,14 @@ body {
   }
   50% {
     box-shadow: 0 0 16px 4px oklch(0.67 0.290 341 / 0.4);
+  }
+}
+
+@keyframes flow-right {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
   }
 }

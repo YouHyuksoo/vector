@@ -6,7 +6,8 @@ import { Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
 
 const NAV_ITEMS = [
-  { labelKey: 'nav.dashboard', icon: 'dashboard', href: '/dashboard' },
+  { labelKey: 'nav.serverDashboard', icon: 'dns', href: '/dashboard' },
+  { labelKey: 'nav.equipmentDashboard', icon: 'devices', href: '/dashboard/equipment' },
   { labelKey: 'nav.sender', icon: 'upload', href: '/dashboard/sender' },
   { labelKey: 'nav.receiver', icon: 'download', href: '/dashboard/receiver' },
   { labelKey: 'nav.simulator', icon: 'science', href: '/dashboard/simulator' },
