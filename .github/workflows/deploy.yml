@@ -4,15 +4,16 @@
 # 초보자 가이드:
 # 1. main 브랜치에 push 시 자동 실행
 # 2. runner 작업폴더에서 checkout + 빌드
-# 3. D:\Project\vector 로 동기화 배포
-# 4. PM2로 무중단 재시작 (ecosystem.config.cjs)
+# 3. 각 서버의 DEPLOY_DIR 환경변수 경로로 동기화 배포
+# 4. PM2로 무중단 재시작
 #
 # 사전 준비:
 # - Windows 서버에 GitHub self-hosted runner 설치
-#   (Settings > Actions > Runners > New self-hosted runner)
-# - Node.js, PM2, Redis 설치 완료
-# - Oracle Instant Client 설치 완료
-# - D:\Project\vector\.env 파일 수동 배치 (최초 1회)
+# - Node.js, PM2, Redis, Oracle Instant Client 설치
+# - 서버에 DEPLOY_DIR 시스템 환경변수 설정 (관리자 PowerShell):
+#     [System.Environment]::SetEnvironmentVariable('DEPLOY_DIR', 'D:\Project\vector', 'Machine')
+# - runner 서비스 재시작 (환경변수 반영)
+# - {DEPLOY_DIR}\.env 파일 수동 배치 (최초 1회)
 
 name: Deploy to Production
 
@@ -25,9 +26,6 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
-env:
-  DEPLOY_DIR: D:\Project\vector
-
 jobs:
   deploy:
     runs-on: [self-hosted, Windows]
@@ -37,6 +35,15 @@ jobs:
         shell: powershell
 
     steps:
+      - name: Verify DEPLOY_DIR
+        run: |
+          if (-not $env:DEPLOY_DIR) {
+            Write-Host "##[error]DEPLOY_DIR is not set! Run on the server:"
+            Write-Host "  [System.Environment]::SetEnvironmentVariable('DEPLOY_DIR', 'C:\Project\vector', 'Machine')"
+            exit 1
+          }
+          Write-Host "Deploy target: $env:DEPLOY_DIR"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -60,17 +67,19 @@ jobs:
 
       - name: Stop PM2 before sync
         run: |
-          if (Test-Path "${{ env.DEPLOY_DIR }}") {
-            try { pm2 stop ecosystem.config.cjs 2>$null } catch {}
+          if (Test-Path "$env:DEPLOY_DIR\ecosystem.config.cjs") {
+            try {
+              Set-Location $env:DEPLOY_DIR
+              pm2 stop ecosystem.config.cjs 2>$null
+            } catch {}
           } else {
-            Write-Host "Deploy directory not found, skipping PM2 stop"
+            Write-Host "First deploy, skipping PM2 stop"
           }
-        working-directory: ${{ github.workspace }}
 
       - name: Sync to deploy directory
         run: |
           $src = "${{ github.workspace }}"
-          $dst = "${{ env.DEPLOY_DIR }}"
+          $dst = $env:DEPLOY_DIR
 
           if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force }
 
@@ -82,13 +91,12 @@ jobs:
 
       - name: Create logs directory
         run: |
-          if (!(Test-Path "D:\Project\vector\logs")) {
-            New-Item -ItemType Directory -Path "D:\Project\vector\logs" -Force
-          }
+          $logsDir = "$env:DEPLOY_DIR\logs"
+          if (!(Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir -Force }
 
       - name: Restart services with PM2
-        working-directory: D:\Project\vector
         run: |
+          Set-Location $env:DEPLOY_DIR
           $ErrorActionPreference = "SilentlyContinue"
           pm2 describe vector-backend 2>$null | Out-Null
           $running = ($LASTEXITCODE -eq 0)
