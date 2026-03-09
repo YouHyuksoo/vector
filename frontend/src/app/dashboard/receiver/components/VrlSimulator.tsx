@@ -239,7 +239,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
                 {t('vrlSim.equipType')}
               </label>
-              <EquipmentTypeChips agents={agents} selected={selectedAgent} onSelect={handleAgentSelect} />
+              <EquipmentTypeChips agents={agents} selected={selectedAgent} onSelect={handleAgentSelect} groupByStatus />
             </div>
 
             {/* 파이프라인 스텝 바 */}
