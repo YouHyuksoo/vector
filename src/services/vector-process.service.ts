@@ -11,6 +11,7 @@
 import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
 import { logger } from '../utils/logger.js';
+import { pushVectorLog } from '../utils/log-buffer.js';
 
 export const VECTOR_BIN = join(process.cwd(), 'vector-bin', 'bin', 'vector.exe');
 export const VECTOR_CONFIG = join(process.cwd(), 'vector-config', 'aggregator', 'vector-aggregator.toml');
@@ -101,9 +102,11 @@ export async function startVector(): Promise<{ success: boolean; message: string
     });
 
     vectorProcess.stdout?.on('data', (data: Buffer) => {
+      pushVectorLog(data, 'info');
       logger.info({ component: 'vector-aggregator' }, data.toString().trim());
     });
     vectorProcess.stderr?.on('data', (data: Buffer) => {
+      pushVectorLog(data, 'warn');
       logger.warn({ component: 'vector-aggregator' }, data.toString().trim());
     });
 

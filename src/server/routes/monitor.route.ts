@@ -16,6 +16,7 @@ import { spawn, execSync } from 'child_process';
 import { heartbeatService } from '../../services/heartbeat.service.js';
 import { getConnection } from '../../database/oracle.pool.js';
 import { logger } from '../../utils/logger.js';
+import { logBuffer } from '../../utils/log-buffer.js';
 import iconv from 'iconv-lite';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
 import { env, updateEnvValue } from '../../config/env.js';
@@ -1986,6 +1987,25 @@ Generate VRL parsing code for this log.`;
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
+  });
+
+  // ─── 시스템 로그 (메모리 링버퍼) ───
+
+  /**
+   * GET /api/monitor/system-logs
+   * 메모리 링버퍼에서 최근 시스템 로그 조회
+   * @query limit - 최대 반환 줄 수 (기본 100, 최대 500)
+   * @query level - 필터할 레벨: all, debug, info, warn, error, fatal (기본 all)
+   * @query search - 메시지 내 검색 문자열
+   */
+  app.get('/api/monitor/system-logs', async (request, reply) => {
+    const query = request.query as { limit?: string; level?: string; search?: string };
+    const limit = Math.min(Math.max(parseInt(query.limit || '100', 10) || 100, 1), 500);
+    const level = query.level || 'all';
+    const search = query.search || undefined;
+
+    const entries = logBuffer.getEntries({ limit, level, search });
+    return reply.send({ total: logBuffer.size, count: entries.length, entries });
   });
 };
 

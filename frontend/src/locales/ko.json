@@ -15,6 +15,7 @@
     "help": "도움말",
     "menu": "메뉴",
     "retry": "재전송",
+    "systemLogs": "시스템 로그",
     "footer": "Vector 로그 수집기"
   },
   "header": {
@@ -654,5 +655,19 @@
     "savePrompt": "프롬프트 저장",
     "resetPrompt": "기본값으로 초기화",
     "customSaved": "커스텀 저장됨"
+  },
+  "systemLogs": {
+    "title": "시스템 로그",
+    "subtitle": "백엔드 및 Vector 프로세스 실시간 로그",
+    "loading": "로그를 불러오는 중...",
+    "noLogs": "표시할 로그가 없습니다",
+    "time": "시간",
+    "level": "레벨",
+    "component": "컴포넌트",
+    "message": "메시지",
+    "bufferSize": "버퍼 크기",
+    "autoOn": "자동 갱신",
+    "autoOff": "갱신 중지",
+    "searchPlaceholder": "로그 메시지 검색..."
   }
 }

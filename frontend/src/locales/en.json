@@ -15,6 +15,7 @@
     "help": "Help",
     "menu": "Menu",
     "retry": "Retry",
+    "systemLogs": "System Logs",
     "footer": "Vector Log Collector"
   },
   "header": {
@@ -654,5 +655,19 @@
     "savePrompt": "Save Prompt",
     "resetPrompt": "Reset to Default",
     "customSaved": "Custom Saved"
+  },
+  "systemLogs": {
+    "title": "System Logs",
+    "subtitle": "Backend & Vector process real-time logs",
+    "loading": "Loading logs...",
+    "noLogs": "No logs to display",
+    "time": "Time",
+    "level": "Level",
+    "component": "Component",
+    "message": "Message",
+    "bufferSize": "Buffer size",
+    "autoOn": "Auto refresh",
+    "autoOff": "Paused",
+    "searchPlaceholder": "Search log messages..."
   }
 }
