@@ -67,7 +67,9 @@ export const addHeartbeat = (c: string): string => {
   const eqId = getMeta(c, 'equipment_id') || 'UNKNOWN';
   const lineCode = getMeta(c, 'line_code') || 'LINE-01';
   const logType = getMeta(c, 'log_type') || 'INSPECTION';
-  const hb = `\n# ── [하트비트] 주기적 상태 전송 (30초 간격) ──\n[sources.heartbeat]\ntype = "static_metrics"\ninterval_secs = 30\nnamespace = "agent"\n\n[[sources.heartbeat.metrics]]\nname = "heartbeat"\nkind = "absolute"\n\n[sources.heartbeat.metrics.value.gauge]\nvalue = 1\n\n[sources.heartbeat.metrics.tags]\nequipment_type = "${eqType}"\nequipment_id = "${eqId}"\nline_code = "${lineCode}"\nlog_type = "${logType}"\n`;
+  const ip = getHeartbeatTag(c, 'ip') || '';
+  const ipLine = ip ? `\nip = "${ip}"` : '';
+  const hb = `\n# ── [하트비트] 주기적 상태 전송 (30초 간격) ──\n[sources.heartbeat]\ntype = "static_metrics"\ninterval_secs = 30\nnamespace = "agent"\n\n[[sources.heartbeat.metrics]]\nname = "heartbeat"\nkind = "absolute"\n\n[sources.heartbeat.metrics.value.gauge]\nvalue = 1\n\n[sources.heartbeat.metrics.tags]\nequipment_type = "${eqType}"\nequipment_id = "${eqId}"\nline_code = "${lineCode}"\nlog_type = "${logType}"${ipLine}\n`;
   let result = c.replace(/(\[transforms\.add_metadata\])/, hb + '\n$1');
   result = result.replace(
     /inputs\s*=\s*\["add_metadata"\]/,
@@ -89,13 +91,28 @@ export const removeHeartbeat = (c: string): string => {
   return result;
 };
 
+/** heartbeat tags에서 특정 키 값 추출 */
+export const getHeartbeatTag = (c: string, key: string): string => {
+  const m = c.match(new RegExp(
+    `\\[sources\\.heartbeat\\.metrics\\.tags\\][\\s\\S]*?${key}\\s*=\\s*"([^"]*)"`,
+  ));
+  return m?.[1] ?? '';
+};
+
 /** heartbeat tags의 설비 메타데이터를 add_metadata와 동기화 */
 export const syncHeartbeatTags = (c: string, key: string, value: string): string => {
   if (!hasHeartbeat(c)) return c;
   const tagRegex = new RegExp(
     `(\\[sources\\.heartbeat\\.metrics\\.tags\\][\\s\\S]*?)${key}\\s*=\\s*"[^"]*"`,
   );
-  return c.replace(tagRegex, `$1${key} = "${value}"`);
+  if (tagRegex.test(c)) {
+    return c.replace(tagRegex, `$1${key} = "${value}"`);
+  }
+  // 태그가 없으면 tags 섹션 끝에 추가
+  return c.replace(
+    /(\[sources\.heartbeat\.metrics\.tags\][\s\S]*?)(log_type\s*=\s*"[^"]*")/,
+    `$1$2\n${key} = "${value}"`,
+  );
 };
 
 /* ── include 경로 헬퍼 ────────────────────────── */

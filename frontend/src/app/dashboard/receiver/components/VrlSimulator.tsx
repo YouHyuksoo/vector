@@ -83,8 +83,24 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
   const loadExistingCode = useCallback(async (type: string) => {
     setLoadingCode(true);
     try {
-      const res = await apiFetch<{ code: string }>(`/api/monitor/vrl/code/${type}`);
+      const res = await apiFetch<{
+        code: string;
+        logStructure?: {
+          type: 'SINGLE' | 'MULTI_ROW' | 'KEY_VALUE' | 'MULTI_SECTION';
+          multiRowMode?: 'BATCH' | 'ACCUMULATE';
+          hasHeader: boolean;
+          headerLines: number;
+          delimiter?: string;
+        };
+      }>(`/api/monitor/vrl/code/${type}`);
       setVrlCode(res.code || '');
+      if (res.logStructure) {
+        setLogStructure(res.logStructure.type);
+        setHasHeader(res.logStructure.hasHeader);
+        setHeaderLines(String(res.logStructure.headerLines || 1));
+        if (res.logStructure.multiRowMode) setMultiRowMode(res.logStructure.multiRowMode);
+        if (res.logStructure.delimiter) setKvDelimiter(res.logStructure.delimiter);
+      }
     } catch { setVrlCode(''); }
     setLoadingCode(false);
   }, []);

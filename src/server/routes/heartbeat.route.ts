@@ -29,7 +29,8 @@ function extractFromMetric(item: Record<string, unknown>, ip?: string): {
       line_code: tags.line_code,
       log_type: tags.log_type,
       ...(tags.description ? { description: tags.description } : {}),
-      ...(ip ? { ip } : {}),
+      ...(!tags.ip && ip ? { ip } : {}),
+      ...(tags.ip ? { ip: tags.ip } : {}),
       source: 'vector_static_metrics',
     },
   };
@@ -38,7 +39,9 @@ function extractFromMetric(item: Record<string, unknown>, ip?: string): {
 export const heartbeatRoute: FastifyPluginAsync = async (app) => {
   app.post('/heartbeat', async (request, reply) => {
     const items = Array.isArray(request.body) ? request.body : [request.body];
-    const clientIp = request.ip;
+    const forwarded = request.headers['x-forwarded-for'];
+    const clientIp = (typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : forwarded?.[0]?.trim())
+      || (request.ip !== '127.0.0.1' ? request.ip : undefined);
     let processed = 0;
 
     for (const item of items as Record<string, unknown>[]) {
@@ -46,7 +49,7 @@ export const heartbeatRoute: FastifyPluginAsync = async (app) => {
       const parsed = heartbeatSchema.safeParse(item);
       if (parsed.success) {
         const { equipment_id, timestamp, metadata } = parsed.data;
-        const metaWithIp = { ...metadata, ...(clientIp ? { ip: clientIp } : {}) };
+        const metaWithIp = { ...metadata, ...(!metadata?.ip && clientIp ? { ip: clientIp } : {}) };
         await heartbeatService.update(equipment_id, { timestamp, metadata: metaWithIp });
         logger.debug({ equipment_id }, 'Heartbeat received');
         processed++;

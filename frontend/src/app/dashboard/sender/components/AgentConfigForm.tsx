@@ -18,7 +18,7 @@ import {
   getMeta, setMeta, getVal, setVal,
   getSinkAddr, setSinkAddr,
   hasHeartbeat, getHeartbeatInterval, setHeartbeatInterval,
-  addHeartbeat, removeHeartbeat, syncHeartbeatTags,
+  addHeartbeat, removeHeartbeat, syncHeartbeatTags, getHeartbeatTag,
   getInclude, setInclude,
   hasMultiline, addMultiline, removeMultiline,
   hasRecursive, toggleRecursive,
@@ -48,6 +48,7 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
       logType: getMeta(content, 'log_type'),
       lineCode: getMeta(content, 'line_code'),
       equipId: getMeta(content, 'equipment_id'),
+      equipIp: getHeartbeatTag(content, 'ip'),
       sinkIp, sinkPort,
       logPaths: getInclude(content),
       readFrom: getVal(content, 'read_from'),
@@ -79,6 +80,10 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
             <F label={t('sender.form.equipId')} value={f.equipId}
               onChange={v => u(c => syncHeartbeatTags(setMeta(c, 'equipment_id', v), 'equipment_id', v))}
               tooltip={t('sender.form.tooltip.equipId')} />
+            <F label={t('sender.form.equipIp')} value={f.equipIp}
+              onChange={v => u(c => syncHeartbeatTags(c, 'ip', v))}
+              placeholder="192.168.0.100"
+              tooltip={t('sender.form.tooltip.equipIp')} />
           </div>
           {onDescriptionChange && (
             <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">

@@ -1594,9 +1594,9 @@ Generate VRL parsing code for this log.`;
 
       const code = extractEquipmentBlock(sourceMatch[1], eqType);
       if (code === null) {
-        return reply.send({ equipmentType: eqType, code: '' });
+        return reply.send({ equipmentType: eqType, code: '', logStructure: detectLogStructure('') });
       }
-      return reply.send({ equipmentType: eqType, code });
+      return reply.send({ equipmentType: eqType, code, logStructure: detectLogStructure(code) });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -2439,6 +2439,76 @@ function extractEquipmentBlock(vrlSource: string, equipmentType: string): string
     .trim();
 
   return dedented;
+}
+
+/** VRL 코드에서 로그 구조(단일행/멀티행/KV 등)를 자동 감지 */
+function detectLogStructure(code: string): {
+  type: 'SINGLE' | 'MULTI_ROW' | 'KEY_VALUE' | 'MULTI_SECTION';
+  multiRowMode?: 'BATCH' | 'ACCUMULATE';
+  hasHeader: boolean;
+  headerLines: number;
+  delimiter?: string;
+} {
+  if (!code.trim()) {
+    return { type: 'SINGLE', hasHeader: true, headerLines: 1 };
+  }
+
+  const hasForEach = /for_each/.test(code);
+  const hasSplitMessage = /split!\s*\(\s*to_string!\s*\(\s*\.message\s*\)\s*,\s*"\\n"\s*\)/.test(code);
+  const hasGetLines = /get!\s*\(\s*lines/.test(code);
+  const hasKeyValuePattern = /split!\s*\([^,]+,\s*["'](:|=)["']\s*\)/.test(code);
+
+  // KEY_VALUE: key:value 또는 key=value 패턴
+  if (hasKeyValuePattern && !hasForEach) {
+    const delimMatch = code.match(/split!\s*\([^,]+,\s*["'](:|=)["']\s*\)/);
+    return { type: 'KEY_VALUE', hasHeader: false, headerLines: 0, delimiter: delimMatch?.[1] || ':' };
+  }
+
+  // MULTI_ROW: for_each 루프로 여러 행 처리
+  if (hasForEach && hasSplitMessage) {
+    // 헤더 감지: get!(lines, [0]) 또는 get!(lines, [1]) 패턴 확인
+    const headerAccess = code.match(/get!\s*\(\s*lines\s*,\s*\[(\d+)\]\s*\)/g);
+    let headerLines = 0;
+    if (headerAccess) {
+      // for_each 이전에 접근하는 라인 인덱스를 확인
+      const forEachPos = code.indexOf('for_each');
+      const beforeForEach = code.slice(0, forEachPos);
+      const lineAccesses = beforeForEach.match(/get!\s*\(\s*lines\s*,\s*\[(\d+)\]\s*\)/g);
+      if (lineAccesses) {
+        const indices = lineAccesses.map(a => {
+          const m = a.match(/\[(\d+)\]/);
+          return m ? parseInt(m[1]) : 0;
+        });
+        headerLines = Math.max(...indices) + 1;
+      }
+    }
+    // startRow 감지: for_each에서 slice 시작 인덱스
+    return {
+      type: 'MULTI_ROW',
+      multiRowMode: 'BATCH',
+      hasHeader: headerLines > 0,
+      headerLines: headerLines || 1,
+    };
+  }
+
+  // SINGLE: 단일행 또는 split 후 고정 인덱스 접근
+  if (hasSplitMessage && hasGetLines && !hasForEach) {
+    // 헤더 행 수 감지: get!(lines, [N]) 중 데이터 시작 인덱스
+    const lineAccesses = code.match(/get!\s*\(\s*lines\s*,\s*\[(\d+)\]\s*\)/g) || [];
+    const indices = lineAccesses.map(a => {
+      const m = a.match(/\[(\d+)\]/);
+      return m ? parseInt(m[1]) : 0;
+    });
+    const minDataIdx = indices.length > 0 ? Math.min(...indices) : 0;
+    return {
+      type: 'SINGLE',
+      hasHeader: minDataIdx > 0,
+      headerLines: minDataIdx > 0 ? minDataIdx : 1,
+    };
+  }
+
+  // 기본: 단일행
+  return { type: 'SINGLE', hasHeader: true, headerLines: 1 };
 }
 
 function replaceEquipmentBlock(vrlSource: string, equipmentType: string, newCode: string): string | null {
