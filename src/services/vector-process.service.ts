@@ -152,7 +152,7 @@ export async function stopVector(): Promise<{ success: boolean; message: string 
   // 방법 2: taskkill로 vector.exe 프로세스 종료 (외부에서 시작된 경우)
   try {
     const { execSync } = await import('child_process');
-    execSync('taskkill /F /IM vector.exe', { stdio: 'ignore' });
+    execSync('taskkill /F /IM vector.exe', { stdio: 'ignore', windowsHide: true });
     vectorProcess = null;
     await new Promise(r => setTimeout(r, 1000));
     logger.info('Vector aggregator stopped via taskkill');

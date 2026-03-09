@@ -3,12 +3,12 @@
  * @description 장비 온/오프라인 상태 조회 엔드포인트
  *
  * 초보자 가이드:
- * 1. **주요 개념**: Redis에 저장된 하트비트 TTL로 장비 온라인 여부 판단
+ * 1. **주요 개념**: 인메모리 Map의 하트비트 TTL로 장비 온라인 여부 판단
  * 2. **사용 방법**: GET /api/status → 전체 장비 상태, GET /api/status/:equipmentId → 개별 조회
  */
 
 import { FastifyPluginAsync } from 'fastify';
-import { heartbeatService } from '../../redis/heartbeat.service.js';
+import { heartbeatService } from '../../services/heartbeat.service.js';
 
 export const statusRoute: FastifyPluginAsync = async (app) => {
   app.get('/status', async (_request, reply) => {

@@ -12,7 +12,6 @@ import { useI18n } from '@/contexts/I18nContext';
 interface ServiceFlowDiagramProps {
   data: {
     server: { nodeEnv: string };
-    redis: { connected: boolean };
     oracle: { connected: boolean };
     vector: { running: boolean; apiReachable: boolean };
   };
@@ -35,7 +34,6 @@ export function ServiceFlowDiagram({ data }: ServiceFlowDiagramProps) {
     { id: 'aggregator', labelKey: 'serviceFlow.aggregator', descKey: 'serviceFlow.aggregatorDesc', port: 6000, icon: 'hub', online: data.vector?.running || data.vector?.apiReachable },
     { id: 'backend', labelKey: 'serviceFlow.backend', descKey: 'serviceFlow.backendDesc', port: 3110, icon: 'dns', online: true },
     { id: 'oracle', labelKey: 'serviceFlow.oracle', descKey: 'serviceFlow.oracleDesc', port: 1588, icon: 'database', online: data.oracle?.connected },
-    { id: 'redis', labelKey: 'serviceFlow.redis', descKey: 'serviceFlow.redisDesc', port: 6379, icon: 'memory', online: data.redis?.connected },
     { id: 'frontend', labelKey: 'serviceFlow.frontend', descKey: 'serviceFlow.frontendDesc', port: 3100, icon: 'web', online: true },
   ];
 
@@ -81,13 +79,11 @@ export function ServiceFlowDiagram({ data }: ServiceFlowDiagramProps) {
           </div>
         </div>
 
-        {/* Row 2: Oracle + Redis → Frontend */}
+        {/* Row 2: Oracle → Frontend */}
         <div className="flex items-stretch gap-0">
           <FlowNode node={nodes[3]} t={t} step={4} />
-          <FlowArrow label={t('serviceFlow.arrowCache')} reverse />
-          <FlowNode node={nodes[4]} t={t} step={5} />
           <FlowArrow label={t('serviceFlow.arrowServe')} />
-          <FlowNode node={nodes[5]} t={t} step={6} />
+          <FlowNode node={nodes[4]} t={t} step={5} />
         </div>
       </div>
     </Card>

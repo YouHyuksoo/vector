@@ -3,14 +3,14 @@
  * @description Vector 데이터 수신 진입점 (핵심 파일 #5)
  *
  * 초보자 가이드:
- * 1. **주요 개념**: Vector HTTP sink가 보내는 배치 JSON을 수신 → BullMQ 큐에 적재
- * 2. **데이터 흐름**: POST /api/logs → zod 검증 → logProducer.addBulk() → 202 응답
+ * 1. **주요 개념**: Vector HTTP sink가 보내는 배치 JSON을 수신 → 직접 Oracle INSERT
+ * 2. **데이터 흐름**: POST /api/logs → zod 검증 → logIngestService.processLogBatch() → 202 응답
  * 3. **Vector 호환**: Vector는 JSON 배열로 전송, 수동 테스트는 { logs: [...] } 형식 지원
  */
 
 import { FastifyPluginAsync } from 'fastify';
 import { logBatchSchema } from '../../schemas/log-ingest.schema.js';
-import { logProducer } from '../../queue/producers/log.producer.js';
+import { logIngestService } from '../../services/log-ingest.service.js';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
 import { logger } from '../../utils/logger.js';
 import type { LogRecord } from '../../types/index.js';
@@ -62,7 +62,7 @@ export const logIngestRoute: FastifyPluginAsync = async (app) => {
         ? parsed.data.logs
         : [parsed.data];
 
-    // HTTP 수신 성공 로그 기록 (validation 통과 → 큐 적재 전 단계)
+    // HTTP 수신 성공 로그 기록 (validation 통과)
     for (const log of logs) {
       errorLogRepository.success(
         'HTTP_RECEIVE',
@@ -73,24 +73,16 @@ export const logIngestRoute: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      await logProducer.addBulk(logs);
-      logger.info({ count: logs.length }, 'Logs queued for processing');
-
-      for (const log of logs) {
-        errorLogRepository.success(
-          'QUEUE_ENQUEUE',
-          log.target_table,
-          log.equipment_id,
-          '큐 적재 완료',
-        );
-      }
+      const result = await logIngestService.processLogBatch(logs);
+      logger.info({ count: logs.length }, 'Logs processed');
 
       return reply.status(202).send({
-        accepted: logs.length,
+        accepted: result.accepted,
+        failed: result.failed,
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
-      logger.error({ err }, 'Failed to queue logs');
+      logger.error({ err }, 'Failed to process logs');
 
       for (const log of logs) {
         await errorLogRepository.record({
@@ -98,7 +90,7 @@ export const logIngestRoute: FastifyPluginAsync = async (app) => {
           equipment_id: log.equipment_id,
           error_message: err instanceof Error ? err.message : String(err),
           raw_data: JSON.stringify(log),
-          stage: 'QUEUE_ENQUEUE',
+          stage: 'TABLE_INSERT',
         });
       }
 

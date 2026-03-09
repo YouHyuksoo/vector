@@ -24,15 +24,7 @@ const envSchema = z.object({
   ORACLE_POOL_MIN: z.coerce.number().default(4),
   ORACLE_POOL_MAX: z.coerce.number().default(20),
 
-  REDIS_HOST: z.string().default('127.0.0.1'),
-  REDIS_PORT: z.coerce.number().default(6379),
-  REDIS_PASSWORD: z.string().default(''),
-
   RAW_LOG_BASE_PATH: z.string().default('C:\\data\\raw-logs'),
-
-  QUEUE_CONCURRENCY: z.coerce.number().default(5),
-  BATCH_SIZE: z.coerce.number().default(100),
-  BATCH_TIMEOUT_MS: z.coerce.number().default(5000),
 
   HEARTBEAT_TTL_SECONDS: z.coerce.number().default(60),
 });

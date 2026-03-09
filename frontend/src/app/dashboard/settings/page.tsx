@@ -14,13 +14,11 @@ import { apiFetch, type SystemConfig } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import { AiModelConfig } from './components/AiModelConfig';
 
-const SECTION_KEYS = ['server', 'oracle', 'redis', 'queue', 'storage', 'heartbeat'] as const;
+const SECTION_KEYS = ['server', 'oracle', 'storage', 'heartbeat'] as const;
 
 const SECTION_META: Record<string, { icon: string; iconBg: string }> = {
   server: { icon: 'dns', iconBg: 'bg-success/10' },
   oracle: { icon: 'database', iconBg: 'bg-warning/10' },
-  redis: { icon: 'bolt', iconBg: 'bg-error/10' },
-  queue: { icon: 'inventory_2', iconBg: 'bg-primary/10' },
   storage: { icon: 'folder_open', iconBg: 'bg-info/10' },
   heartbeat: { icon: 'favorite', iconBg: 'bg-muted' },
 };
@@ -28,8 +26,6 @@ const SECTION_META: Record<string, { icon: string; iconBg: string }> = {
 const EDITABLE_KEYS: Record<string, string[]> = {
   server: ['host', 'port', 'nodeEnv'],
   oracle: ['connectString', 'user', 'password', 'poolMin', 'poolMax'],
-  redis: ['host', 'port', 'password'],
-  queue: ['concurrency', 'batchSize', 'batchTimeoutMs'],
   storage: ['rawLogBasePath'],
   heartbeat: ['ttlSeconds'],
 };
@@ -38,8 +34,6 @@ const KEY_MAP: Record<string, string> = {
   host: 'HOST', port: 'PORT', nodeEnv: 'NODE_ENV',
   connectString: 'ORACLE_CONNECT_STRING', user: 'ORACLE_USER', password: 'ORACLE_PASSWORD',
   poolMin: 'ORACLE_POOL_MIN', poolMax: 'ORACLE_POOL_MAX',
-  'redis.host': 'REDIS_HOST', 'redis.port': 'REDIS_PORT', 'redis.password': 'REDIS_PASSWORD',
-  concurrency: 'QUEUE_CONCURRENCY', batchSize: 'BATCH_SIZE', batchTimeoutMs: 'BATCH_TIMEOUT_MS',
   rawLogBasePath: 'RAW_LOG_BASE_PATH', ttlSeconds: 'HEARTBEAT_TTL_SECONDS',
 };
 
@@ -65,8 +59,8 @@ export default function SettingsPage() {
 
   useEffect(() => { loadConfig(); }, []);
 
-  /** Oracle / Redis 접속 테스트 */
-  const handleTestConnection = async (type: 'oracle' | 'redis') => {
+  /** Oracle 접속 테스트 */
+  const handleTestConnection = async (type: 'oracle') => {
     setConnTesting(type);
     setConnResults(prev => { const next = { ...prev }; delete next[type]; return next; });
     try {
@@ -90,9 +84,7 @@ export default function SettingsPage() {
     for (const [section, keys] of Object.entries(EDITABLE_KEYS)) {
       for (const key of keys) {
         const sectionData = config[section as keyof SystemConfig] as Record<string, any>;
-        const envKey = section === 'redis' && (key === 'host' || key === 'port' || key === 'password')
-          ? `REDIS_${key.toUpperCase()}`
-          : KEY_MAP[key] || key.toUpperCase();
+        const envKey = KEY_MAP[key] || key.toUpperCase();
         vals[envKey] = String(sectionData?.[key] ?? '');
       }
     }
@@ -145,7 +137,7 @@ export default function SettingsPage() {
     if (!sectionData) return null;
     const meta = SECTION_META[sectionKey];
 
-    const isTestable = sectionKey === 'oracle' || sectionKey === 'redis';
+    const isTestable = sectionKey === 'oracle';
     const isTesting = connTesting === sectionKey;
     const testResult = connResults[sectionKey];
 
@@ -173,7 +165,7 @@ export default function SettingsPage() {
               <Button
                 variant="ghost"
                 leftIcon={isTesting ? 'progress_activity' : 'speed'}
-                onClick={() => handleTestConnection(sectionKey as 'oracle' | 'redis')}
+                onClick={() => handleTestConnection(sectionKey as 'oracle')}
                 disabled={isTesting}
                 className={`!text-[10px] !px-1.5 !py-0.5 ${isTesting ? 'animate-pulse' : ''}`}
               >

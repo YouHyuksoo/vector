@@ -29,9 +29,7 @@ export interface MonitorOverview {
     cpu?: { percent: number; cores: number; model: string };
   };
   oracle: { connected: boolean };
-  redis: { connected: boolean };
   vector: { running: boolean; pid: number | null; apiReachable: boolean; uptime: string | null; version: string | null };
-  queue: { waiting: number; active: number; completed: number; failed: number; delayed: number };
   equipments: Array<{ equipment_id: string; online: boolean; last_seen: string; metadata: Record<string, string> }>;
   tables: Array<{ TABLE_NAME: string; COLUMN_COUNT: number }>;
   recentErrors: Array<{ LOG_ID: number; SOURCE_TABLE: string; EQUIPMENT_ID: string; MESSAGE: string; STAGE: string; STATUS: string; CREATED_AT: string }>;
@@ -65,8 +63,6 @@ export interface ProcessLogResponse {
 export interface SystemConfig {
   server: { host: string; port: number; nodeEnv: string; nodeVersion: string; platform: string; pid: number; memoryUsage: { rss: number; heapUsed: number; heapTotal: number } };
   oracle: { host: string; service: string; connectString: string; user: string; password: string; poolMin: number; poolMax: number };
-  redis: { host: string; port: number; hasPassword: boolean; password: string };
-  queue: { concurrency: number; batchSize: number; batchTimeoutMs: number };
   storage: { rawLogBasePath: string };
   heartbeat: { ttlSeconds: number };
 }

@@ -1,14 +1,13 @@
 'use client';
 import { useMonitor } from '@/hooks/useMonitor';
 import { InfraStatusCard } from './components/InfraStatusCard';
-import { QueueStats } from './components/QueueStats';
 import { ServiceFlowDiagram } from './components/ServiceFlowDiagram';
 
 import { Card, Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
 
 export default function DashboardPage() {
-  const { data, error, lastUpdate } = useMonitor(5000);
+  const { data, error, lastUpdate } = useMonitor();
   const { t } = useI18n();
 
   if (!data) {
@@ -34,7 +33,6 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-1 space-y-4">
           <InfraStatusCard data={data} />
-          <QueueStats queue={data.queue} />
           <Card noPadding className="p-4">
             <p className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-3 px-1">{t('dashboard.registeredTables')}</p>
             {!data.tables.length ? (

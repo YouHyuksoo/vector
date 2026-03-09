@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
 
 export default function EquipmentDashboardPage() {
-  const { data, error, lastUpdate } = useMonitor(5000);
+  const { data, error, lastUpdate } = useMonitor();
   const { t } = useI18n();
 
   if (!data) {

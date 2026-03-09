@@ -153,7 +153,6 @@ export default function ErrorsPage() {
               <option value="ALL">{t('errors.stageAll')}</option>
               <option value="FILE_RECEIVE">{t('errors.stageFileReceive')}</option>
               <option value="HTTP_RECEIVE">{t('errors.stageHttpReceive')}</option>
-              <option value="QUEUE_ENQUEUE">{t('errors.stageQueueEnqueue')}</option>
               <option value="TABLE_INSERT">{t('errors.stageTableInsert')}</option>
               <option value="PROCEDURE_CALL">{t('errors.stageProcedureCall')}</option>
               <option value="FILE_WRITE">{t('errors.stageFileWrite')}</option>

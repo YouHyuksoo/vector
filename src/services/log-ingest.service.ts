@@ -1,21 +1,70 @@
 /**
  * @file src/services/log-ingest.service.ts
- * @description 로그 수집 비즈니스 로직 서비스
+ * @description 로그 수집 비즈니스 로직 서비스 — 직접 Oracle INSERT
  *
  * 초보자 가이드:
- * 1. **주요 개념**: 라우트 핸들러와 큐 프로듀서 사이의 비즈니스 로직 계층
- * 2. **현재 구조**: 단순 위임이지만, 추후 로그 필터링/변환 로직 추가 시 이 계층에서 처리
+ * 1. **주요 개념**: 수신된 로그를 Oracle DB에 직접 INSERT (BullMQ 큐 없이)
+ * 2. **현재 구조**: dynamicInsert로 바로 DB 삽입, 실패 시 에러 로그 기록
  */
 
-import { logProducer } from '../queue/producers/log.producer.js';
+import { dynamicInsert } from '../database/dynamic-insert.js';
+import { errorLogRepository } from '../database/repositories/error-log.repository.js';
 import { logger } from '../utils/logger.js';
+import { TARGET_TYPES } from '../config/constants.js';
 import type { LogRecord } from '../types/index.js';
 
 class LogIngestService {
-  async processLogBatch(logs: LogRecord[]): Promise<{ accepted: number }> {
-    await logProducer.addBulk(logs);
-    logger.info({ count: logs.length }, 'Log batch processed');
-    return { accepted: logs.length };
+  async processLog(log: LogRecord): Promise<void> {
+    const { equipment_id, target_type, target_table, data, timestamp } = log;
+
+    if (target_type === TARGET_TYPES.PROCEDURE) {
+      await dynamicInsert.callProcedure(target_table, data, {
+        equipment_id,
+        timestamp,
+      });
+    } else if (Array.isArray(data.ROWS) && data.ROWS.length > 0) {
+      const extraFields = { equipment_id, timestamp };
+      for (const row of data.ROWS) {
+        await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
+      }
+    } else {
+      await dynamicInsert.insert(target_table, data, {
+        equipment_id,
+        timestamp,
+      });
+    }
+
+    const rowCount = Array.isArray(data.ROWS) ? data.ROWS.length : 1;
+    const stage = target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT';
+    errorLogRepository.success(stage, target_table, equipment_id, `${stage} 성공 (${rowCount}건)`);
+  }
+
+  async processLogBatch(logs: LogRecord[]): Promise<{ accepted: number; failed: number }> {
+    let accepted = 0;
+    let failed = 0;
+
+    for (const log of logs) {
+      try {
+        await this.processLog(log);
+        accepted++;
+      } catch (err) {
+        failed++;
+        logger.error(
+          { err, table: log.target_table, equipment_id: log.equipment_id },
+          'Log insert failed',
+        );
+        await errorLogRepository.record({
+          source_table: log.target_table,
+          equipment_id: log.equipment_id,
+          error_message: err instanceof Error ? err.message : String(err),
+          raw_data: JSON.stringify(log),
+          stage: log.target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT',
+        });
+      }
+    }
+
+    logger.info({ accepted, failed, total: logs.length }, 'Log batch processed');
+    return { accepted, failed };
   }
 }
 

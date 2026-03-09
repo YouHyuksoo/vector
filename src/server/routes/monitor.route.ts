@@ -13,11 +13,8 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync, mkdir
 import { join, dirname, basename } from 'path';
 import { tmpdir, platform, cpus, totalmem, freemem } from 'os';
 import { spawn, execSync } from 'child_process';
-import { getQueue } from '../../queue/queue.manager.js';
-import { QUEUE_NAMES } from '../../config/constants.js';
-import { heartbeatService } from '../../redis/heartbeat.service.js';
+import { heartbeatService } from '../../services/heartbeat.service.js';
 import { getConnection } from '../../database/oracle.pool.js';
-import { getRedisClient } from '../../redis/redis.client.js';
 import { logger } from '../../utils/logger.js';
 import iconv from 'iconv-lite';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
@@ -86,14 +83,12 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   /** 통합 모니터링 데이터 */
   app.get('/api/monitor/overview', async (_request, reply) => {
-    const [queueStats, equipments, tableStats, recentErrors, recentLogs, redisStatus, vectorStatus, oracleStatus] =
+    const [equipments, tableStats, recentErrors, recentLogs, vectorStatus, oracleStatus] =
       await Promise.allSettled([
-        getQueueStats(),
         heartbeatService.getAllStatuses(),
         getTableStats(),
         getRecentErrors(),
         getRecentLogs(),
-        checkRedis(),
         getVectorStatus(),
         checkOracle(),
       ]);
@@ -112,13 +107,9 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         cpu,
       },
       oracle: oracleStatus.status === 'fulfilled' ? oracleStatus.value : { connected: false },
-      redis: redisStatus.status === 'fulfilled' ? redisStatus.value : { connected: false },
       vector: vectorStatus.status === 'fulfilled'
         ? vectorStatus.value
         : { running: false, pid: null, apiReachable: false, uptime: null, version: null },
-      queue: queueStats.status === 'fulfilled'
-        ? queueStats.value
-        : { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0, error: true },
       equipments: equipments.status === 'fulfilled'
         ? mergeEquipmentDescriptions(equipments.value) : [],
       tables: tableStats.status === 'fulfilled' ? tableStats.value : [],
@@ -1016,7 +1007,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const { logProducer } = await import('../../queue/producers/log.producer.js');
+      const { logIngestService } = await import('../../services/log-ingest.service.js');
       const records = errorLogRepository.findByIds(logIds);
       let retried = 0;
       let failed = 0;
@@ -1026,7 +1017,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         if (!rec.RAW_DATA) { failed++; continue; }
         try {
           const logRecord = JSON.parse(rec.RAW_DATA);
-          await logProducer.addBulk([logRecord]);
+          await logIngestService.processLog(logRecord);
           retried++;
           retriedIds.push(rec.LOG_ID);
         } catch {
@@ -1049,7 +1040,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   /** ERROR 상태 전체 재전송 */
   app.post('/api/monitor/retry/all', async (_request, reply) => {
     try {
-      const { logProducer } = await import('../../queue/producers/log.producer.js');
+      const { logIngestService } = await import('../../services/log-ingest.service.js');
       const records = errorLogRepository.findRetryable();
       let retried = 0;
       let failed = 0;
@@ -1058,7 +1049,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       for (const rec of records) {
         try {
           const logRecord = JSON.parse(rec.RAW_DATA!);
-          await logProducer.addBulk([logRecord]);
+          await logIngestService.processLog(logRecord);
           retried++;
           retriedIds.push(rec.LOG_ID);
         } catch {
@@ -1639,7 +1630,7 @@ Generate VRL parsing code for this log.`;
       const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
         const proc = spawn(VECTOR_BIN, [
           'vrl', '--input', inputFile, '--program', vrlFile, '--print-object',
-        ]);
+        ], { windowsHide: true });
         let stdout = '';
         let stderr = '';
         proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
@@ -1818,9 +1809,9 @@ Generate VRL parsing code for this log.`;
     }
   });
 
-  /** Oracle / Redis 접속 테스트 */
+  /** Oracle 접속 테스트 */
   app.post('/api/monitor/test-connection', async (request, reply) => {
-    const { type } = request.body as { type: 'oracle' | 'redis' };
+    const { type } = request.body as { type: 'oracle' };
     const start = Date.now();
 
     try {
@@ -1832,15 +1823,8 @@ Generate VRL parsing code for this log.`;
         } finally {
           await conn.close();
         }
-      } else if (type === 'redis') {
-        const redis = getRedisClient();
-        const pong = await redis.ping();
-        if (pong === 'PONG') {
-          return reply.send({ success: true, latencyMs: Date.now() - start });
-        }
-        return reply.send({ success: false, error: 'Unexpected response: ' + pong });
       } else {
-        return reply.code(400).send({ success: false, error: 'Invalid type: must be oracle or redis' });
+        return reply.code(400).send({ success: false, error: 'Invalid type: must be oracle' });
       }
     } catch (err: any) {
       return reply.send({
@@ -1879,17 +1863,6 @@ Generate VRL parsing code for this log.`;
         password: env.ORACLE_PASSWORD ? '••••••••' : '',
         poolMin: env.ORACLE_POOL_MIN,
         poolMax: env.ORACLE_POOL_MAX,
-      },
-      redis: {
-        host: env.REDIS_HOST,
-        port: env.REDIS_PORT,
-        hasPassword: env.REDIS_PASSWORD.length > 0,
-        password: env.REDIS_PASSWORD ? '••••••••' : '',
-      },
-      queue: {
-        concurrency: env.QUEUE_CONCURRENCY,
-        batchSize: env.BATCH_SIZE,
-        batchTimeoutMs: env.BATCH_TIMEOUT_MS,
       },
       storage: {
         rawLogBasePath: env.RAW_LOG_BASE_PATH,
@@ -2260,13 +2233,6 @@ when_full = "block"
 `;
 }
 
-async function getQueueStats() {
-  const queue = getQueue(QUEUE_NAMES.LOG_INSERT);
-  const counts = await queue.getJobCounts(
-    'waiting', 'active', 'completed', 'failed', 'delayed', 'paused',
-  );
-  return counts;
-}
 
 function getTableStats() {
   try {
@@ -2371,7 +2337,7 @@ function getCpuInfo() {
 function getDiskInfo(): { total: number; used: number; free: number; percent: number } | null {
   try {
     if (platform() === 'win32') {
-      const out = execSync('wmic logicaldisk where "DeviceID=\'C:\'" get Size,FreeSpace /format:csv', { encoding: 'utf-8' });
+      const out = execSync('wmic logicaldisk where "DeviceID=\'C:\'" get Size,FreeSpace /format:csv', { encoding: 'utf-8', windowsHide: true });
       const lines = out.trim().split('\n').filter(l => l.trim());
       const last = lines[lines.length - 1].split(',');
       const free = Number(last[1]);
@@ -2379,7 +2345,7 @@ function getDiskInfo(): { total: number; used: number; free: number; percent: nu
       const used = total - free;
       return { total, used, free, percent: Math.round((used / total) * 100) };
     }
-    const out = execSync("df -B1 / | tail -1 | awk '{print $2,$3,$4}'", { encoding: 'utf-8' });
+    const out = execSync("df -B1 / | tail -1 | awk '{print $2,$3,$4}'", { encoding: 'utf-8', windowsHide: true });
     const [t, u, f] = out.trim().split(/\s+/).map(Number);
     return { total: t, used: u, free: f, percent: Math.round((u / t) * 100) };
   } catch {
@@ -2401,15 +2367,6 @@ async function checkOracle() {
   }
 }
 
-async function checkRedis() {
-  try {
-    const redis = getRedisClient();
-    const pong = await redis.ping();
-    return { connected: pong === 'PONG' };
-  } catch {
-    return { connected: false };
-  }
-}
 
 /**
  * VRL source 블록에서 특정 설비 유형의 코드를 새 VRL 코드로 교체

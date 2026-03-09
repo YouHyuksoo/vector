@@ -4,14 +4,11 @@
  *
  * 초보자 가이드:
  * 1. **주요 개념**: SIGINT/SIGTERM 수신 시 순차적으로 리소스를 정리
- * 2. **종료 순서**: Fastify(요청 중단) → Worker(작업 완료) → Queue → Oracle → Redis
- * 3. **왜 순서가 중요한가**: Worker가 Oracle을 사용하므로 Worker를 먼저 종료해야 안전
+ * 2. **종료 순서**: Vector(데이터 유입 차단) → Fastify(요청 중단) → Oracle(DB 커넥션)
  */
 
 import { logger } from './logger.js';
-import { closeAllQueues } from '../queue/queue.manager.js';
 import { closeOraclePool } from '../database/oracle.pool.js';
-import { closeRedis } from '../redis/redis.client.js';
 import { stopVector } from '../services/vector-process.service.js';
 
 export function setupGracefulShutdown(app: { close(): Promise<void> }): void {
@@ -32,17 +29,9 @@ export function setupGracefulShutdown(app: { close(): Promise<void> }): void {
       await app.close();
       logger.info('Fastify server closed');
 
-      // 3. BullMQ 워커 및 큐 종료
-      await closeAllQueues();
-      logger.info('All queues and workers closed');
-
-      // 4. Oracle 커넥션 풀 종료
+      // 3. Oracle 커넥션 풀 종료
       await closeOraclePool();
       logger.info('Oracle pool closed');
-
-      // 5. Redis 연결 종료
-      await closeRedis();
-      logger.info('Redis connection closed');
 
       logger.info('Graceful shutdown complete');
       process.exit(0);

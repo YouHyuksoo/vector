@@ -4,14 +4,14 @@
  *
  * 초보자 가이드:
  * 1. **주요 개념**: Agent TOML의 static_metrics 소스가 30초마다 하트비트를 Aggregator로 전송
- * 2. **데이터 흐름**: Agent(static_metrics) → Aggregator(route) → Node.js(여기) → Redis SETEX
+ * 2. **데이터 흐름**: Agent(static_metrics) → Aggregator(route) → Node.js(여기) → 인메모리 Map
  * 3. **형식 지원**: 표준 heartbeat JSON + Vector static_metrics 메트릭 원본 형식 모두 처리
  * 4. **동작**: TTL 내 하트비트 없으면 자동으로 오프라인 판정
  */
 
 import { FastifyPluginAsync } from 'fastify';
 import { heartbeatSchema } from '../../schemas/log-ingest.schema.js';
-import { heartbeatService } from '../../redis/heartbeat.service.js';
+import { heartbeatService } from '../../services/heartbeat.service.js';
 import { logger } from '../../utils/logger.js';
 
 /** Vector static_metrics 형식에서 heartbeat 데이터 추출 */

@@ -38,7 +38,6 @@ export function InfraStatusCard({ data }: Props) {
 
   const infra = [
     { label: t('infra.server'), icon: 'dns', ok: data.server.status === 'ok', val: data.server.status === 'ok' ? `${t('infra.up')} ${ago(data.server.uptime)}` : t('infra.down') },
-    { label: t('infra.redis'), icon: 'bolt', ok: data.redis.connected, val: data.redis.connected ? t('infra.connected') : t('infra.down') },
     { label: t('infra.oracle'), icon: 'database', ok: data.oracle.connected, val: data.oracle.connected ? (data.tables.length > 0 ? `${data.tables.length} ${t('infra.tables')}` : t('infra.connected')) : t('infra.down') },
   ];
 
