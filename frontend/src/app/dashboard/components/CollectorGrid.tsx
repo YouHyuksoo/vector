@@ -46,7 +46,7 @@ function ActivityPanel({ logs, t }: { logs: LogEntry[]; t: (k: string) => string
   }
   return (
     <div className="max-h-48 overflow-y-auto">
-      <table className="w-full text-[10px] font-mono">
+      <table className="w-full text-xs font-mono">
         <thead>
           <tr className="text-muted-foreground/60 border-b border-border/30 dark:border-border-dark/30">
             <th className="text-left py-1 pr-2">{t('error.time')}</th>
@@ -100,10 +100,10 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-muted-foreground">
+        <span className="text-xs font-semibold tracking-[0.2em] uppercase text-muted-foreground">
           {t('collector.title')}
         </span>
-        <div className="flex items-center gap-3 text-[11px] font-mono tabular-nums select-none">
+        <div className="flex items-center gap-3 text-xs font-mono tabular-nums select-none">
           <span className="text-muted-foreground">{equipments.length} {t('collector.total')}</span>
           <span className="text-primary">{up} {t('collector.online')}</span>
           {dn > 0 && <span className="text-destructive">{dn} {t('collector.offline')}</span>}
@@ -144,7 +144,7 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
                   <div className="flex items-center gap-2 mb-2">
                     <Icon name={ICONS[type] || 'memory'} size="xs"
                       className={ok ? 'text-primary' : 'text-destructive'} />
-                    <span className="font-mono text-sm font-bold text-foreground dark:text-white truncate flex-1">
+                    <span className="font-mono text-base font-bold text-foreground dark:text-white truncate flex-1">
                       {eq.equipment_id}
                     </span>
                     <span className={`size-2 rounded-full shrink-0 ${
@@ -153,17 +153,17 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
                   </div>
 
                   {/* 타입 + 로그 */}
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-2">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
                     {type && <span>{type}</span>}
                     {type && log && <span>·</span>}
                     {log && <span className="font-mono">{log}</span>}
                   </div>
 
                   {/* 통계: 한 줄 */}
-                  <div className="flex items-center gap-3 text-[11px] font-mono tabular-nums mb-2">
-                    <span className="text-primary">{s.ok}<span className="text-muted-foreground/60 ml-0.5 text-[9px]">{t('collector.success')}</span></span>
+                  <div className="flex items-center gap-3 text-xs font-mono tabular-nums mb-2">
+                    <span className="text-primary">{s.ok}<span className="text-muted-foreground/60 ml-0.5 text-[11px]">{t('collector.success')}</span></span>
                     <span className={s.err > 0 ? 'text-destructive' : 'text-muted-foreground/30'}>
-                      {s.err}<span className="text-muted-foreground/60 ml-0.5 text-[9px]">{t('collector.fail')}</span>
+                      {s.err}<span className="text-muted-foreground/60 ml-0.5 text-[11px]">{t('collector.fail')}</span>
                     </span>
                     <span className={rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}>
                       {rate < 0 ? '—' : `${rate}%`}
@@ -171,7 +171,7 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
                   </div>
 
                   {/* 푸터: 라인 + IP + 경과시간 */}
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground/60 font-mono
+                  <div className="flex items-center justify-between text-xs text-muted-foreground/60 font-mono
                     pt-1.5 border-t border-border/50 dark:border-border-dark/50">
                     <div className="flex items-center gap-1.5">
                       <span>{line || '—'}</span>
@@ -191,7 +191,7 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
                   {extra.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {extra.map(([k, v]) => (
-                        <span key={k} className="text-[9px] font-mono px-1.5 py-px rounded
+                        <span key={k} className="text-[11px] font-mono px-1.5 py-px rounded
                           bg-secondary text-muted-foreground">{k}:{v}</span>
                       ))}
                     </div>
@@ -202,7 +202,7 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
                 {isSelected && (
                   <div className="mt-1 rounded-lg border border-primary/20 bg-white dark:bg-background-dark p-3
                     animate-in slide-in-from-top-1 duration-200">
-                    <div className="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-foreground dark:text-white">
+                    <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-foreground dark:text-white">
                       <Icon name="history" size="xs" className="text-primary" />
                       {t('collector.recentActivity')}
                     </div>
