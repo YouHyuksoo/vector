@@ -2146,6 +2146,8 @@ CRITICAL VRL syntax rules:
     val = if condition { x } else { y }
     item = { "KEY": val }
 - NEVER use null in VRL. Use "" as default instead.
+- NEVER use "while", "loop", or "break" in VRL. These are reserved keywords and will cause compilation errors.
+  Use for_each() for iteration instead. If you need index-based iteration, create an index array with slice and for_each.
 
 PATTERN 1 — Single-line CSV (no header):
   values = split!(.message, ",")
