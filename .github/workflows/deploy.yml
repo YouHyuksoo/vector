@@ -89,7 +89,7 @@ jobs:
           if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force }
 
           robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
-            /XF ".env" `
+            /XF ".env" "ai-config.json" "ai-system-prompt.txt" `
             /XD ".git" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
 
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
