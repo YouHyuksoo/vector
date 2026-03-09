@@ -656,7 +656,9 @@
     "systemPrompt": "시스템 프롬프트 보기/수정",
     "savePrompt": "프롬프트 저장",
     "resetPrompt": "기본값으로 초기화",
-    "customSaved": "커스텀 저장됨"
+    "customSaved": "커스텀 저장됨",
+    "aiNotConfigured": "AI 모델이 설정되지 않았습니다.",
+    "goSettings": "설정으로 이동"
   },
   "systemLogs": {
     "title": "시스템 로그",

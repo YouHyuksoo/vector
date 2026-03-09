@@ -656,7 +656,9 @@
     "systemPrompt": "View/Edit System Prompt",
     "savePrompt": "Save Prompt",
     "resetPrompt": "Reset to Default",
-    "customSaved": "Custom Saved"
+    "customSaved": "Custom Saved",
+    "aiNotConfigured": "AI model is not configured.",
+    "goSettings": "Go to Settings"
   },
   "systemLogs": {
     "title": "System Logs",

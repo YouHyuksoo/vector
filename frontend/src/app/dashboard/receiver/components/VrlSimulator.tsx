@@ -443,7 +443,20 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
             </div>
 
             {/* AI 생성 영역 */}
-            {aiModels.length > 0 && (
+            {aiModels.length === 0 ? (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                <Icon name="smart_toy" size="xs" className="text-purple-500/50 shrink-0" />
+                <span className="text-xs text-muted-foreground">
+                  {t('vrlSim.aiNotConfigured')}
+                </span>
+                <a
+                  href="/dashboard/settings"
+                  className="text-xs text-purple-500 hover:text-purple-400 underline underline-offset-2 transition-colors whitespace-nowrap"
+                >
+                  {t('vrlSim.goSettings')}
+                </a>
+              </div>
+            ) : (
               <div className="flex flex-col gap-2 p-2 rounded-lg bg-purple-500/5 border border-purple-500/20">
                 <div className="flex items-center gap-2">
                   <Icon name="smart_toy" size="xs" className="text-purple-500 shrink-0" />
