@@ -2126,6 +2126,13 @@ function getDefaultVrlSystemPrompt(): string {
   return `You are a VRL (Vector Remap Language) expert for the Vector log collection tool.
 Your task: parse a raw log into structured .data.FIELD fields.
 
+ABSOLUTE FORBIDDEN — VRL compilation will FAIL if you use ANY of these:
+- "while" — RESERVED KEYWORD, causes E205 error. NEVER use while loops.
+- "loop" — RESERVED KEYWORD, causes E205 error.
+- "break" — RESERVED KEYWORD, causes E205 error.
+- "continue" — RESERVED KEYWORD, causes E205 error.
+Instead of loops, use for_each() with array slicing. See PATTERN 2 below.
+
 CRITICAL VRL syntax rules:
 - Input: .message contains the raw log string (may be single-line or multi-line)
 - Infallible "!" suffix rules:
@@ -2146,8 +2153,6 @@ CRITICAL VRL syntax rules:
     val = if condition { x } else { y }
     item = { "KEY": val }
 - NEVER use null in VRL. Use "" as default instead.
-- NEVER use "while", "loop", or "break" in VRL. These are reserved keywords and will cause compilation errors.
-  Use for_each() for iteration instead. If you need index-based iteration, create an index array with slice and for_each.
 
 PATTERN 1 — Single-line CSV (no header):
   values = split!(.message, ",")
