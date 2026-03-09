@@ -613,12 +613,13 @@ if .equipment_type == "SP" {
 type = "remap"
 inputs = ["parse_logs"]
 source = '''
+ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
 . = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)
   "target_type": .target_type,         # 저장 방식 (TABLE/PROCEDURE)
   "target_table": .target_table,       # 저장 대상 (테이블명 또는 프로시져 레지스트리 키)
-  "timestamp": to_string!(.timestamp), # 타임스탬프 (문자열로 변환)
+  "timestamp": ts,                     # 타임스탬프 (문자열로 변환)
   "data": .data                        # 파싱된 데이터 객체
 }
 '''
