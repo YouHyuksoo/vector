@@ -9,17 +9,21 @@
 
 import ko from './ko.json';
 import en from './en.json';
+import es from './es.json';
 
-export type Locale = 'ko' | 'en';
+export type Locale = 'ko' | 'en' | 'es';
 
 export type TranslationMap = typeof ko;
 
-export const locales: Record<Locale, TranslationMap> = { ko, en };
+export const locales: Record<Locale, TranslationMap> = { ko, en, es };
 
 export const LOCALE_LABELS: Record<Locale, string> = {
   ko: 'KO',
   en: 'EN',
+  es: 'ES',
 };
+
+export const LOCALE_LIST: Locale[] = ['ko', 'en', 'es'];
 
 /** 점 구분 키로 중첩 객체 값 조회 (예: 'nav.dashboard') */
 export function getNestedValue(obj: Record<string, any>, path: string): string {

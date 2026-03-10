@@ -2421,11 +2421,14 @@ function getCpuInfo() {
 function getDiskInfo(): { total: number; used: number; free: number; percent: number } | null {
   try {
     if (platform() === 'win32') {
-      const out = execSync('wmic logicaldisk where "DeviceID=\'C:\'" get Size,FreeSpace /format:csv', { encoding: 'utf-8', windowsHide: true });
+      const out = execSync(
+        'powershell -NoProfile -Command "Get-CimInstance Win32_LogicalDisk -Filter \\"DeviceID=\'C:\'\\" | Select-Object FreeSpace,Size | ConvertTo-Csv -NoTypeInformation"',
+        { encoding: 'utf-8', windowsHide: true },
+      );
       const lines = out.trim().split('\n').filter(l => l.trim());
-      const last = lines[lines.length - 1].split(',');
-      const free = Number(last[1]);
-      const total = Number(last[2]);
+      const last = lines[lines.length - 1].replace(/"/g, '').split(',');
+      const free = Number(last[0]);
+      const total = Number(last[1]);
       const used = total - free;
       return { total, used, free, percent: Math.round((used / total) * 100) };
     }

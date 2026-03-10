@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useI18n } from '@/contexts/I18nContext';
-import { LOCALE_LABELS, type Locale } from '@/locales';
+import { LOCALE_LABELS, LOCALE_LIST } from '@/locales';
 
 export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const { theme, toggleTheme } = useTheme();
@@ -17,7 +17,16 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
     return () => clearInterval(id);
   }, []);
 
-  const nextLocale: Locale = locale === 'ko' ? 'en' : 'ko';
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between h-14 px-6
@@ -42,12 +51,28 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
           {t('header.live')}
         </div>
         <span className="hidden sm:block font-mono text-xs text-muted-foreground">{clock}</span>
-        <button onClick={() => setLocale(nextLocale)}
-          className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold
-            hover:bg-surface dark:hover:bg-surface-dark transition-colors text-muted-foreground hover:text-foreground">
-          <Icon name="language" size="sm" />
-          <span>{LOCALE_LABELS[locale]}</span>
-        </button>
+        <div ref={langRef} className="relative">
+          <button onClick={() => setLangOpen(!langOpen)}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold
+              hover:bg-surface dark:hover:bg-surface-dark transition-colors text-muted-foreground hover:text-foreground">
+            <Icon name="language" size="sm" />
+            <span>{LOCALE_LABELS[locale]}</span>
+            <Icon name="expand_more" size="sm" />
+          </button>
+          {langOpen && (
+            <div className="absolute right-0 top-full mt-1 min-w-[80px] py-1 rounded-lg shadow-lg
+              bg-surface dark:bg-surface-dark border border-border dark:border-border-dark z-50">
+              {LOCALE_LIST.map((l) => (
+                <button key={l} onClick={() => { setLocale(l); setLangOpen(false); }}
+                  className={`w-full px-3 py-1.5 text-xs font-medium text-left transition-colors
+                    hover:bg-primary/10 dark:hover:bg-primary/20
+                    ${l === locale ? 'text-primary font-bold' : 'text-foreground dark:text-foreground-dark'}`}>
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button onClick={toggleTheme}
           className="p-2 rounded-lg hover:bg-surface dark:hover:bg-surface-dark transition-colors text-muted-foreground hover:text-foreground">
           <Icon name={theme === 'dark' ? 'light_mode' : 'dark_mode'} size="sm" />

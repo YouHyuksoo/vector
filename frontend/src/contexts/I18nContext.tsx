@@ -29,7 +29,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('locale') as Locale | null;
-    if (saved && (saved === 'ko' || saved === 'en')) {
+    if (saved && (saved === 'ko' || saved === 'en' || saved === 'es')) {
       setLocaleState(saved);
     }
   }, []);
