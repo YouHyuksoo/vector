@@ -67,9 +67,21 @@ Edite mediante la interfaz gráfica en la página **Transmisor**, o use el modo 
 | AOI | `C:/AOI/output/*.dat` |
 | REFLOW | `C:/REFLOW/temp/*.csv` |
 
-## Gestión desde el Panel de Administración
+## Metodos de Configuracion
 
-1. Seleccione el equipo en la página **Transmisor**
-2. Ingrese información del equipo (tipo, código de línea, ID)
-3. Configure rutas de log y conexión al servidor
-4. Guarde, luego descargue la configuración desde la página **Descarga de Agent**
+### Metodo 1: Agent Manager (Configurar directamente en PC del equipo)
+
+Ejecute `agent-manager.exe` en el PC del equipo para configurar mediante la interfaz web local (`http://localhost:9090`).
+
+1. **Pestana Config → Modo formulario**: Ingrese ID del equipo, tipo, IP, codigo de linea, tipo de log, ruta de log, direccion/puerto del Aggregator
+2. **Pestana Config → Modo edicion TOML**: Edite directamente el TOML
+3. Despues de guardar, reinicie Vector desde la **Pestana Gestion**
+
+Guardar en modo formulario sincroniza automaticamente `add_metadata` VRL source y `heartbeat.metrics.tags` en el TOML.
+
+### Metodo 2: Panel de Administracion (Servidor maestro)
+
+1. Seleccione el equipo en la pagina **Transmisor**
+2. Ingrese informacion del equipo (tipo, codigo de linea, ID)
+3. Configure rutas de log y conexion al servidor
+4. Guarde, luego descargue la configuracion desde la pagina **Descarga de Agent**

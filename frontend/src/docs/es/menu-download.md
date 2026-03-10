@@ -20,24 +20,50 @@ Haga clic en **Descargar vector.zip** para descargar el archivo del motor Vector
 - Extraiga en el PC del equipo antes de usar
 - Archivos incluidos: `bin/vector.exe`, `start-vector.bat`, `stop-vector.bat`, `install-service.bat`, `uninstall-service.bat`
 
-### 2. Archivos de Configuracion por Equipo
+### 2. Agent Manager
+
+Haga clic en **Descargar agent-manager.exe** para descargar la herramienta de gestion integral para PC de equipos.
+
+- Tamano del archivo: ~45MB
+- Ejecutable independiente — no requiere instalacion de Node.js
+- Ejecute `agent-manager.exe` en el PC del equipo y acceda a la interfaz en `http://localhost:9090`
+
+**Funciones del Agent Manager:**
+
+| Funcion | Descripcion |
+|---------|-------------|
+| **Monitoreo de Estado** | Estado de Vector, PID, tiempo activo, metricas de transmision |
+| **Gestion de Config** | Modo formulario (info del equipo) + modo edicion TOML directa |
+| **Control de Proceso** | Iniciar/detener/reiniciar Vector, prueba de conexion |
+| **Instalar Vector** | Descarga automatica de vector.exe desde el servidor maestro |
+| **Actualizar Vector** | Verificacion de version + descarga de reemplazo |
+| **Registro de Servicio** | Registrar/desregistrar como servicio Windows (inicio automatico) |
+
+### 3. Archivos de Configuracion por Equipo
 
 Lista los archivos TOML de todos los equipos registrados en la pagina de Configuracion del Transmisor.
 
 - Haga clic en **Descargar** junto a cada equipo para descargas individuales
 - Coloque los archivos TOML descargados en la misma carpeta que el ejecutable de Vector
 
-### 3. Guia de Instalacion
+### 4. Guia de Instalacion
 
-Se muestra una guia de instalacion de 5 pasos en la parte inferior:
+Los metodos de instalacion se muestran en la parte inferior de la pagina.
 
-1. Descargue `vector.zip` y extraiga en el PC del equipo
-2. Descargue la configuracion TOML para su equipo
-3. Cambie las rutas `include` en el TOML a las ubicaciones reales de log
-4. Cambie `address` a la IP real del servidor Aggregator
-5. Ejecute: `vector.exe --config {equipo}.toml`
+## Pasos de Instalacion para PC de Equipo
 
-## Pasos Completos de Instalacion para PC de Equipo
+### Metodo A: Usando Agent Manager (Recomendado)
+
+```
+1. Descargar agent-manager.exe y copiar al PC del equipo
+2. Ejecutar agent-manager.exe → Abrir http://localhost:9090 en navegador
+3. Pestana Gestion → Clic en "Instalar Vector" (descarga automatica)
+4. Pestana Config → Ingresar info del equipo en modo formulario (ID, tipo, IP, linea, ruta de log, direccion del servidor)
+5. Pestana Gestion → Clic en "Iniciar" para ejecutar Vector
+6. (Opcional) Pestana Gestion → Registrar servicio Windows para inicio automatico
+```
+
+### Metodo B: Instalacion Manual
 
 ```
 1. Descargar vector.zip → Extraer

@@ -20,24 +20,50 @@ Click **Download vector.zip** to download the Vector engine archive.
 - Extract on the equipment PC before use
 - Included files: `bin/vector.exe`, `start-vector.bat`, `stop-vector.bat`, `install-service.bat`, `uninstall-service.bat`
 
-### 2. Equipment Config Files
+### 2. Agent Manager
+
+Click **Download agent-manager.exe** to download the equipment PC management tool.
+
+- File size: ~45MB
+- Standalone executable — no Node.js installation required
+- Run `agent-manager.exe` on the equipment PC and access the management UI at `http://localhost:9090`
+
+**Agent Manager Features:**
+
+| Feature | Description |
+|---------|-------------|
+| **Status Monitoring** | Vector running status, PID, uptime, transmission metrics |
+| **Config Management** | Form mode (equipment info input) + direct TOML edit mode |
+| **Process Control** | Start/stop/restart Vector, Aggregator connection test |
+| **Vector Install** | Auto-download vector.exe from master server |
+| **Vector Update** | Version check + download replacement |
+| **Service Registration** | Register/unregister as Windows service (auto-start) |
+
+### 3. Equipment Config Files
 
 Lists TOML files for all equipment registered in the Sender Settings page.
 
 - Click **Download** next to each equipment for individual downloads
 - Place downloaded TOML files in the same folder as the Vector executable
 
-### 3. Installation Guide
+### 4. Installation Guide
 
-A 5-step installation guide is shown at the bottom:
+Installation methods are shown at the bottom of the page.
 
-1. Download `vector.zip` and extract on equipment PC
-2. Download the TOML config for your equipment
-3. Change `include` paths in TOML to actual log locations
-4. Change `address` to actual Aggregator server IP
-5. Run: `vector.exe --config {equipment}.toml`
+## Equipment PC Installation Steps
 
-## Full Installation Steps for Equipment PC
+### Method A: Using Agent Manager (Recommended)
+
+```
+1. Download agent-manager.exe and copy to equipment PC
+2. Run agent-manager.exe → Open http://localhost:9090 in browser
+3. Management tab → Click "Install Vector" (auto-download)
+4. Settings tab → Enter equipment info in form mode (ID, type, IP, line, log path, server address)
+5. Management tab → Click "Start" to run Vector
+6. (Optional) Management tab → Register Windows service for auto-start
+```
+
+### Method B: Manual Installation
 
 ```
 1. Download vector.zip → Extract

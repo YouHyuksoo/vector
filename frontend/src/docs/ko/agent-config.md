@@ -67,7 +67,19 @@ address = "192.168.1.10:9000"
 | AOI | `C:/AOI/output/*.dat` |
 | REFLOW | `C:/REFLOW/temp/*.csv` |
 
-## 관리 화면에서 설정
+## 설정 방법
+
+### 방법 1: Agent Manager (설비 PC에서 직접 설정)
+
+설비 PC에서 `agent-manager.exe`를 실행하면 로컬 웹 UI(`http://localhost:9090`)에서 설정할 수 있습니다.
+
+1. **설정 탭 → 폼 모드**: 설비 ID, 설비 타입, IP, 라인 코드, 로그 타입, 로그 경로, Aggregator 주소/포트를 입력
+2. **설정 탭 → TOML 편집 모드**: TOML 원본을 직접 수정
+3. 저장 후 **관리 탭**에서 Vector 재시작
+
+폼 모드로 저장하면 TOML의 `add_metadata` VRL source와 `heartbeat.metrics.tags`가 자동으로 동기화됩니다.
+
+### 방법 2: 관리 화면에서 설정 (마스터 서버)
 
 1. **송신기 설정** 페이지에서 설비를 선택합니다
 2. 설비 정보(유형, 라인 코드, ID)를 입력합니다

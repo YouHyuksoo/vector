@@ -67,7 +67,19 @@ Edit via GUI on the **Sender** page, or use the direct TOML edit mode.
 | AOI | `C:/AOI/output/*.dat` |
 | REFLOW | `C:/REFLOW/temp/*.csv` |
 
-## Managing via Admin Panel
+## Configuration Methods
+
+### Method 1: Agent Manager (Configure directly on equipment PC)
+
+Run `agent-manager.exe` on the equipment PC to configure via local web UI (`http://localhost:9090`).
+
+1. **Settings tab → Form mode**: Enter equipment ID, type, IP, line code, log type, log path, Aggregator address/port
+2. **Settings tab → TOML edit mode**: Directly edit the raw TOML
+3. After saving, restart Vector from the **Management tab**
+
+Saving via form mode automatically syncs `add_metadata` VRL source and `heartbeat.metrics.tags` in the TOML.
+
+### Method 2: Admin Panel (Master server)
 
 1. Select equipment on the **Sender** page
 2. Enter equipment info (type, line code, ID)

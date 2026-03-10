@@ -173,6 +173,22 @@ export function QuickGuide() {
             ))}
           </div>
 
+          {/* Agent Manager 권장 안내 */}
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl
+            bg-primary/5 dark:bg-primary/10 border border-primary/20">
+            <Icon name="settings_suggest" className="text-primary flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-primary mb-1">Agent Manager 사용 (권장)</p>
+              <p className="text-xs text-muted-foreground mb-1.5">
+                위 과정을 <span className="font-bold">agent-manager.exe</span> 하나로 대체할 수 있습니다.
+                설비 PC에서 실행하면 웹 UI로 Vector 설치/설정/시작/서비스 등록을 모두 처리합니다.
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                agent-manager.exe 실행 → http://localhost:9090 접속 → 관리 탭에서 설치 → 설정 탭에서 설비 정보 입력 → 관리 탭에서 시작
+              </p>
+            </div>
+          </div>
+
           {/* 서비스 vs 수동 실행 비교 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex items-start gap-3 px-4 py-3 rounded-xl
@@ -185,7 +201,7 @@ export function QuickGuide() {
                   install-service.bat
                 </code>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  우클릭 → 관리자 권한으로 실행
+                  우클릭 → 관리자 권한으로 실행, 또는 Agent Manager에서 서비스 등록
                 </p>
               </div>
             </div>
