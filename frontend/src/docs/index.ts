@@ -111,6 +111,24 @@ const DOC_MAP: Record<Locale, Record<string, string>> = {
     'menu-download': enMenuDownload,
     'menu-settings': enMenuSettings,
   },
+  es: {
+    installation: enInstallation,
+    'server-config': enServerConfig,
+    workflow: enWorkflow,
+    'agent-config': enAgentConfig,
+    troubleshooting: enTroubleshooting,
+    'fastify-server': enFastifyServer,
+    redis: enRedis,
+    'menu-dashboard': enMenuDashboard,
+    'menu-logs': enMenuLogs,
+    'menu-errors': enMenuErrors,
+    'menu-mapping': enMenuMapping,
+    'menu-receiver': enMenuReceiver,
+    'menu-simulator': enMenuSimulator,
+    'menu-sender': enMenuSender,
+    'menu-download': enMenuDownload,
+    'menu-settings': enMenuSettings,
+  },
 };
 
 /** 특정 locale·토픽의 마크다운 콘텐츠를 반환 */
