@@ -72,13 +72,13 @@ if (existsSync(envSrc)) {
 console.log('[3/4] Packaging with pkg...');
 try {
   execSync(
-    `npx pkg ${join(DIST, 'entry.cjs')} --targets node20-win-x64 --output ${join(DIST, 'agent-monitor.exe')} --compress GZip`,
+    `npx pkg ${join(DIST, 'entry.cjs')} --targets node20-win-x64 --output ${join(DIST, 'agent-manager.exe')} --compress GZip`,
     { stdio: 'inherit', cwd: __dirname },
   );
   console.log('[4/4] Done!');
   console.log(`\n  Output: ${DIST}`);
-  console.log('  Files:  agent-monitor.exe + server.mjs + public/ + .env');
-  console.log('  Deploy: 위 파일들을 장비 PC에 복사 후 agent-monitor.exe 실행');
+  console.log('  Files:  agent-manager.exe + server.mjs + public/ + .env');
+  console.log('  Deploy: 위 파일들을 장비 PC에 복사 후 agent-manager.exe 실행');
 } catch (err) {
   console.error('pkg failed:', err.message);
   process.exit(1);

@@ -1,5 +1,5 @@
 {
-  "name": "vector-agent-monitor",
+  "name": "vector-agent-manager",
   "version": "1.0.0",
   "description": "Vector Agent local monitoring UI for equipment PCs",
   "type": "module",

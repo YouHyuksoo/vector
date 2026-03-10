@@ -17,6 +17,7 @@ import { heartbeatRoute } from './routes/heartbeat.route.js';
 import { statusRoute } from './routes/status.route.js';
 import { monitorRoute } from './routes/monitor.route.js';
 import { remoteAgentRoute } from './routes/remote-agent.route.js';
+import { agentDownloadRoute } from './routes/agent-download.route.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -42,6 +43,7 @@ export async function buildApp() {
   await app.register(statusRoute, { prefix: '/api' });
   await app.register(monitorRoute);
   await app.register(remoteAgentRoute);
+  await app.register(agentDownloadRoute);
 
   return app;
 }

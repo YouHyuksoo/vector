@@ -5897,7 +5897,7 @@ var require_transport = __commonJS({
   "node_modules/pino/lib/transport.js"(exports, module) {
     "use strict";
     var { createRequire } = __require("module");
-    var { existsSync: existsSync4 } = __require("node:fs");
+    var { existsSync: existsSync7 } = __require("node:fs");
     var getCallers = require_caller();
     var { join: join3, isAbsolute, sep } = __require("node:path");
     var { fileURLToPath: fileURLToPath2 } = __require("node:url");
@@ -5971,7 +5971,7 @@ var require_transport = __commonJS({
           return false;
         }
       }
-      return isAbsolute(path) && !existsSync4(path);
+      return isAbsolute(path) && !existsSync7(path);
     }
     function stripQuotes(value) {
       const first = value[0];
@@ -6041,7 +6041,7 @@ var require_transport = __commonJS({
       stream.flushSync();
     }
     function transport(fullOptions) {
-      const { pipeline, targets, levels, dedupe, worker = {}, caller = getCallers(), sync = false } = fullOptions;
+      const { pipeline: pipeline3, targets, levels, dedupe, worker = {}, caller = getCallers(), sync = false } = fullOptions;
       const options = {
         ...fullOptions.options
       };
@@ -6069,9 +6069,9 @@ var require_transport = __commonJS({
             };
           });
         });
-      } else if (pipeline) {
+      } else if (pipeline3) {
         target = bundlerOverrides["pino-worker"] || join3(__dirname, "worker.js");
-        options.pipelines = [pipeline.map((dest) => {
+        options.pipelines = [pipeline3.map((dest) => {
           return {
             ...dest,
             target: fixTarget(dest.target)
@@ -6085,7 +6085,7 @@ var require_transport = __commonJS({
         options.dedupe = dedupe;
       }
       options.pinoWillSendConfig = true;
-      const name = targets || pipeline ? "pino.transport" : target;
+      const name = targets || pipeline3 ? "pino.transport" : target;
       return buildStream(fixTarget(target), options, worker, sync, name);
       function fixTarget(origin) {
         origin = bundlerOverrides[origin] || origin;
@@ -26143,7 +26143,7 @@ var require_plugin_utils = __commonJS({
       FST_ERR_PLUGIN_INVALID_ASYNC_HANDLER
     } = require_errors2();
     var rcRegex = /-(?:rc|pre|alpha).+$/u;
-    function getMeta(fn) {
+    function getMeta2(fn) {
       return fn[/* @__PURE__ */ Symbol.for("plugin-meta")];
     }
     function getPluginName(func) {
@@ -26176,7 +26176,7 @@ var require_plugin_utils = __commonJS({
       return !!fn[/* @__PURE__ */ Symbol.for("skip-override")];
     }
     function checkDependencies(fn) {
-      const meta = getMeta(fn);
+      const meta = getMeta2(fn);
       if (!meta) return;
       const dependencies = meta.dependencies;
       if (!dependencies) return;
@@ -26189,7 +26189,7 @@ var require_plugin_utils = __commonJS({
       });
     }
     function checkDecorators(fn) {
-      const meta = getMeta(fn);
+      const meta = getMeta2(fn);
       if (!meta) return;
       const { decorators, name } = meta;
       if (!decorators) return;
@@ -26212,7 +26212,7 @@ var require_plugin_utils = __commonJS({
       });
     }
     function checkVersion(fn) {
-      const meta = getMeta(fn);
+      const meta = getMeta2(fn);
       if (meta?.fastify == null) return;
       const requiredVersion = meta.fastify;
       const fastifyRc = rcRegex.test(this.version);
@@ -26224,7 +26224,7 @@ var require_plugin_utils = __commonJS({
       }
     }
     function registerPluginName(fn) {
-      const meta = getMeta(fn);
+      const meta = getMeta2(fn);
       if (!meta) return;
       const name = meta.name;
       if (!name) return;
@@ -26253,7 +26253,7 @@ var require_plugin_utils = __commonJS({
     };
     module.exports[kTestInternals] = {
       shouldSkipOverride,
-      getMeta,
+      getMeta: getMeta2,
       checkDecorators,
       checkDependencies
     };
@@ -31671,7 +31671,7 @@ var require_form_data = __commonJS({
   "node_modules/light-my-request/lib/form-data.js"(exports, module) {
     "use strict";
     var { randomUUID } = __require("node:crypto");
-    var { Readable } = __require("node:stream");
+    var { Readable: Readable3 } = __require("node:stream");
     var textEncoder;
     function isFormDataLike(payload) {
       return payload && typeof payload === "object" && typeof payload.append === "function" && typeof payload.delete === "function" && typeof payload.get === "function" && typeof payload.getAll === "function" && typeof payload.has === "function" && typeof payload.set === "function" && payload[Symbol.toStringTag] === "FormData";
@@ -31710,7 +31710,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
         }
         yield textEncoder.encode(`--${boundary}--`);
       }
-      const stream = Readable.from(asyncIterator());
+      const stream = Readable3.from(asyncIterator());
       return {
         stream,
         contentType: `multipart/form-data; boundary=${boundary}`
@@ -31725,7 +31725,7 @@ Content-Type: ${value.type || "application/octet-stream"}\r
 var require_request2 = __commonJS({
   "node_modules/light-my-request/lib/request.js"(exports, module) {
     "use strict";
-    var { Readable, addAbortSignal } = __require("node:stream");
+    var { Readable: Readable3, addAbortSignal } = __require("node:stream");
     var util = __require("node:util");
     var cookie = require_dist4();
     var assert = __require("node:assert");
@@ -31763,7 +31763,7 @@ var require_request2 = __commonJS({
       }
     }
     function Request(options) {
-      Readable.call(this, {
+      Readable3.call(this, {
         autoDestroy: false
       });
       const parsedURL = parseURL(options.url || options.path, options.query);
@@ -31895,7 +31895,7 @@ var require_request2 = __commonJS({
         }
       });
     }
-    util.inherits(Request, Readable);
+    util.inherits(Request, Readable3);
     util.inherits(CustomRequest, Request);
     Request.prototype.destroy = function(error) {
       if (this.destroyed || this._lightMyRequest.isDone) return;
@@ -32100,14 +32100,14 @@ var require_response = __commonJS({
   "node_modules/light-my-request/lib/response.js"(exports, module) {
     "use strict";
     var http = __require("node:http");
-    var { Writable, Readable, addAbortSignal } = __require("node:stream");
+    var { Writable, Readable: Readable3, addAbortSignal } = __require("node:stream");
     var util = __require("node:util");
     var setCookie = require_set_cookie();
     function Response(req, onEnd, reject) {
       http.ServerResponse.call(this, req);
       if (req._lightMyRequest?.payloadAsStream) {
         const read = this.emit.bind(this, "drain");
-        this._lightMyRequest = { headers: null, trailers: {}, stream: new Readable({ read }) };
+        this._lightMyRequest = { headers: null, trailers: {}, stream: new Readable3({ read }) };
         const signal = req._lightMyRequest.signal;
         if (signal) {
           addAbortSignal(signal, this._lightMyRequest.stream);
@@ -32253,7 +32253,7 @@ var require_response = __commonJS({
         if (response._lightMyRequest.stream) {
           return response._lightMyRequest.stream;
         }
-        return Readable.from(response._lightMyRequest.payloadChunks);
+        return Readable3.from(response._lightMyRequest.payloadChunks);
       };
       return res;
     }
@@ -41315,7 +41315,7 @@ var require_send = __commonJS({
     var normalize = path.normalize;
     var resolve = path.resolve;
     var sep = path.sep;
-    var Readable = stream.Readable;
+    var Readable3 = stream.Readable;
     var BYTES_RANGE_REGEXP = /^ *bytes=/;
     var MAX_MAXAGE = 60 * 60 * 24 * 365 * 1e3;
     var UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
@@ -41522,7 +41522,7 @@ var require_send = __commonJS({
       return {
         statusCode,
         headers,
-        stream: Readable.from(doc[0]),
+        stream: Readable3.from(doc[0]),
         // metadata
         type: "error",
         metadata: { error: createHttpError(statusCode, err) }
@@ -41548,7 +41548,7 @@ var require_send = __commonJS({
       return {
         statusCode: 304,
         headers,
-        stream: Readable.from(""),
+        stream: Readable3.from(""),
         // metadata
         type: "file",
         metadata: { path: path2, stat }
@@ -41636,7 +41636,7 @@ var require_send = __commonJS({
         return {
           statusCode,
           headers,
-          stream: Readable.from(""),
+          stream: Readable3.from(""),
           // metadata
           type: "file",
           metadata: { path: path2, stat }
@@ -41671,7 +41671,7 @@ var require_send = __commonJS({
       return {
         statusCode: 301,
         headers,
-        stream: Readable.from(doc[0]),
+        stream: Readable3.from(doc[0]),
         // metadata
         type: "directory",
         metadata: { requestPath: options.path, path: path2 }
@@ -42465,8 +42465,8 @@ var require_static = __commonJS({
               }
             }
           }
-          for (const [dirname3, rootPath] of indexDirs.entries()) {
-            const pathname = dirname3 + (dirname3.endsWith("/") ? "" : "/");
+          for (const [dirname4, rootPath] of indexDirs.entries()) {
+            const pathname = dirname4 + (dirname4.endsWith("/") ? "" : "/");
             const file = "/" + pathname.replace(prefix, "");
             setUpHeadAndGet(routeOpts, pathname, file, rootPath);
             if (opts.redirect === true) {
@@ -43885,7 +43885,7 @@ var import_fastify = __toESM(require_fastify(), 1);
 var import_static = __toESM(require_static(), 1);
 var import_cors = __toESM(require_cors(), 1);
 var import_dotenv = __toESM(require_main(), 1);
-import { join as join2, dirname as dirname2 } from "path";
+import { join as join2, dirname as dirname3 } from "path";
 import { fileURLToPath } from "url";
 
 // src/routes/status.ts
@@ -44271,15 +44271,402 @@ async function logsRoutes(app2) {
   });
 }
 
+// src/routes/setup.ts
+import { readFileSync as readFileSync4, writeFileSync as writeFileSync2, copyFileSync as copyFileSync2, existsSync as existsSync4 } from "fs";
+function getMeta(content, key) {
+  const m = content.match(new RegExp(`\\.${key}\\s*=\\s*"([^"]*)"`));
+  return m?.[1] ?? "";
+}
+function setMeta(content, key, value) {
+  return content.replace(
+    new RegExp(`(\\.${key}\\s*=\\s*")([^"]*)(")`, "m"),
+    `$1${value}$3`
+  );
+}
+function getHeartbeatTag(content, key) {
+  const m = content.match(new RegExp(
+    `\\[sources\\.heartbeat\\.metrics\\.tags\\][\\s\\S]*?${key}\\s*=\\s*"([^"]*)"`
+  ));
+  return m?.[1] ?? "";
+}
+function setHeartbeatTag(content, key, value) {
+  const tagRegex = new RegExp(
+    `(\\[sources\\.heartbeat\\.metrics\\.tags\\][\\s\\S]*?)${key}\\s*=\\s*"[^"]*"`
+  );
+  if (tagRegex.test(content)) {
+    return content.replace(tagRegex, `$1${key} = "${value}"`);
+  }
+  return content;
+}
+function getSinkAddr(content) {
+  const m = content.match(/\[sinks\.to_aggregator\][\s\S]*?address\s*=\s*"([^:]+):(\d+)"/);
+  return m ? [m[1], m[2]] : ["", ""];
+}
+function setSinkAddr(content, ip, port) {
+  return content.replace(
+    /(\[sinks\.to_aggregator\][\s\S]*?address\s*=\s*")[^"]*(")/,
+    `$1${ip}:${port}$2`
+  );
+}
+function getInclude(content) {
+  const m = content.match(/include\s*=\s*\[([\s\S]*?)\]/);
+  if (!m) return "";
+  return m[1].split("\n").map((l) => l.replace(/[",]/g, "").trim()).filter(Boolean).map((p) => p.replace(/\\\\/g, "\\")).join("\n");
+}
+async function setupRoutes(app2) {
+  app2.get("/api/setup", async (_req, reply) => {
+    const configPath = ENV.VECTOR_CONFIG_PATH;
+    if (!existsSync4(configPath)) {
+      return reply.status(404).send({ error: "Config file not found" });
+    }
+    const content = readFileSync4(configPath, "utf-8");
+    const [sinkIp, sinkPort] = getSinkAddr(content);
+    const fields = {
+      equipment_id: getMeta(content, "equipment_id"),
+      equipment_type: getMeta(content, "equipment_type"),
+      ip: getHeartbeatTag(content, "ip"),
+      line_code: getMeta(content, "line_code"),
+      log_type: getMeta(content, "log_type"),
+      include_paths: getInclude(content),
+      sink_address: sinkIp,
+      sink_port: sinkPort
+    };
+    return reply.send(fields);
+  });
+  app2.put("/api/setup", async (req, reply) => {
+    const configPath = ENV.VECTOR_CONFIG_PATH;
+    if (!existsSync4(configPath)) {
+      return reply.status(404).send({ error: "Config file not found" });
+    }
+    let content = readFileSync4(configPath, "utf-8");
+    const fields = req.body;
+    copyFileSync2(configPath, configPath + ".bak");
+    const metaKeys = ["equipment_id", "equipment_type", "line_code", "log_type"];
+    for (const key of metaKeys) {
+      if (fields[key] !== void 0) {
+        content = setMeta(content, key, fields[key]);
+        content = setHeartbeatTag(content, key, fields[key]);
+      }
+    }
+    if (fields.ip !== void 0) {
+      content = setHeartbeatTag(content, "ip", fields.ip);
+    }
+    if (fields.sink_address !== void 0 || fields.sink_port !== void 0) {
+      const [curIp, curPort] = getSinkAddr(content);
+      content = setSinkAddr(
+        content,
+        fields.sink_address ?? curIp,
+        fields.sink_port ?? curPort
+      );
+    }
+    writeFileSync2(configPath, content, "utf-8");
+    return reply.send({ success: true, message: "\uC124\uBE44 \uC815\uBCF4\uAC00 TOML\uC5D0 \uBC18\uC601\uB418\uC5C8\uC2B5\uB2C8\uB2E4." });
+  });
+}
+
+// src/routes/install.ts
+import { existsSync as existsSync5, mkdirSync, writeFileSync as writeFileSync3, createWriteStream } from "fs";
+import { dirname as dirname2 } from "path";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
+var DEFAULT_TOML = `# \u2500\u2500 Vector Agent \uC124\uC815 \u2500\u2500
+# \uC774 \uD30C\uC77C\uC740 Agent Manager\uAC00 \uC790\uB3D9 \uC0DD\uC131\uD588\uC2B5\uB2C8\uB2E4.
+# \uC124\uC815 \uD0ED\uC758 \uD3FC \uBAA8\uB4DC\uC5D0\uC11C \uC124\uBE44 \uC815\uBCF4\uB97C \uC785\uB825\uD558\uC138\uC694.
+
+data_dir = "C:\\\\vector\\\\data"
+
+[api]
+enabled = true
+address = "0.0.0.0:8686"
+
+# \u2500\u2500 [\uB85C\uADF8 \uC218\uC9D1] \uD30C\uC77C \uAC10\uC2DC \u2500\u2500
+[sources.work_logs]
+type = "file"
+include = [
+  "C:\\\\logs\\\\*.log",
+]
+
+# \u2500\u2500 [\uBA54\uD0C0\uB370\uC774\uD130 \uCD94\uAC00] \uC124\uBE44 \uC815\uBCF4 \uC0BD\uC785 \u2500\u2500
+[transforms.add_metadata]
+type = "remap"
+inputs = ["work_logs"]
+source = """
+.equipment_type = "UNKNOWN"
+.equipment_id = "UNKNOWN"
+.line_code = "LINE-01"
+.log_type = "INSPECTION"
+"""
+
+# \u2500\u2500 [\uD558\uD2B8\uBE44\uD2B8] \uC8FC\uAE30\uC801 \uC0C1\uD0DC \uC804\uC1A1 (30\uCD08 \uAC04\uACA9) \u2500\u2500
+[sources.heartbeat]
+type = "static_metrics"
+interval_secs = 30
+namespace = "agent"
+
+[[sources.heartbeat.metrics]]
+name = "heartbeat"
+kind = "absolute"
+
+[sources.heartbeat.metrics.value.gauge]
+value = 1
+
+[sources.heartbeat.metrics.tags]
+equipment_type = "UNKNOWN"
+equipment_id = "UNKNOWN"
+line_code = "LINE-01"
+log_type = "INSPECTION"
+ip = ""
+
+# \u2500\u2500 [\uC804\uC1A1] Aggregator\uB85C \uC804\uC1A1 \u2500\u2500
+[sinks.to_aggregator]
+type = "vector"
+inputs = ["add_metadata", "heartbeat"]
+address = "20.10.30.112:9000"
+`;
+async function installRoutes(app2) {
+  app2.get("/api/install/status", async (_req, reply) => {
+    const binaryExists = existsSync5(ENV.VECTOR_BIN_PATH);
+    const configExists = existsSync5(ENV.VECTOR_CONFIG_PATH);
+    return reply.send({
+      installed: binaryExists && configExists,
+      binaryExists,
+      configExists,
+      binaryPath: ENV.VECTOR_BIN_PATH,
+      configPath: ENV.VECTOR_CONFIG_PATH
+    });
+  });
+  app2.post("/api/install", async (_req, reply) => {
+    try {
+      const binDir = dirname2(ENV.VECTOR_BIN_PATH);
+      const configDir = dirname2(ENV.VECTOR_CONFIG_PATH);
+      if (!existsSync5(binDir)) mkdirSync(binDir, { recursive: true });
+      if (!existsSync5(configDir)) mkdirSync(configDir, { recursive: true });
+      const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector`;
+      const res = await fetch(downloadUrl);
+      if (!res.ok || !res.body) {
+        return reply.status(502).send({
+          success: false,
+          error: `\uB2E4\uC6B4\uB85C\uB4DC \uC2E4\uD328: HTTP ${res.status}`
+        });
+      }
+      const ws = createWriteStream(ENV.VECTOR_BIN_PATH);
+      await pipeline(Readable.fromWeb(res.body), ws);
+      if (!existsSync5(ENV.VECTOR_CONFIG_PATH)) {
+        writeFileSync3(ENV.VECTOR_CONFIG_PATH, DEFAULT_TOML, "utf-8");
+      }
+      const dataDir = "C:\\vector\\data";
+      if (!existsSync5(dataDir)) mkdirSync(dataDir, { recursive: true });
+      return reply.send({
+        success: true,
+        message: "Vector\uAC00 \uC124\uCE58\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC124\uC815 \uD0ED\uC5D0\uC11C \uC124\uBE44 \uC815\uBCF4\uB97C \uC785\uB825\uD558\uC138\uC694."
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return reply.status(500).send({ success: false, error: message });
+    }
+  });
+}
+
+// src/routes/update.ts
+import { execSync as execSync3 } from "child_process";
+import { existsSync as existsSync6, renameSync, unlinkSync, createWriteStream as createWriteStream2 } from "fs";
+import { pipeline as pipeline2 } from "stream/promises";
+import { Readable as Readable2 } from "stream";
+function getLocalVersion() {
+  try {
+    if (!existsSync6(ENV.VECTOR_BIN_PATH)) return null;
+    const out = execSync3(`"${ENV.VECTOR_BIN_PATH}" --version`, {
+      encoding: "utf-8",
+      timeout: 5e3,
+      windowsHide: true
+    });
+    const m = out.match(/vector\s+(\S+)/i);
+    return m?.[1] ?? out.trim();
+  } catch {
+    return null;
+  }
+}
+function findVectorPid3() {
+  try {
+    const out = execSync3('tasklist /FI "IMAGENAME eq vector.exe" /FO CSV /NH', {
+      encoding: "utf-8",
+      timeout: 3e3,
+      windowsHide: true
+    });
+    const m = out.match(/"vector\.exe","(\d+)"/i);
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
+  }
+}
+async function updateRoutes(app2) {
+  app2.get("/api/update/check", async (_req, reply) => {
+    const localVersion = getLocalVersion();
+    let serverVersion = null;
+    try {
+      const res = await fetch(
+        `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/version`,
+        { signal: AbortSignal.timeout(5e3) }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        serverVersion = data.version ?? null;
+      }
+    } catch {
+    }
+    const updateAvailable = !!(localVersion && serverVersion && localVersion !== serverVersion);
+    return reply.send({
+      localVersion,
+      serverVersion,
+      updateAvailable
+    });
+  });
+  app2.post("/api/update/execute", async (_req, reply) => {
+    try {
+      const pid = findVectorPid3();
+      if (pid) {
+        execSync3(`taskkill /F /PID ${pid}`, { timeout: 5e3, windowsHide: true });
+        await new Promise((r) => setTimeout(r, 2e3));
+      }
+      const backupPath = ENV.VECTOR_BIN_PATH + ".old";
+      if (existsSync6(ENV.VECTOR_BIN_PATH)) {
+        if (existsSync6(backupPath)) unlinkSync(backupPath);
+        renameSync(ENV.VECTOR_BIN_PATH, backupPath);
+      }
+      const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector`;
+      const res = await fetch(downloadUrl);
+      if (!res.ok || !res.body) {
+        if (existsSync6(backupPath)) renameSync(backupPath, ENV.VECTOR_BIN_PATH);
+        return reply.status(502).send({
+          success: false,
+          error: `\uB2E4\uC6B4\uB85C\uB4DC \uC2E4\uD328: HTTP ${res.status}`
+        });
+      }
+      const ws = createWriteStream2(ENV.VECTOR_BIN_PATH);
+      await pipeline2(Readable2.fromWeb(res.body), ws);
+      const newVersion = getLocalVersion();
+      return reply.send({
+        success: true,
+        version: newVersion,
+        message: "\uC5C5\uB370\uC774\uD2B8 \uC644\uB8CC. \uAD00\uB9AC \uD0ED\uC5D0\uC11C Vector\uB97C \uC2DC\uC791\uD558\uC138\uC694."
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return reply.status(500).send({ success: false, error: message });
+    }
+  });
+}
+
+// src/routes/service.ts
+import { execSync as execSync4 } from "child_process";
+var SVC_VECTOR = "VectorAgent";
+var SVC_MANAGER = "VectorAgentManager";
+function getServiceState(name) {
+  try {
+    const out = execSync4(`sc query "${name}"`, {
+      encoding: "utf-8",
+      timeout: 5e3,
+      windowsHide: true
+    });
+    const m = out.match(/STATE\s*:\s*\d+\s+(\w+)/);
+    return m?.[1] ?? "UNKNOWN";
+  } catch {
+    return "NOT_INSTALLED";
+  }
+}
+function installService(name, binPath) {
+  try {
+    execSync4(`sc create "${name}" binPath= "${binPath}" start= auto`, {
+      encoding: "utf-8",
+      timeout: 1e4,
+      windowsHide: true
+    });
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("Access is denied")) {
+      return { success: false, error: "\uAD00\uB9AC\uC790 \uAD8C\uD55C\uC774 \uD544\uC694\uD569\uB2C8\uB2E4." };
+    }
+    return { success: false, error: message };
+  }
+}
+function uninstallService(name) {
+  try {
+    try {
+      execSync4(`sc stop "${name}"`, { timeout: 1e4, windowsHide: true });
+    } catch {
+    }
+    execSync4(`sc delete "${name}"`, {
+      encoding: "utf-8",
+      timeout: 1e4,
+      windowsHide: true
+    });
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("Access is denied")) {
+      return { success: false, error: "\uAD00\uB9AC\uC790 \uAD8C\uD55C\uC774 \uD544\uC694\uD569\uB2C8\uB2E4." };
+    }
+    return { success: false, error: message };
+  }
+}
+async function serviceRoutes(app2) {
+  app2.get("/api/service/status", async (_req, reply) => {
+    return reply.send({
+      vector: {
+        name: SVC_VECTOR,
+        state: getServiceState(SVC_VECTOR)
+      },
+      manager: {
+        name: SVC_MANAGER,
+        state: getServiceState(SVC_MANAGER)
+      }
+    });
+  });
+  app2.post(
+    "/api/service/install",
+    async (req, reply) => {
+      const { target = "both" } = req.body || {};
+      const results = {};
+      if (target === "vector" || target === "both") {
+        const binPath = `${ENV.VECTOR_BIN_PATH} --config ${ENV.VECTOR_CONFIG_PATH}`;
+        results.vector = installService(SVC_VECTOR, binPath);
+      }
+      if (target === "manager" || target === "both") {
+        const exePath = process.execPath;
+        results.manager = installService(SVC_MANAGER, exePath);
+      }
+      const allSuccess = Object.values(results).every((r) => r.success);
+      return reply.status(allSuccess ? 200 : 500).send(results);
+    }
+  );
+  app2.post(
+    "/api/service/uninstall",
+    async (req, reply) => {
+      const { target = "both" } = req.body || {};
+      const results = {};
+      if (target === "vector" || target === "both") {
+        results.vector = uninstallService(SVC_VECTOR);
+      }
+      if (target === "manager" || target === "both") {
+        results.manager = uninstallService(SVC_MANAGER);
+      }
+      const allSuccess = Object.values(results).every((r) => r.success);
+      return reply.status(allSuccess ? 200 : 500).send(results);
+    }
+  );
+}
+
 // src/server.ts
 (0, import_dotenv.config)();
 var __filename = fileURLToPath(import.meta.url);
-var __dirname2 = dirname2(__filename);
+var __dirname2 = dirname3(__filename);
 var ENV = {
   PORT: Number(process.env.PORT) || 9090,
   VECTOR_API_URL: process.env.VECTOR_API_URL || "http://127.0.0.1:8686",
   VECTOR_CONFIG_PATH: process.env.VECTOR_CONFIG_PATH || "C:\\vector\\config\\vector.toml",
-  VECTOR_BIN_PATH: process.env.VECTOR_BIN_PATH || "C:\\vector\\bin\\vector.exe"
+  VECTOR_BIN_PATH: process.env.VECTOR_BIN_PATH || "C:\\vector\\bin\\vector.exe",
+  MASTER_SERVER_URL: process.env.MASTER_SERVER_URL || "http://20.10.30.112:3100"
 };
 var app = (0, import_fastify.default)({ logger: true });
 await app.register(import_cors.default);
@@ -44292,14 +44679,19 @@ await app.register(statusRoutes);
 await app.register(configRoutes);
 await app.register(controlRoutes);
 await app.register(logsRoutes);
+await app.register(setupRoutes);
+await app.register(installRoutes);
+await app.register(updateRoutes);
+await app.register(serviceRoutes);
 try {
   await app.listen({ port: ENV.PORT, host: "0.0.0.0" });
   console.log(`
-  Agent Monitor running at http://localhost:${ENV.PORT}
+  Agent Manager running at http://localhost:${ENV.PORT}
 `);
   console.log(`  Vector API:    ${ENV.VECTOR_API_URL}`);
   console.log(`  Config path:   ${ENV.VECTOR_CONFIG_PATH}`);
-  console.log(`  Vector binary: ${ENV.VECTOR_BIN_PATH}
+  console.log(`  Vector binary: ${ENV.VECTOR_BIN_PATH}`);
+  console.log(`  Master server: ${ENV.MASTER_SERVER_URL}
 `);
 } catch (err) {
   app.log.error(err);
