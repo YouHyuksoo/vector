@@ -1452,11 +1452,20 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   /** AI로 VRL 코드 생성 */
   app.post('/api/monitor/ai/generate-vrl', async (request, reply) => {
-    const { provider, sampleLog, equipmentType, userInstruction } = request.body as {
+    const { provider, sampleLog, equipmentType, userInstruction,
+      logStructure, multiRowMode, hasHeader, headerLines, startRow, kvDelimiter, sectionMarkers,
+    } = request.body as {
       provider: string;
       sampleLog: string;
       equipmentType: string;
       userInstruction?: string;
+      logStructure?: string;
+      multiRowMode?: string;
+      hasHeader?: boolean;
+      headerLines?: string;
+      startRow?: string;
+      kvDelimiter?: string;
+      sectionMarkers?: string;
     };
 
     if (!provider || !sampleLog) {
@@ -1471,7 +1480,19 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
     const systemPrompt = (request.body as any).systemPrompt || loadSavedSystemPrompt();
 
+    // 로그 구조 옵션을 프롬프트에 포함
+    const structureLines: string[] = [];
+    if (logStructure) structureLines.push(`Log structure type: ${logStructure}`);
+    if (logStructure === 'MULTI_ROW' && multiRowMode) structureLines.push(`Multi-row mode: ${multiRowMode}`);
+    if (hasHeader !== undefined) structureLines.push(`Has header: ${hasHeader}`);
+    if (hasHeader && headerLines) structureLines.push(`Header lines: ${headerLines}`);
+    if (startRow) structureLines.push(`Data starts at row: ${startRow}`);
+    if (kvDelimiter) structureLines.push(`Key-value delimiter: "${kvDelimiter}"`);
+    if (sectionMarkers) structureLines.push(`Section markers: ${sectionMarkers}`);
+    const structureInfo = structureLines.length > 0 ? `\nLog structure options:\n${structureLines.join('\n')}\n` : '';
+
     const userPrompt = `Equipment type: ${equipmentType}
+${structureInfo}
 Sample log:
 ${sampleLog}
 ${userInstruction ? `\nParsing instructions from user:\n${userInstruction}\n` : ''}
