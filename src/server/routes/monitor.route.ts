@@ -2220,7 +2220,15 @@ STRATEGY:
 9. ALL columns are parsed as strings — no numeric conversion. DB handles type casting at insert time.
 10. NEVER use dot prefix for local variables. ".panel_line" stores to the event — use "panel_line" instead.
 
-IMPORTANT: Return ONLY the VRL code. No markdown, no explanations, no code fences.`;
+OUTPUT FORMAT:
+- Add a comment block at the top explaining the log structure analysis:
+  # Log Structure: (describe sections, line numbers, headers vs data)
+  # Line 0: header row (MasterBarcode,PCBID,...)
+  # Line 1: master data
+  # Line 2: "Panel" (section label — skip)
+  # ...
+- Add inline comments for each section explaining what is being parsed and why.
+- Return ONLY VRL code with comments. No markdown, no code fences.`;
 }
 
 /** 새 설비용 기본 TOML 템플릿 */
