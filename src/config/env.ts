@@ -27,6 +27,7 @@ const envSchema = z.object({
   RAW_LOG_BASE_PATH: z.string().default('C:\\data\\raw-logs'),
 
   HEARTBEAT_TTL_SECONDS: z.coerce.number().default(60),
+  AGENT_MONITOR_PORT: z.coerce.number().default(9090),
 });
 
 export type Env = z.infer<typeof envSchema>;

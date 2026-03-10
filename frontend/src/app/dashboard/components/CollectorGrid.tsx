@@ -8,6 +8,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
+import { RemoteTabPanel } from '../equipment/components/RemoteTabPanel';
 
 function elapsed(iso: string) {
   if (!iso) return '—';
@@ -198,16 +199,20 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
                   )}
                 </div>
 
-                {/* 선택 시 인라인 상세 패널 */}
+                {/* 선택 시 원격 관리 탭 패널 */}
                 {isSelected && (
-                  <div className="mt-1 rounded-lg border border-primary/20 bg-white dark:bg-background-dark p-3
-                    animate-in slide-in-from-top-1 duration-200">
-                    <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-foreground dark:text-white">
-                      <Icon name="history" size="xs" className="text-primary" />
-                      {t('collector.recentActivity')}
-                    </div>
-                    <ActivityPanel logs={selectedLogs} t={t} />
-                  </div>
+                  <RemoteTabPanel
+                    equipmentId={eq.equipment_id}
+                    activityPanel={
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-foreground dark:text-white">
+                          <Icon name="history" size="xs" className="text-primary" />
+                          {t('collector.recentActivity')}
+                        </div>
+                        <ActivityPanel logs={selectedLogs} t={t} />
+                      </div>
+                    }
+                  />
                 )}
               </div>
             );

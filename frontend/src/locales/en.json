@@ -99,6 +99,64 @@
     "recentActivity": "Recent Activity",
     "noActivity": "No activity"
   },
+  "remote": {
+    "tabs": {
+      "activity": "Activity",
+      "status": "Status",
+      "config": "Config",
+      "control": "Control",
+      "logs": "Logs"
+    },
+    "status": {
+      "title": "Vector Process Status",
+      "running": "Running",
+      "stopped": "Stopped",
+      "pid": "PID",
+      "uptime": "Uptime",
+      "version": "Version",
+      "apiReachable": "API Connection",
+      "metrics": "Transmission Metrics",
+      "eventsIn": "Events In",
+      "eventsOut": "Events Out",
+      "errors": "Errors",
+      "unreachable": "Cannot connect to Agent Monitor",
+      "offline": "Equipment is offline"
+    },
+    "config": {
+      "title": "Remote TOML Config",
+      "load": "Load",
+      "save": "Save",
+      "saving": "Saving...",
+      "saved": "Saved successfully",
+      "saveFailed": "Save failed",
+      "restartHint": "Restart Vector in the Control tab to apply changes",
+      "noContent": "Cannot load configuration"
+    },
+    "control": {
+      "title": "Vector Process Control",
+      "start": "Start",
+      "stop": "Stop",
+      "restart": "Restart",
+      "testConnection": "Test Connection",
+      "starting": "Starting...",
+      "stopping": "Stopping...",
+      "restarting": "Restarting...",
+      "testing": "Testing...",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "confirmStop": "Are you sure you want to stop Vector?",
+      "confirmRestart": "Are you sure you want to restart Vector?"
+    },
+    "logs": {
+      "title": "Watched Files",
+      "fileName": "File Name",
+      "directory": "Directory",
+      "size": "Size",
+      "modified": "Modified",
+      "watchPaths": "Watch Paths",
+      "noFiles": "No watched files"
+    }
+  },
   "errors": {
     "title": "PROCESSING LOGS",
     "subtitle": "System Error Log",

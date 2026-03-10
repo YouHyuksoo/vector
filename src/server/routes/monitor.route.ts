@@ -2294,6 +2294,7 @@ equipment_type = "${name}"
 equipment_id = "${name}-001"
 line_code = "LINE-01"
 log_type = "INSPECTION"
+ip = ""
 
 [transforms.add_metadata]
 type = "remap"

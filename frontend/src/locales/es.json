@@ -99,6 +99,64 @@
     "recentActivity": "Actividad Reciente",
     "noActivity": "Sin actividad"
   },
+  "remote": {
+    "tabs": {
+      "activity": "Actividad",
+      "status": "Estado",
+      "config": "Configuración",
+      "control": "Control",
+      "logs": "Registros"
+    },
+    "status": {
+      "title": "Estado del Proceso Vector",
+      "running": "Ejecutando",
+      "stopped": "Detenido",
+      "pid": "PID",
+      "uptime": "Tiempo activo",
+      "version": "Versión",
+      "apiReachable": "Conexión API",
+      "metrics": "Métricas de Transmisión",
+      "eventsIn": "Eventos Recibidos",
+      "eventsOut": "Eventos Enviados",
+      "errors": "Errores",
+      "unreachable": "No se puede conectar al Agent Monitor",
+      "offline": "El equipo está fuera de línea"
+    },
+    "config": {
+      "title": "Configuración TOML Remota",
+      "load": "Cargar",
+      "save": "Guardar",
+      "saving": "Guardando...",
+      "saved": "Guardado exitosamente",
+      "saveFailed": "Error al guardar",
+      "restartHint": "Reinicie Vector en la pestaña Control para aplicar los cambios",
+      "noContent": "No se puede cargar la configuración"
+    },
+    "control": {
+      "title": "Control del Proceso Vector",
+      "start": "Iniciar",
+      "stop": "Detener",
+      "restart": "Reiniciar",
+      "testConnection": "Probar Conexión",
+      "starting": "Iniciando...",
+      "stopping": "Deteniendo...",
+      "restarting": "Reiniciando...",
+      "testing": "Probando...",
+      "connected": "Conectado",
+      "disconnected": "Desconectado",
+      "confirmStop": "¿Está seguro de que desea detener Vector?",
+      "confirmRestart": "¿Está seguro de que desea reiniciar Vector?"
+    },
+    "logs": {
+      "title": "Archivos Monitoreados",
+      "fileName": "Nombre",
+      "directory": "Directorio",
+      "size": "Tamaño",
+      "modified": "Modificado",
+      "watchPaths": "Rutas de Monitoreo",
+      "noFiles": "Sin archivos monitoreados"
+    }
+  },
   "errors": {
     "title": "REGISTROS DE PROCESAMIENTO",
     "subtitle": "Registro de Errores del Sistema",
