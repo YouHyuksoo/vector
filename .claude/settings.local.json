@@ -50,7 +50,14 @@
       "Bash(head:*)",
       "Bash(C:/Project/vector/vector-bin/bin/vector.exe:*)",
       "Bash(taskkill:*)",
-      "WebFetch(domain:docs.rs)"
+      "WebFetch(domain:docs.rs)",
+      "Bash(pm2:*)",
+      "Read(//c/Users/hsyou/AppData/Roaming/npm/node_modules/**)",
+      "Read(//c/Users/hsyou/.pm2/**)",
+      "Bash(gh workflow:*)",
+      "Bash(gh api:*)",
+      "Bash(gh run:*)",
+      "Bash(sleep 5 && gh run list --limit 100 --json databaseId,status --jq '[.[] | select\\(.status == \"completed\" or .status == \"cancelled\"\\)] | .[].databaseId' | while read id; do echo \"Deleting $id...\"; gh run delete \"$id\" 2>&1; done)"
     ]
   }
 }
