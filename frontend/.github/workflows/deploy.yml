@@ -1,0 +1,143 @@
+# @file .github/workflows/deploy.yml
+# @description GitHub Actions — Windows self-hosted runner 배포 파이프라인 (다중 서버)
+#
+# 초보자 가이드:
+# 1. main 브랜치에 push 시 자동 실행
+# 2. matrix 전략으로 server1, server2 동시 배포
+# 3. 각 서버의 DEPLOY_DIR 환경변수 경로로 동기화 배포
+# 4. PM2로 무중단 재시작
+#
+# 사전 준비:
+# - Windows 서버에 GitHub self-hosted runner 설치
+# - GitHub > Settings > Actions > Runners 에서 라벨 추가:
+#     서버1: server1 / 서버2: server2
+# - Node.js, PM2, Redis, Oracle Instant Client 설치
+# - 서버에 DEPLOY_DIR 시스템 환경변수 설정 (관리자 PowerShell):
+#     [System.Environment]::SetEnvironmentVariable('DEPLOY_DIR', 'D:\Project\vector', 'Machine')
+# - runner 서비스 재시작 (환경변수 반영)
+# - {DEPLOY_DIR}\.env 파일 수동 배치 (최초 1회)
+
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    strategy:
+      matrix:
+        server: [MesServer, LogServer]
+      fail-fast: false
+
+    runs-on: [self-hosted, Windows, "${{ matrix.server }}"]
+
+    defaults:
+      run:
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
+
+    steps:
+      - name: Verify DEPLOY_DIR
+        run: |
+          if (-not $env:DEPLOY_DIR) {
+            Write-Host "##[error]DEPLOY_DIR is not set! Run on the server:"
+            Write-Host "  [System.Environment]::SetEnvironmentVariable('DEPLOY_DIR', 'C:\Project\vector', 'Machine')"
+            exit 1
+          }
+          Write-Host "[${{ matrix.server }}] Deploy target: $env:DEPLOY_DIR"
+
+      - name: Disable autocrlf
+        run: git config --global core.autocrlf false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Build backend (TypeScript)
+        run: npm run build
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Build frontend (Next.js)
+        run: npm run build:frontend
+
+      - name: Stop PM2 before sync
+        run: |
+          if (Test-Path "$env:DEPLOY_DIR\ecosystem.config.cjs") {
+            try {
+              Set-Location $env:DEPLOY_DIR
+              pm2 stop ecosystem.config.cjs 2>$null
+            } catch {}
+          } else {
+            Write-Host "First deploy, skipping PM2 stop"
+          }
+
+      - name: Sync to deploy directory
+        run: |
+          $src = "${{ github.workspace }}"
+          $dst = $env:DEPLOY_DIR
+
+          if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force }
+
+          robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
+            /XF ".env" "ai-config.json" "ai-system-prompt.txt" `
+            /XD ".git" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
+
+          if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
+
+      - name: Fix TOML line endings (CRLF to LF)
+        run: |
+          Get-ChildItem "$env:DEPLOY_DIR\vector-config" -Recurse -Filter "*.toml" | ForEach-Object {
+            $content = [System.IO.File]::ReadAllText($_.FullName)
+            if ($content -match "`r") {
+              $content = $content -replace "`r`n", "`n"
+              [System.IO.File]::WriteAllText($_.FullName, $content, [System.Text.UTF8Encoding]::new($false))
+              Write-Host "Fixed: $($_.Name)"
+            }
+          }
+
+      - name: Create logs directory
+        run: |
+          $logsDir = "$env:DEPLOY_DIR\logs"
+          if (!(Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir -Force }
+
+      - name: Restart services with PM2
+        run: |
+          Set-Location $env:DEPLOY_DIR
+          $ErrorActionPreference = "SilentlyContinue"
+          pm2 describe vector-backend 2>$null | Out-Null
+          $running = ($LASTEXITCODE -eq 0)
+          $ErrorActionPreference = "Stop"
+          if ($running) {
+            Write-Host "Reloading existing PM2 processes..."
+            pm2 reload ecosystem.config.cjs --update-env
+          } else {
+            Write-Host "Starting PM2 processes for the first time..."
+            pm2 start ecosystem.config.cjs
+          }
+          pm2 save
+
+      - name: Health check
+        run: |
+          Start-Sleep -Seconds 5
+          try {
+            $r = Invoke-WebRequest -Uri "http://localhost:3110/api/monitor/pipeline-status" -UseBasicParsing -TimeoutSec 5
+            Write-Host "[${{ matrix.server }}] Backend OK (status: $($r.StatusCode))"
+          } catch { Write-Host "[${{ matrix.server }}] Backend not ready yet" }
+          try {
+            $r = Invoke-WebRequest -Uri "http://localhost:3100" -UseBasicParsing -TimeoutSec 5
+            Write-Host "[${{ matrix.server }}] Frontend OK (status: $($r.StatusCode))"
+          } catch { Write-Host "[${{ matrix.server }}] Frontend not ready yet" }
+
+      - name: Show PM2 status
+        if: always()
+        run: pm2 status
