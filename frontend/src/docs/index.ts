@@ -42,6 +42,25 @@ import enMenuSender from './en/menu-sender.md';
 import enMenuDownload from './en/menu-download.md';
 import enMenuSettings from './en/menu-settings.md';
 
+/* ── 스페인어 ── */
+import esInstallation from './es/installation.md';
+import esServerConfig from './es/server-config.md';
+import esWorkflow from './es/workflow.md';
+import esAgentConfig from './es/agent-config.md';
+import esTroubleshooting from './es/troubleshooting.md';
+import esFastifyServer from './es/fastify-server.md';
+import esRedis from './es/redis.md';
+
+import esMenuDashboard from './es/menu-dashboard.md';
+import esMenuLogs from './es/menu-logs.md';
+import esMenuErrors from './es/menu-errors.md';
+import esMenuMapping from './es/menu-mapping.md';
+import esMenuReceiver from './es/menu-receiver.md';
+import esMenuSimulator from './es/menu-simulator.md';
+import esMenuSender from './es/menu-sender.md';
+import esMenuDownload from './es/menu-download.md';
+import esMenuSettings from './es/menu-settings.md';
+
 import type { Locale } from '@/locales';
 
 export interface DocTopic {
@@ -112,22 +131,22 @@ const DOC_MAP: Record<Locale, Record<string, string>> = {
     'menu-settings': enMenuSettings,
   },
   es: {
-    installation: enInstallation,
-    'server-config': enServerConfig,
-    workflow: enWorkflow,
-    'agent-config': enAgentConfig,
-    troubleshooting: enTroubleshooting,
-    'fastify-server': enFastifyServer,
-    redis: enRedis,
-    'menu-dashboard': enMenuDashboard,
-    'menu-logs': enMenuLogs,
-    'menu-errors': enMenuErrors,
-    'menu-mapping': enMenuMapping,
-    'menu-receiver': enMenuReceiver,
-    'menu-simulator': enMenuSimulator,
-    'menu-sender': enMenuSender,
-    'menu-download': enMenuDownload,
-    'menu-settings': enMenuSettings,
+    installation: esInstallation,
+    'server-config': esServerConfig,
+    workflow: esWorkflow,
+    'agent-config': esAgentConfig,
+    troubleshooting: esTroubleshooting,
+    'fastify-server': esFastifyServer,
+    redis: esRedis,
+    'menu-dashboard': esMenuDashboard,
+    'menu-logs': esMenuLogs,
+    'menu-errors': esMenuErrors,
+    'menu-mapping': esMenuMapping,
+    'menu-receiver': esMenuReceiver,
+    'menu-simulator': esMenuSimulator,
+    'menu-sender': esMenuSender,
+    'menu-download': esMenuDownload,
+    'menu-settings': esMenuSettings,
   },
 };
 
