@@ -2184,13 +2184,41 @@ PATTERN 2 — Multi-line CSV with header row (MOST COMMON for equipment logs):
 PATTERN 3 — Key=Value or fixed-format logs:
   # Use parse_key_value!, parse_csv!, parse_json!, regex patterns as needed.
 
+PATTERN 4 — Multi-section log (sections separated by section headers like "Panel", "ComponentID,..."):
+  lines = split!(.message, "\\n")
+  # Section 1: Master (line 0 = header, line 1 = data)
+  master = split(to_string!(get!(lines, [1])), ",")
+  .data.BARCODE = strip_whitespace(to_string!(get!(master, [0])))
+
+  # Section 2: Panel (line 2 = "Panel" label, line 3 = header, line 4 = data)
+  panel = split(to_string!(get!(lines, [4])), ",")
+  .data.PANEL_RESULT = strip_whitespace(to_string!(get!(panel, [1])))
+
+  # Section 3: Components (line 5 = header, line 6+ = data rows)
+  .data.COMPONENTS = []
+  component_lines = slice!(lines, 6)
+  for_each(array!(component_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      item = { "ID": strip_whitespace(to_string!(get!(cols, [0]))) }
+      .data.COMPONENTS = push(.data.COMPONENTS, item)
+    }
+  }
+
 STRATEGY:
-1. Look at the sample log structure carefully — identify if it has a header row.
-2. For CSV with headers: use PATTERN 2. Map EVERY column from the header to a .data.FIELD.
-3. Parse the first data row into individual .data.FIELD values for the board/summary info.
-4. If multiple data rows exist, also parse them into a .data.DETAILS or .data.ITEMS array.
-5. Name fields exactly matching the header column names (converted to UPPERCASE_SNAKE_CASE, spaces/special chars replaced with _).
-6. ALL columns are parsed as strings — no numeric conversion. DB handles type casting at insert time.
+1. Count lines carefully — identify EVERY section header and label line in the sample log.
+2. Section headers (e.g. "Panel", "ComponentID,PadResult,...") are NOT data. Skip them.
+   - A section label like "Panel" on its own line takes 1 line.
+   - A CSV header like "ArrayBarcode,PanelResult" takes 1 line.
+   - Data starts AFTER both the label and header lines.
+3. Use exact line indices: count from line 0 and verify which line contains actual data.
+4. For CSV with headers: use PATTERN 2. Map EVERY column from the header to a .data.FIELD.
+5. For multi-section logs: use PATTERN 4. Each section has label + header + data lines.
+6. Parse the first data row into individual .data.FIELD values for the board/summary info.
+7. If multiple data rows exist, also parse them into a .data.DETAILS or .data.ITEMS array.
+8. Name fields exactly matching the header column names (converted to UPPERCASE_SNAKE_CASE, spaces/special chars replaced with _).
+9. ALL columns are parsed as strings — no numeric conversion. DB handles type casting at insert time.
+10. NEVER use dot prefix for local variables. ".panel_line" stores to the event — use "panel_line" instead.
 
 IMPORTANT: Return ONLY the VRL code. No markdown, no explanations, no code fences.`;
 }
