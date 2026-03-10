@@ -297,6 +297,23 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
+  /** Agent Manager 실행파일 다운로드 */
+  app.get('/api/monitor/download/agent-manager', async (_request, reply) => {
+    const exePath = join(process.cwd(), 'vector-bin', 'agent-manager.exe');
+    if (!existsSync(exePath)) {
+      return reply.status(404).send({ error: 'agent-manager.exe not found' });
+    }
+    try {
+      const buf = readFileSync(exePath);
+      return reply
+        .header('Content-Type', 'application/octet-stream')
+        .header('Content-Disposition', 'attachment; filename="agent-manager.exe"')
+        .send(buf);
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
   /** 설비별 Agent TOML 다운로드 */
   app.get('/api/monitor/download/agent/:name', async (request, reply) => {
     const { name } = request.params as { name: string };

@@ -65,8 +65,30 @@ export default function DownloadPage() {
           <p className="text-xs text-muted-foreground font-mono">{t('download.vectorExeSize')}</p>
         </Card>
 
+        {/* Agent Manager 다운로드 */}
+        <Card className="flex flex-col items-center gap-4 py-8">
+          <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Icon name="settings_suggest" size="lg" className="text-primary" />
+          </div>
+          <div className="text-center">
+            <p className="text-base font-bold text-text dark:text-white">{t('download.agentManager')}</p>
+            <p className="text-sm text-muted-foreground mt-1">{t('download.agentManagerDesc')}</p>
+          </div>
+          <a
+            href="/api/monitor/download/agent-manager"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm
+              bg-primary text-white hover:bg-primary/90
+              shadow-lg shadow-primary/20 hover:shadow-primary/30
+              transition-all duration-200 hover:-translate-y-0.5"
+          >
+            <Icon name="file_download" className="text-white" />
+            {t('download.agentManagerBtn')}
+          </a>
+          <p className="text-xs text-muted-foreground font-mono">{t('download.agentManagerSize')}</p>
+        </Card>
+
         {/* 설비별 TOML 다운로드 */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3">
           <p className="text-base font-bold text-text dark:text-white mb-1 flex items-center gap-2">
             <Icon name="description" className="text-accent" />
             {t('download.agentConfig')}
