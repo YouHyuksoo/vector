@@ -1,16 +1,14 @@
 # @file .github/workflows/deploy.yml
-# @description GitHub Actions — Windows self-hosted runner 배포 파이프라인 (다중 서버)
+# @description GitHub Actions — Windows self-hosted runner 배포 파이프라인
 #
 # 초보자 가이드:
 # 1. main 브랜치에 push 시 자동 실행
-# 2. matrix 전략으로 server1, server2 동시 배포
-# 3. 각 서버의 DEPLOY_DIR 환경변수 경로로 동기화 배포
-# 4. PM2로 무중단 재시작
+# 2. DEPLOY_DIR 환경변수 경로로 동기화 배포
+# 3. PM2로 무중단 재시작
 #
 # 사전 준비:
 # - Windows 서버에 GitHub self-hosted runner 설치
-# - GitHub > Settings > Actions > Runners 에서 라벨 추가:
-#     서버1: server1 / 서버2: server2
+# - GitHub > Settings > Actions > Runners 에서 LogServer 라벨 추가
 # - Node.js, PM2, Redis, Oracle Instant Client 설치
 # - 서버에 DEPLOY_DIR 시스템 환경변수 설정 (관리자 PowerShell):
 #     [System.Environment]::SetEnvironmentVariable('DEPLOY_DIR', 'D:\Project\vector', 'Machine')
@@ -26,12 +24,7 @@ on:
 
 jobs:
   deploy:
-    strategy:
-      matrix:
-        server: [MesServer, LogServer]
-      fail-fast: false
-
-    runs-on: [self-hosted, Windows, "${{ matrix.server }}"]
+    runs-on: [self-hosted, Windows, LogServer]
 
     defaults:
       run:
@@ -45,7 +38,7 @@ jobs:
             Write-Host "  [System.Environment]::SetEnvironmentVariable('DEPLOY_DIR', 'C:\Project\vector', 'Machine')"
             exit 1
           }
-          Write-Host "[${{ matrix.server }}] Deploy target: $env:DEPLOY_DIR"
+          Write-Host "[LogServer] Deploy target: $env:DEPLOY_DIR"
 
       - name: Disable autocrlf
         run: git config --global core.autocrlf false
@@ -131,12 +124,12 @@ jobs:
           Start-Sleep -Seconds 5
           try {
             $r = Invoke-WebRequest -Uri "http://localhost:3110/api/monitor/pipeline-status" -UseBasicParsing -TimeoutSec 5
-            Write-Host "[${{ matrix.server }}] Backend OK (status: $($r.StatusCode))"
-          } catch { Write-Host "[${{ matrix.server }}] Backend not ready yet" }
+            Write-Host "[LogServer] Backend OK (status: $($r.StatusCode))"
+          } catch { Write-Host "[LogServer] Backend not ready yet" }
           try {
             $r = Invoke-WebRequest -Uri "http://localhost:3100" -UseBasicParsing -TimeoutSec 5
-            Write-Host "[${{ matrix.server }}] Frontend OK (status: $($r.StatusCode))"
-          } catch { Write-Host "[${{ matrix.server }}] Frontend not ready yet" }
+            Write-Host "[LogServer] Frontend OK (status: $($r.StatusCode))"
+          } catch { Write-Host "[LogServer] Frontend not ready yet" }
 
       - name: Show PM2 status
         if: always()
