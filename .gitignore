@@ -12,6 +12,7 @@ config/ai-config.json
 # Vector binary & runtime data
 vector-bin/
 !vector-bin/vector.zip
+!vector-bin/agent-manager.exe
 vector-data/
 vector-data-agent/
 
