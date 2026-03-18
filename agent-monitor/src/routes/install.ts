@@ -9,69 +9,13 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { existsSync, mkdirSync, writeFileSync, createWriteStream, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, createWriteStream, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
 import { tmpdir } from 'os';
 import AdmZip from 'adm-zip';
 import { ENV } from '../server.js';
-
-/** 기본 TOML 템플릿 (초기 설치용) */
-const DEFAULT_TOML = `# ── Vector Agent 설정 ──
-# 이 파일은 Agent Manager가 자동 생성했습니다.
-# 설정 탭의 폼 모드에서 설비 정보를 입력하세요.
-
-data_dir = "C:\\\\vector\\\\data"
-
-[api]
-enabled = true
-address = "0.0.0.0:8686"
-
-# ── [로그 수집] 파일 감시 ──
-[sources.work_logs]
-type = "file"
-include = [
-  "C:\\\\logs\\\\*.log",
-]
-
-# ── [메타데이터 추가] 설비 정보 삽입 ──
-[transforms.add_metadata]
-type = "remap"
-inputs = ["work_logs"]
-source = """
-.equipment_type = "UNKNOWN"
-.equipment_id = "UNKNOWN"
-.line_code = "LINE-01"
-.log_type = "INSPECTION"
-"""
-
-# ── [하트비트] 주기적 상태 전송 (30초 간격) ──
-[sources.heartbeat]
-type = "static_metrics"
-interval_secs = 30
-namespace = "agent"
-
-[[sources.heartbeat.metrics]]
-name = "heartbeat"
-kind = "absolute"
-
-[sources.heartbeat.metrics.value.gauge]
-value = 1
-
-[sources.heartbeat.metrics.tags]
-equipment_type = "UNKNOWN"
-equipment_id = "UNKNOWN"
-line_code = "LINE-01"
-log_type = "INSPECTION"
-ip = ""
-
-# ── [전송] Aggregator로 전송 ──
-[sinks.to_aggregator]
-type = "vector"
-inputs = ["add_metadata", "heartbeat"]
-address = "20.10.30.112:9000"
-`;
 
 export default async function installRoutes(app: FastifyInstance): Promise<void> {
   /** GET /api/install/status — 설치 상태 확인 */
@@ -113,20 +57,13 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
       const zip = new AdmZip(tmpZip);
       zip.extractAllTo(installDir, true);
 
-      /* 4. 기본 TOML 생성 (이미 있으면 건드리지 않음) */
-      const configDir = dirname(ENV.VECTOR_CONFIG_PATH);
-      if (!existsSync(configDir)) mkdirSync(configDir, { recursive: true });
-      if (!existsSync(ENV.VECTOR_CONFIG_PATH)) {
-        writeFileSync(ENV.VECTOR_CONFIG_PATH, DEFAULT_TOML, 'utf-8');
-      }
-
-      /* 5. data 디렉토리 생성 */
+      /* 4. data 디렉토리 생성 */
       const dataDir = 'C:\\vector\\data';
       if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
 
       return reply.send({
         success: true,
-        message: 'Vector가 설치되었습니다. 설정 탭에서 설비 정보를 입력하세요.',
+        message: 'Vector가 설치되었습니다. 마스터 서버 다운로드 페이지에서 설비 TOML을 다운받아 config 폴더에 넣어주세요.',
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
