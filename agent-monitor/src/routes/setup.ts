@@ -79,6 +79,14 @@ function getInclude(content: string): string {
     .filter(Boolean).map(p => p.replace(/\\\\/g, '\\')).join('\n');
 }
 
+/** include 배열 교체 */
+function setInclude(content: string, paths: string): string {
+  const lines = paths.split('\n').map(p => p.trim()).filter(Boolean);
+  const escaped = lines.map(p => `  "${p.replace(/\\/g, '\\\\')}",`).join('\n');
+  const newInclude = `include = [\n${escaped}\n]`;
+  return content.replace(/include\s*=\s*\[[\s\S]*?\]/, newInclude);
+}
+
 export default async function setupRoutes(app: FastifyInstance): Promise<void> {
   /** GET /api/setup — 현재 설비 정보 추출 */
   app.get('/api/setup', async (_req, reply) => {
@@ -128,6 +136,11 @@ export default async function setupRoutes(app: FastifyInstance): Promise<void> {
     /* ip는 heartbeat tags에만 */
     if (fields.ip !== undefined) {
       content = setHeartbeatTag(content, 'ip', fields.ip);
+    }
+
+    /* include 경로 */
+    if (fields.include_paths !== undefined) {
+      content = setInclude(content, fields.include_paths);
     }
 
     /* sink address */

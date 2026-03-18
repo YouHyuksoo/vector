@@ -139,6 +139,7 @@ async function saveSetup() {
     ip: document.getElementById('inp-ip').value,
     line_code: document.getElementById('inp-line').value,
     log_type: document.getElementById('inp-log-type').value,
+    include_paths: document.getElementById('inp-include').value,
     sink_address: document.getElementById('inp-sink-addr').value,
     sink_port: document.getElementById('inp-sink-port').value,
   };
