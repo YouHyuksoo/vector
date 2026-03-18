@@ -124,7 +124,11 @@ async function loadSetup() {
     document.getElementById('inp-sink-addr').value = data.sink_address || '';
     document.getElementById('inp-sink-port').value = data.sink_port || '';
   } catch (err) {
-    showToast('설비 정보 로드 실패: ' + err.message, 'error');
+    if (err.message.includes('404')) {
+      showToast('설정 파일이 없습니다. 관리 탭에서 Vector를 먼저 설치해주세요.', 'warning');
+    } else {
+      showToast('설비 정보 로드 실패: ' + err.message, 'error');
+    }
   }
 }
 
@@ -158,7 +162,13 @@ async function loadConfig() {
     document.getElementById('editor-config').value = data.content;
     document.getElementById('txt-config-path').textContent = data.path;
   } catch (err) {
-    showToast('설정 파일 로드 실패: ' + err.message, 'error');
+    if (err.message.includes('404')) {
+      document.getElementById('editor-config').value = '';
+      document.getElementById('txt-config-path').textContent = '파일 없음';
+      showToast('설정 파일이 없습니다. 관리 탭에서 Vector를 먼저 설치해주세요.', 'warning');
+    } else {
+      showToast('설정 파일 로드 실패: ' + err.message, 'error');
+    }
   }
 }
 
