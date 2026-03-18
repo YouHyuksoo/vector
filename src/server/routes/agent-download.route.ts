@@ -27,7 +27,7 @@ export const agentDownloadRoute: FastifyPluginAsync = async (app) => {
 
   /** GET /api/monitor/agent-download/vector — vector.exe 다운로드 */
   app.get('/api/monitor/agent-download/vector', async (_req, reply) => {
-    const binaryPath = join(VECTOR_BIN_DIR, 'vector.exe');
+    const binaryPath = join(VECTOR_BIN_DIR, 'bin', 'vector.exe');
     if (!existsSync(binaryPath)) {
       return reply.status(404).send({ error: 'vector.exe not found in vector-bin/' });
     }
