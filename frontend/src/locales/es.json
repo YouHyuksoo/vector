@@ -448,7 +448,32 @@
     "step2": "Descargar la configuración TOML para su equipo",
     "step3": "Cambiar las rutas include en el TOML a las ubicaciones reales de logs",
     "step4": "Cambiar la dirección a la IP real del servidor",
-    "step5": "Ejecutar: vector.exe --config {equipment}.toml"
+    "step5": "Ejecutar: vector.exe --config {equipment}.toml",
+    "guide": {
+      "title": "Guía de inicio rápido",
+      "subtitle": "Instalación en 3 pasos con Agent Manager",
+      "step1": "1. Descargar",
+      "step1Desc": "Descargar agent-manager.exe al PC del equipo",
+      "agentMgr": "agent-manager.exe",
+      "agentMgrDesc": "Descargar con el botón azul y ejecutar en el PC del equipo",
+      "step2": "2. Instalar + Configurar",
+      "step2Desc": "Usar la interfaz web de Agent Manager (localhost:9090)",
+      "installVector": "Instalar Vector",
+      "installVectorDesc": "Pestaña Gestión → Clic en 'Instalar Vector' (descarga + extracción automática)",
+      "downloadToml": "Descargar TOML",
+      "downloadTomlDesc": "Descargar TOML del equipo desde esta página → guardar en C:\\vector\\config\\",
+      "editSettings": "Verificar Configuración",
+      "editSettingsDesc": "Pestaña Config → verificar/editar ruta de log, IP, etc. y guardar",
+      "step3": "3. Iniciar",
+      "step3Desc": "Iniciar Vector y registrar servicio",
+      "startVector": "Iniciar",
+      "startVectorDesc": "Pestaña Gestión → Clic en botón 'Iniciar'",
+      "registerSvc": "Registrar Servicio",
+      "registerSvcDesc": "(Opcional) Pestaña Gestión → Registrar servicio Windows para inicio automático",
+      "manualTitle": "Instalación Manual",
+      "manualDesc": "Sin Agent Manager: descargar vector.zip → extraer → descargar TOML en la misma carpeta → editar TOML (ruta de log, IP del servidor) → ejecutar start-vector.bat",
+      "langSupport": "Agent Manager soporta coreano, inglés, español y vietnamita"
+    }
   },
   "aggregator": {
     "title": "AGGREGATOR",

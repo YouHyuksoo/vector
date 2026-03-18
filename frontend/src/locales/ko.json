@@ -448,7 +448,32 @@
     "step2": "해당 설비의 TOML 설정 파일을 다운로드합니다",
     "step3": "TOML 파일의 include 경로를 실제 로그 위치로 변경합니다",
     "step4": "address를 실제 서버 IP로 변경합니다",
-    "step5": "실행: vector.exe --config {설비명}.toml"
+    "step5": "실행: vector.exe --config {설비명}.toml",
+    "guide": {
+      "title": "빠른 시작 가이드",
+      "subtitle": "Agent Manager로 3단계 설치",
+      "step1": "1. 다운로드",
+      "step1Desc": "agent-manager.exe를 설비 PC에 다운로드",
+      "agentMgr": "agent-manager.exe",
+      "agentMgrDesc": "아래 파란색 버튼으로 다운로드 후 설비 PC에서 실행",
+      "step2": "2. 설치 + 설정",
+      "step2Desc": "Agent Manager 웹 UI(localhost:9090)에서 진행",
+      "installVector": "Vector 설치",
+      "installVectorDesc": "관리 탭 → 'Vector 설치' 클릭 (자동 다운로드 + 압축 해제)",
+      "downloadToml": "TOML 다운로드",
+      "downloadTomlDesc": "이 페이지에서 설비 TOML 다운로드 → C:\\vector\\config\\에 저장",
+      "editSettings": "설정 확인",
+      "editSettingsDesc": "설정 탭에서 로그 경로, IP 등 확인/수정 후 저장",
+      "step3": "3. 시작",
+      "step3Desc": "Vector를 시작하고 서비스 등록",
+      "startVector": "시작",
+      "startVectorDesc": "관리 탭 → '시작' 버튼 클릭",
+      "registerSvc": "서비스 등록",
+      "registerSvcDesc": "(선택) 관리 탭 → Windows 서비스 등록으로 자동 시작",
+      "manualTitle": "수동 설치 방법",
+      "manualDesc": "Agent Manager 없이: vector.zip 다운로드 → 압축 해제 → TOML 다운로드 후 같은 폴더 배치 → TOML 편집 (로그 경로, 서버 IP) → start-vector.bat 실행",
+      "langSupport": "Agent Manager는 한국어, English, Español, Tiếng Việt을 지원합니다"
+    }
   },
   "aggregator": {
     "title": "수집기 설정",

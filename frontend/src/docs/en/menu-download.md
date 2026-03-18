@@ -2,13 +2,7 @@
 
 ## Overview
 
-Download the Vector engine and per-equipment TOML config files for installation on equipment PCs.
-
-## Prerequisites
-
-- Fastify server must be running
-- `vector.zip` must be available on the server's download path
-- Equipment must be registered in **Sender Settings** to download config files
+Download the Vector engine, Agent Manager, and per-equipment TOML config files for installation on equipment PCs.
 
 ## Screen Layout
 
@@ -17,16 +11,17 @@ Download the Vector engine and per-equipment TOML config files for installation 
 Click **Download vector.zip** to download the Vector engine archive.
 
 - File size: ~40MB
-- Extract on the equipment PC before use
-- Included files: `bin/vector.exe`, `start-vector.bat`, `stop-vector.bat`, `install-service.bat`, `uninstall-service.bat`
+- Included files: `bin/vector.exe`, `config/`, `licenses/`, bat files
+- Agent Manager's "Install Vector" feature auto-downloads and extracts this
 
 ### 2. Agent Manager
 
 Click **Download agent-manager.exe** to download the equipment PC management tool.
 
 - File size: ~45MB
-- Standalone executable — no Node.js installation required
-- Run `agent-manager.exe` on the equipment PC and access the management UI at `http://localhost:9090`
+- **Single exe file, runs standalone** (no Node.js, no extra files needed)
+- Run it and access the management UI at `http://localhost:9090`
+- **Multi-language**: Korean, English, Español, Tiếng Việt
 
 **Agent Manager Features:**
 
@@ -35,7 +30,7 @@ Click **Download agent-manager.exe** to download the equipment PC management too
 | **Status Monitoring** | Vector running status, PID, uptime, transmission metrics |
 | **Config Management** | Form mode (equipment info input) + direct TOML edit mode |
 | **Process Control** | Start/stop/restart Vector, Aggregator connection test |
-| **Vector Install** | Auto-download vector.exe from master server |
+| **Vector Install** | Auto-download vector.zip from master server + extract |
 | **Vector Update** | Version check + download replacement |
 | **Service Registration** | Register/unregister as Windows service (auto-start) |
 
@@ -44,34 +39,32 @@ Click **Download agent-manager.exe** to download the equipment PC management too
 Lists TOML files for all equipment registered in the Sender Settings page.
 
 - Click **Download** next to each equipment for individual downloads
-- Place downloaded TOML files in the same folder as the Vector executable
-
-### 4. Installation Guide
-
-Installation methods are shown at the bottom of the page.
+- Save downloaded TOML files to `C:\vector\config\` folder
+- Agent Manager auto-detects .toml files in the config folder (any filename)
 
 ## Equipment PC Installation Steps
 
 ### Method A: Using Agent Manager (Recommended)
 
 ```
-1. Download agent-manager.exe and copy to equipment PC
-2. Run agent-manager.exe → Open http://localhost:9090 in browser
-3. Management tab → Click "Install Vector" (auto-download)
-4. Settings tab → Enter equipment info in form mode (ID, type, IP, line, log path, server address)
-5. Management tab → Click "Start" to run Vector
-6. (Optional) Management tab → Register Windows service for auto-start
+1. Download agent-manager.exe → run on equipment PC
+2. Open http://localhost:9090
+3. Management tab → Click "Install Vector" (auto-download + extract to C:\vector\)
+4. Download equipment TOML from this page → save to C:\vector\config\
+5. Settings tab → verify/edit equipment info (log path, IP, etc.) → save
+6. Management tab → Click "Start"
+7. (Optional) Management tab → Register Windows service for auto-start
 ```
 
 ### Method B: Manual Installation
 
 ```
-1. Download vector.zip → Extract
-2. Download equipment TOML → Place in same folder
+1. Download vector.zip → extract to C:\vector\
+2. Download equipment TOML → save to C:\vector\config\
 3. Edit TOML file:
-   - include = ["C:/actual/log/path/*.csv"]
+   - include = ["C:\\actual\\log\\path\\*.csv"]
    - address = "actual-server-ip:6000"
-4. Run: double-click start-vector.bat (data_dir auto-created)
+4. Run: double-click start-vector.bat
    Or register service: run install-service.bat as admin
 5. Verify Agent online status on Dashboard
 ```

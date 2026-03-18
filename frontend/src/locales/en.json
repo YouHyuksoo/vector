@@ -448,7 +448,32 @@
     "step2": "Download the TOML config for your equipment",
     "step3": "Change include paths in TOML to actual log locations",
     "step4": "Change address to actual server IP",
-    "step5": "Run: vector.exe --config {equipment}.toml"
+    "step5": "Run: vector.exe --config {equipment}.toml",
+    "guide": {
+      "title": "Quick Start Guide",
+      "subtitle": "3-step installation with Agent Manager",
+      "step1": "1. Download",
+      "step1Desc": "Download agent-manager.exe to equipment PC",
+      "agentMgr": "agent-manager.exe",
+      "agentMgrDesc": "Download via the blue button below and run on equipment PC",
+      "step2": "2. Install + Configure",
+      "step2Desc": "Use Agent Manager web UI (localhost:9090)",
+      "installVector": "Install Vector",
+      "installVectorDesc": "Management tab → Click 'Install Vector' (auto download + extract)",
+      "downloadToml": "Download TOML",
+      "downloadTomlDesc": "Download equipment TOML from this page → save to C:\\vector\\config\\",
+      "editSettings": "Verify Settings",
+      "editSettingsDesc": "Settings tab → verify/edit log path, IP, etc. and save",
+      "step3": "3. Start",
+      "step3Desc": "Start Vector and register service",
+      "startVector": "Start",
+      "startVectorDesc": "Management tab → Click 'Start' button",
+      "registerSvc": "Register Service",
+      "registerSvcDesc": "(Optional) Management tab → Register Windows service for auto-start",
+      "manualTitle": "Manual Installation",
+      "manualDesc": "Without Agent Manager: download vector.zip → extract → download TOML to same folder → edit TOML (log path, server IP) → run start-vector.bat",
+      "langSupport": "Agent Manager supports Korean, English, Español, and Tiếng Việt"
+    }
   },
   "aggregator": {
     "title": "AGGREGATOR",
