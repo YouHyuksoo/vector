@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <!--
   @file agent-monitor/public/index.html
-  @description Vector Agent Manager - 설비 PC 종합 관리 대시보드
+  @description Vector Agent Manager - 설비 PC 종합 관리 대시보드 (다국어 지원)
 
   초보자 가이드:
   1. 3개 탭 (상태/설정/관리)으로 구성된 Agent Manager UI입니다
   2. Tailwind CDN + oklch CSS 변수로 다크모드를 지원합니다
-  3. Material Symbols 아이콘, Outfit/Fira Code 폰트를 사용합니다
+  3. data-i18n 속성으로 한국어/영어/스페인어/베트남어 전환 지원
   4. app.js에서 API를 호출하여 DOM을 업데이트합니다
 -->
 <html lang="ko">
@@ -119,6 +119,13 @@
       </div>
       <div class="flex items-center gap-3">
         <span id="header-version" class="text-xs text-muted-fg font-mono hidden sm:inline"></span>
+        <select id="sel-lang"
+          class="px-2 py-1 rounded-lg bg-secondary border border-border text-xs font-semibold text-fg cursor-pointer focus:outline-none">
+          <option value="ko">한국어</option>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
         <button id="btn-dark-toggle"
           class="p-2 rounded-lg bg-secondary text-fg hover:bg-card-hover transition-colors"
           title="다크모드 전환">
@@ -132,13 +139,13 @@
   <nav class="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
     <div class="flex gap-1 border-b border-border">
       <button class="tab-btn active px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="status">
-        <span class="material-symbols-outlined text-base align-middle mr-1">monitor_heart</span>상태
+        <span class="material-symbols-outlined text-base align-middle mr-1">monitor_heart</span><span data-i18n="tab.status">상태</span>
       </button>
       <button class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="settings">
-        <span class="material-symbols-outlined text-base align-middle mr-1">tune</span>설정
+        <span class="material-symbols-outlined text-base align-middle mr-1">tune</span><span data-i18n="tab.settings">설정</span>
       </button>
       <button class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="management">
-        <span class="material-symbols-outlined text-base align-middle mr-1">build</span>관리
+        <span class="material-symbols-outlined text-base align-middle mr-1">build</span><span data-i18n="tab.management">관리</span>
       </button>
     </div>
   </nav>
@@ -153,23 +160,23 @@
         <div class="card-base bg-card rounded-xl border border-border p-5">
           <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
             <span class="material-symbols-outlined text-lg" id="icon-status">error</span>
-            <span>실행 상태</span>
+            <span data-i18n="status.runState">실행 상태</span>
           </div>
           <div class="flex items-center gap-2">
             <span id="dot-status" class="inline-block w-3 h-3 rounded-full bg-error"></span>
-            <span id="txt-status" class="text-xl font-bold">확인 중...</span>
+            <span id="txt-status" class="text-xl font-bold" data-i18n="status.checking">확인 중...</span>
           </div>
           <div class="text-xs text-muted-fg mt-1">PID: <span id="txt-pid" class="font-mono">-</span></div>
         </div>
         <div class="card-base bg-card rounded-xl border border-border p-5">
           <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
-            <span class="material-symbols-outlined text-lg">schedule</span><span>가동 시간</span>
+            <span class="material-symbols-outlined text-lg">schedule</span><span data-i18n="status.uptime">가동 시간</span>
           </div>
           <div id="txt-uptime" class="text-xl font-bold">-</div>
         </div>
         <div class="card-base bg-card rounded-xl border border-border p-5">
           <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
-            <span class="material-symbols-outlined text-lg">info</span><span>버전</span>
+            <span class="material-symbols-outlined text-lg">info</span><span data-i18n="status.version">버전</span>
           </div>
           <div id="txt-version" class="text-xl font-bold font-mono">-</div>
         </div>
@@ -178,7 +185,7 @@
       <!-- 전송 현황 -->
       <section class="bg-card rounded-xl border border-border p-5 space-y-4">
         <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">swap_vert</span>전송 현황
+          <span class="material-symbols-outlined text-primary">swap_vert</span><span data-i18n="status.transfer">전송 현황</span>
         </h2>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div class="bg-secondary rounded-lg p-3 text-center">
@@ -208,7 +215,7 @@
         </div>
         <div>
           <div class="flex justify-between text-xs text-muted-fg mb-1">
-            <span>버퍼 사용량</span><span id="txt-buffer-detail">0 / 0 bytes</span>
+            <span data-i18n="status.bufferUsage">버퍼 사용량</span><span id="txt-buffer-detail">0 / 0 bytes</span>
           </div>
           <div class="h-2 rounded-full bg-muted overflow-hidden">
             <div id="bar-buffer" class="h-full rounded-full bg-primary transition-all duration-500" style="width:0%"></div>
@@ -217,11 +224,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <h3 class="text-xs font-semibold text-muted-fg mb-1">Sources</h3>
-            <div id="list-sources" class="text-sm font-mono space-y-0.5"><span class="text-muted-fg italic">없음</span></div>
+            <div id="list-sources" class="text-sm font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">없음</span></div>
           </div>
           <div>
             <h3 class="text-xs font-semibold text-muted-fg mb-1">Sinks</h3>
-            <div id="list-sinks" class="text-sm font-mono space-y-0.5"><span class="text-muted-fg italic">없음</span></div>
+            <div id="list-sinks" class="text-sm font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">없음</span></div>
           </div>
         </div>
       </section>
@@ -229,21 +236,21 @@
       <!-- 최근 감시 파일 -->
       <section class="bg-card rounded-xl border border-border p-5 space-y-3">
         <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">folder_open</span>최근 감시 파일
+          <span class="material-symbols-outlined text-primary">folder_open</span><span data-i18n="status.recentFiles">최근 감시 파일</span>
         </h2>
         <div id="watch-paths" class="text-xs text-muted-fg font-mono"></div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
               <tr class="text-left text-xs text-muted-fg border-b border-border">
-                <th class="pb-2 pr-4">파일명</th>
-                <th class="pb-2 pr-4 hidden sm:table-cell">디렉토리</th>
-                <th class="pb-2 pr-4">수정 시간</th>
-                <th class="pb-2 text-right">크기</th>
+                <th class="pb-2 pr-4" data-i18n="status.fileName">파일명</th>
+                <th class="pb-2 pr-4 hidden sm:table-cell" data-i18n="status.directory">디렉토리</th>
+                <th class="pb-2 pr-4" data-i18n="status.modifiedAt">수정 시간</th>
+                <th class="pb-2 text-right" data-i18n="status.size">크기</th>
               </tr>
             </thead>
             <tbody id="tbody-files">
-              <tr><td colspan="4" class="py-8 text-center text-muted-fg italic">파일 정보를 불러오는 중...</td></tr>
+              <tr><td colspan="4" class="py-8 text-center text-muted-fg italic" data-i18n="status.loadingFiles">파일 정보를 불러오는 중...</td></tr>
             </tbody>
           </table>
         </div>
@@ -256,55 +263,55 @@
       <!-- 모드 전환 -->
       <div class="flex gap-2">
         <button id="btn-mode-form" class="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white">
-          <span class="material-symbols-outlined text-base align-middle mr-1">edit_note</span>폼 모드
+          <span class="material-symbols-outlined text-base align-middle mr-1">edit_note</span><span data-i18n="settings.formMode">폼 모드</span>
         </button>
         <button id="btn-mode-toml" class="px-4 py-2 rounded-lg text-sm font-semibold bg-secondary text-fg border border-border">
-          <span class="material-symbols-outlined text-base align-middle mr-1">code</span>TOML 편집
+          <span class="material-symbols-outlined text-base align-middle mr-1">code</span><span data-i18n="settings.tomlMode">TOML 편집</span>
         </button>
       </div>
 
       <!-- 폼 모드 -->
       <section id="settings-form" class="bg-card rounded-xl border border-border p-5 space-y-4">
         <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">badge</span>설비 정보
+          <span class="material-symbols-outlined text-primary">badge</span><span data-i18n="settings.equipInfo">설비 정보</span>
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1">설비 ID (equipment_id)</label>
+            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.equipId">설비 ID (equipment_id)</label>
             <input id="inp-eq-id" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="AOI-01" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1">설비 타입 (equipment_type)</label>
+            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.equipType">설비 타입 (equipment_type)</label>
             <input id="inp-eq-type" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="AOI" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1">IP 주소</label>
+            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.ipAddr">IP 주소</label>
             <input id="inp-ip" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="192.168.1.100" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1">라인 코드 (line_code)</label>
+            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.lineCode">라인 코드 (line_code)</label>
             <input id="inp-line" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="LINE-01" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1">로그 타입 (log_type)</label>
+            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.logType">로그 타입 (log_type)</label>
             <input id="inp-log-type" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="INSPECTION" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1">로그 경로 (include)</label>
+            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.logPath">로그 경로 (include)</label>
             <input id="inp-include" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="C:\logs\*.log" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1">Aggregator 주소</label>
+            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.aggAddr">Aggregator 주소</label>
             <input id="inp-sink-addr" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="20.10.30.112" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1">Aggregator 포트</label>
+            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.aggPort">Aggregator 포트</label>
             <input id="inp-sink-port" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="9000" />
           </div>
         </div>
         <button id="btn-save-setup"
           class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-primary hover:bg-primary-hover transition-all duration-200 hover:-translate-y-0.5">
-          <span class="material-symbols-outlined text-lg">save</span> 설비 정보 저장
+          <span class="material-symbols-outlined text-lg">save</span> <span data-i18n="settings.saveSetup">설비 정보 저장</span>
         </button>
       </section>
 
@@ -312,26 +319,26 @@
       <section id="settings-toml" class="bg-card rounded-xl border border-border p-5 space-y-3 hidden">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <h2 class="flex items-center gap-2 text-lg font-semibold">
-            <span class="material-symbols-outlined text-primary">settings</span>TOML 설정
+            <span class="material-symbols-outlined text-primary">settings</span><span data-i18n="settings.tomlConfig">TOML 설정</span>
           </h2>
           <span id="txt-config-path" class="text-xs text-muted-fg font-mono truncate max-w-xs"></span>
         </div>
         <textarea id="editor-config"
           class="w-full h-80 p-4 rounded-lg bg-secondary border border-border font-mono text-sm leading-relaxed text-fg resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
-          spellcheck="false" placeholder="설정 파일을 불러오는 중..."></textarea>
+          spellcheck="false" data-i18n-placeholder="settings.loadingConfig"></textarea>
         <div class="flex gap-2">
           <button id="btn-save-config"
             class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-primary hover:bg-primary-hover transition-all duration-200 hover:-translate-y-0.5">
-            <span class="material-symbols-outlined text-lg">save</span> 저장
+            <span class="material-symbols-outlined text-lg">save</span> <span data-i18n="common.save">저장</span>
           </button>
           <button id="btn-revert-config"
             class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-fg bg-secondary border border-border hover:bg-card-hover transition-all duration-200 hover:-translate-y-0.5">
-            <span class="material-symbols-outlined text-lg">undo</span> 되돌리기
+            <span class="material-symbols-outlined text-lg">undo</span> <span data-i18n="settings.revert">되돌리기</span>
           </button>
         </div>
         <p class="text-xs text-warning flex items-center gap-1">
           <span class="material-symbols-outlined text-base">info</span>
-          저장 후 Vector 재시작이 필요합니다 (관리 탭에서 재시작)
+          <span data-i18n="settings.restartNeeded">저장 후 Vector 재시작이 필요합니다 (관리 탭에서 재시작)</span>
         </p>
       </section>
     </div>
@@ -342,24 +349,24 @@
       <!-- 프로세스 제어 -->
       <section class="bg-card rounded-xl border border-border p-5 space-y-4">
         <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">play_circle</span>프로세스 제어
+          <span class="material-symbols-outlined text-primary">play_circle</span><span data-i18n="mgmt.processCtrl">프로세스 제어</span>
         </h2>
         <div class="flex flex-wrap gap-3">
           <button id="btn-start"
             class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-success hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">play_arrow</span> 시작
+            <span class="material-symbols-outlined text-lg">play_arrow</span> <span data-i18n="mgmt.start">시작</span>
           </button>
           <button id="btn-stop"
             class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-error hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">stop</span> 중지
+            <span class="material-symbols-outlined text-lg">stop</span> <span data-i18n="mgmt.stop">중지</span>
           </button>
           <button id="btn-restart"
             class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-warning hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">restart_alt</span> 재시작
+            <span class="material-symbols-outlined text-lg">restart_alt</span> <span data-i18n="mgmt.restart">재시작</span>
           </button>
           <button id="btn-test-conn"
             class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-fg bg-secondary border border-border hover:bg-card-hover transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">lan</span> 연결 테스트
+            <span class="material-symbols-outlined text-lg">lan</span> <span data-i18n="mgmt.testConn">연결 테스트</span>
           </button>
         </div>
       </section>
@@ -367,7 +374,7 @@
       <!-- Windows 서비스 -->
       <section class="bg-card rounded-xl border border-border p-5 space-y-4">
         <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">miscellaneous_services</span>Windows 서비스
+          <span class="material-symbols-outlined text-primary">miscellaneous_services</span><span data-i18n="mgmt.winService">Windows 서비스</span>
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="bg-secondary rounded-lg p-4">
@@ -376,8 +383,8 @@
               <span id="svc-vector-state" class="text-xs font-mono px-2 py-0.5 rounded bg-muted">-</span>
             </div>
             <div class="flex gap-2">
-              <button onclick="installService('vector')" class="text-xs px-3 py-1.5 rounded bg-primary text-white font-semibold hover:bg-primary-hover">등록</button>
-              <button onclick="uninstallService('vector')" class="text-xs px-3 py-1.5 rounded bg-error text-white font-semibold hover:brightness-110">해제</button>
+              <button onclick="installService('vector')" class="text-xs px-3 py-1.5 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">등록</button>
+              <button onclick="uninstallService('vector')" class="text-xs px-3 py-1.5 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">해제</button>
             </div>
           </div>
           <div class="bg-secondary rounded-lg p-4">
@@ -386,8 +393,8 @@
               <span id="svc-manager-state" class="text-xs font-mono px-2 py-0.5 rounded bg-muted">-</span>
             </div>
             <div class="flex gap-2">
-              <button onclick="installService('manager')" class="text-xs px-3 py-1.5 rounded bg-primary text-white font-semibold hover:bg-primary-hover">등록</button>
-              <button onclick="uninstallService('manager')" class="text-xs px-3 py-1.5 rounded bg-error text-white font-semibold hover:brightness-110">해제</button>
+              <button onclick="installService('manager')" class="text-xs px-3 py-1.5 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">등록</button>
+              <button onclick="uninstallService('manager')" class="text-xs px-3 py-1.5 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">해제</button>
             </div>
           </div>
         </div>
@@ -396,41 +403,39 @@
       <!-- 설치 / 업데이트 -->
       <section class="bg-card rounded-xl border border-border p-5 space-y-4">
         <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">cloud_download</span>설치 / 업데이트
+          <span class="material-symbols-outlined text-primary">cloud_download</span><span data-i18n="mgmt.installUpdate">설치 / 업데이트</span>
         </h2>
 
         <!-- 설치 상태 -->
         <div class="bg-secondary rounded-lg p-4 space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold">Vector 설치 상태</span>
-            <span id="txt-install-status" class="text-xs font-mono px-2 py-0.5 rounded bg-muted">확인 중...</span>
+            <span class="text-sm font-semibold" data-i18n="mgmt.installStatus">Vector 설치 상태</span>
+            <span id="txt-install-status" class="text-xs font-mono px-2 py-0.5 rounded bg-muted" data-i18n="status.checking">확인 중...</span>
           </div>
           <div class="text-xs text-muted-fg font-mono">
-            <div>바이너리: <span id="txt-bin-path">-</span></div>
-            <div>설정파일: <span id="txt-cfg-path">-</span></div>
+            <div><span data-i18n="mgmt.binary">바이너리</span>: <span id="txt-bin-path">-</span></div>
+            <div><span data-i18n="mgmt.configFile">설정파일</span>: <span id="txt-cfg-path">-</span></div>
           </div>
           <button id="btn-install"
             class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-info hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">download</span> Vector 설치
+            <span class="material-symbols-outlined text-lg">download</span> <span data-i18n="mgmt.installVector">Vector 설치</span>
           </button>
         </div>
 
         <!-- 업데이트 -->
         <div class="bg-secondary rounded-lg p-4 space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold">Vector 업데이트</span>
+            <span class="text-sm font-semibold" data-i18n="mgmt.vectorUpdate">Vector 업데이트</span>
             <button id="btn-check-update" onclick="checkUpdate()"
-              class="text-xs px-3 py-1.5 rounded bg-secondary border border-border font-semibold hover:bg-card-hover">
-              버전 확인
-            </button>
+              class="text-xs px-3 py-1.5 rounded bg-secondary border border-border font-semibold hover:bg-card-hover" data-i18n="mgmt.checkVersion">버전 확인</button>
           </div>
           <div class="text-xs text-muted-fg font-mono">
-            <div>로컬 버전: <span id="txt-local-ver">-</span></div>
-            <div>서버 버전: <span id="txt-server-ver">-</span></div>
+            <div><span data-i18n="mgmt.localVer">로컬 버전</span>: <span id="txt-local-ver">-</span></div>
+            <div><span data-i18n="mgmt.serverVer">서버 버전</span>: <span id="txt-server-ver">-</span></div>
           </div>
           <button id="btn-update"
             class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-warning hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none hidden">
-            <span class="material-symbols-outlined text-lg">system_update</span> 업데이트 실행
+            <span class="material-symbols-outlined text-lg">system_update</span> <span data-i18n="mgmt.execUpdate">업데이트 실행</span>
           </button>
         </div>
       </section>
@@ -440,7 +445,7 @@
 
   <!-- 푸터 -->
   <footer class="text-center text-xs text-muted-fg py-6">
-    Vector Agent Manager &middot; 설비 PC 종합 관리
+    <span data-i18n="footer">Vector Agent Manager &middot; 설비 PC 종합 관리</span>
   </footer>
 
   <script src="app.js"></script>

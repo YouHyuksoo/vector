@@ -46,13 +46,20 @@ function getHeartbeatTag(content: string, key: string): string {
   return m?.[1] ?? '';
 }
 
-/** heartbeat tags에서 키 값 교체 */
+/** heartbeat tags에서 키 값 교체 (없으면 추가) */
 function setHeartbeatTag(content: string, key: string, value: string): string {
   const tagRegex = new RegExp(
     `(\\[sources\\.heartbeat\\.metrics\\.tags\\][\\s\\S]*?)${key}\\s*=\\s*"[^"]*"`,
   );
   if (tagRegex.test(content)) {
     return content.replace(tagRegex, `$1${key} = "${value}"`);
+  }
+  /* 키가 없으면 tags 섹션 마지막에 추가 */
+  const sectionRegex = /(\[sources\.heartbeat\.metrics\.tags\][^\[]*)/;
+  const m = content.match(sectionRegex);
+  if (m) {
+    const section = m[1].trimEnd();
+    return content.replace(sectionRegex, `${section}\n${key} = "${value}"\n`);
   }
   return content;
 }
