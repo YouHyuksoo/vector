@@ -1320,5 +1320,359 @@
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 15
     }
+  ],
+  "LOG_VISION_NATIVE": [
+    {
+      "COLUMN_NAME": "EQUIPMENT_ID",
+      "DATA_TYPE": "VARCHAR2(50)",
+      "SOURCE_FIELD": "equipment_id",
+      "IS_REQUIRED": "Y",
+      "COLUMN_ORDER": 1
+    },
+    {
+      "COLUMN_NAME": "LOG_TIMESTAMP",
+      "DATA_TYPE": "TIMESTAMP",
+      "SOURCE_FIELD": "timestamp",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 2
+    },
+    {
+      "COLUMN_NAME": "BARCODE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.BARCODE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 3
+    },
+    {
+      "COLUMN_NAME": "DEVICE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.DEVICE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 4
+    },
+    {
+      "COLUMN_NAME": "RESULT",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.RESULT",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 5
+    },
+    {
+      "COLUMN_NAME": "MODEL",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MODEL",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 6
+    },
+    {
+      "COLUMN_NAME": "LOG_DATE",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.DATE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 7
+    },
+    {
+      "COLUMN_NAME": "LOG_TIME",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.TIME",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 8
+    },
+    {
+      "COLUMN_NAME": "LOG_TYPE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.TYPE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 9
+    },
+    {
+      "COLUMN_NAME": "VOLT_INPUT_V",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.VOLT_INPUT_V",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 10
+    },
+    {
+      "COLUMN_NAME": "VOLT_VALUE_V",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.VOLT_VALUE_V",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 11
+    },
+    {
+      "COLUMN_NAME": "CURR_RESULT",
+      "DATA_TYPE": "VARCHAR2(50)",
+      "SOURCE_FIELD": "data.CURR_RESULT",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 12
+    },
+    {
+      "COLUMN_NAME": "CURR_MIN_MA",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.CURR_MIN_MA",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 13
+    },
+    {
+      "COLUMN_NAME": "CURR_MAX_MA",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.CURR_MAX_MA",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 14
+    },
+    {
+      "COLUMN_NAME": "CURR_VALUE_MA",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.CURR_VALUE_MA",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 15
+    },
+    {
+      "COLUMN_NAME": "RESULTS",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.RESULTS",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 16
+    }
+  ],
+  "LOG_EOL": [
+    {
+      "COLUMN_NAME": "EQUIPMENT_ID",
+      "DATA_TYPE": "VARCHAR2(50)",
+      "SOURCE_FIELD": "equipment_id",
+      "IS_REQUIRED": "Y",
+      "COLUMN_ORDER": 1
+    },
+    {
+      "COLUMN_NAME": "LOG_TIMESTAMP",
+      "DATA_TYPE": "TIMESTAMP",
+      "SOURCE_FIELD": "timestamp",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 2
+    },
+    {
+      "COLUMN_NAME": "BARCODE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.BARCODE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 3
+    },
+    {
+      "COLUMN_NAME": "LABEL",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.LABEL",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 4
+    },
+    {
+      "COLUMN_NAME": "ARRAY_RESULT",
+      "DATA_TYPE": "VARCHAR2(50)",
+      "SOURCE_FIELD": "data.ARRAY_RESULT",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 5
+    },
+    {
+      "COLUMN_NAME": "PCB_NO",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.PCB_NO",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 6
+    },
+    {
+      "COLUMN_NAME": "STEP_RESULT",
+      "DATA_TYPE": "VARCHAR2(50)",
+      "SOURCE_FIELD": "data.STEP_RESULT",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 7
+    },
+    {
+      "COLUMN_NAME": "MODEL",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MODEL",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 8
+    },
+    {
+      "COLUMN_NAME": "START_TIME",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.START_TIME",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 9
+    },
+    {
+      "COLUMN_NAME": "END_TIME",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.END_TIME",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 10
+    },
+    {
+      "COLUMN_NAME": "NO",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.NO",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 11
+    },
+    {
+      "COLUMN_NAME": "NAME",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.NAME",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 12
+    },
+    {
+      "COLUMN_NAME": "NAME_DETAIL",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.NAME_DETAIL",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 13
+    },
+    {
+      "COLUMN_NAME": "VOLT_V",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.VOLT_V",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 14
+    },
+    {
+      "COLUMN_NAME": "MIN_1",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MIN_1",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 15
+    },
+    {
+      "COLUMN_NAME": "TYP_1",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.TYP_1",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 16
+    },
+    {
+      "COLUMN_NAME": "MAX_2",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MAX_2",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 17
+    },
+    {
+      "COLUMN_NAME": "MEAS_1",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MEAS_1",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 18
+    },
+    {
+      "COLUMN_NAME": "MIN_2",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MIN_2",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 19
+    },
+    {
+      "COLUMN_NAME": "TYP_2",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.TYP_2",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 20
+    },
+    {
+      "COLUMN_NAME": "MAX_2_2",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MAX_2_2",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 21
+    },
+    {
+      "COLUMN_NAME": "MEAS_2",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MEAS_2",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 22
+    },
+    {
+      "COLUMN_NAME": "CAN_STD",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.CAN_STD",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 23
+    },
+    {
+      "COLUMN_NAME": "MEAS_CAN",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MEAS_CAN",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 24
+    },
+    {
+      "COLUMN_NAME": "DTC_CODE",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.DTC_CODE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 25
+    },
+    {
+      "COLUMN_NAME": "MEAS_DTC_CODE",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.MEAS_DTC_CODE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 26
+    },
+    {
+      "COLUMN_NAME": "LABEL_BCODE_1",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.LABEL_BCODE_1",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 27
+    },
+    {
+      "COLUMN_NAME": "LABEL_BCODE_2",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.LABEL_BCODE_2",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 28
+    },
+    {
+      "COLUMN_NAME": "STEP_TIME",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.STEP_TIME",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 29
+    },
+    {
+      "COLUMN_NAME": "CAN_TX_1",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.CAN_TX_1",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 30
+    },
+    {
+      "COLUMN_NAME": "CAN_RX_1",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.CAN_RX_1",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 31
+    },
+    {
+      "COLUMN_NAME": "CAN_TX_2",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.CAN_TX_2",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 32
+    },
+    {
+      "COLUMN_NAME": "DATA_RX_2",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.DATA_RX_2",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 33
+    },
+    {
+      "COLUMN_NAME": "TEST_RESULTS",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.TEST_RESULTS",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 34
+    }
   ]
 }

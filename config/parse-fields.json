@@ -296,7 +296,168 @@
   ],
   "BURNIN": [],
   "HIPOT": [],
-  "EOL": [],
+  "EOL": [
+    {
+      "fieldName": "data.BARCODE",
+      "fieldLabel": "data.BARCODE",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.LABEL",
+      "fieldLabel": "data.LABEL",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.ARRAY_RESULT",
+      "fieldLabel": "data.ARRAY_RESULT",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.PCB_NO",
+      "fieldLabel": "data.PCB_NO",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.STEP_RESULT",
+      "fieldLabel": "data.STEP_RESULT",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.MODEL",
+      "fieldLabel": "data.MODEL",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.START_TIME",
+      "fieldLabel": "data.START_TIME",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.END_TIME",
+      "fieldLabel": "data.END_TIME",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.NO",
+      "fieldLabel": "data.NO",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.NAME",
+      "fieldLabel": "data.NAME",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.NAME_DETAIL",
+      "fieldLabel": "data.NAME_DETAIL",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.VOLT_V",
+      "fieldLabel": "data.VOLT_V",
+      "fieldOrder": 12
+    },
+    {
+      "fieldName": "data.MIN_1",
+      "fieldLabel": "data.MIN_1",
+      "fieldOrder": 13
+    },
+    {
+      "fieldName": "data.TYP_1",
+      "fieldLabel": "data.TYP_1",
+      "fieldOrder": 14
+    },
+    {
+      "fieldName": "data.MAX_2",
+      "fieldLabel": "data.MAX_2",
+      "fieldOrder": 15
+    },
+    {
+      "fieldName": "data.MEAS_1",
+      "fieldLabel": "data.MEAS_1",
+      "fieldOrder": 16
+    },
+    {
+      "fieldName": "data.MIN_2",
+      "fieldLabel": "data.MIN_2",
+      "fieldOrder": 17
+    },
+    {
+      "fieldName": "data.TYP_2",
+      "fieldLabel": "data.TYP_2",
+      "fieldOrder": 18
+    },
+    {
+      "fieldName": "data.MAX_2_2",
+      "fieldLabel": "data.MAX_2_2",
+      "fieldOrder": 19
+    },
+    {
+      "fieldName": "data.MEAS_2",
+      "fieldLabel": "data.MEAS_2",
+      "fieldOrder": 20
+    },
+    {
+      "fieldName": "data.CAN_STD",
+      "fieldLabel": "data.CAN_STD",
+      "fieldOrder": 21
+    },
+    {
+      "fieldName": "data.MEAS_CAN",
+      "fieldLabel": "data.MEAS_CAN",
+      "fieldOrder": 22
+    },
+    {
+      "fieldName": "data.DTC_CODE",
+      "fieldLabel": "data.DTC_CODE",
+      "fieldOrder": 23
+    },
+    {
+      "fieldName": "data.MEAS_DTC_CODE",
+      "fieldLabel": "data.MEAS_DTC_CODE",
+      "fieldOrder": 24
+    },
+    {
+      "fieldName": "data.LABEL_BCODE_1",
+      "fieldLabel": "data.LABEL_BCODE_1",
+      "fieldOrder": 25
+    },
+    {
+      "fieldName": "data.LABEL_BCODE_2",
+      "fieldLabel": "data.LABEL_BCODE_2",
+      "fieldOrder": 26
+    },
+    {
+      "fieldName": "data.STEP_TIME",
+      "fieldLabel": "data.STEP_TIME",
+      "fieldOrder": 27
+    },
+    {
+      "fieldName": "data.CAN_TX_1",
+      "fieldLabel": "data.CAN_TX_1",
+      "fieldOrder": 28
+    },
+    {
+      "fieldName": "data.CAN_RX_1",
+      "fieldLabel": "data.CAN_RX_1",
+      "fieldOrder": 29
+    },
+    {
+      "fieldName": "data.CAN_TX_2",
+      "fieldLabel": "data.CAN_TX_2",
+      "fieldOrder": 30
+    },
+    {
+      "fieldName": "data.DATA_RX_2",
+      "fieldLabel": "data.DATA_RX_2",
+      "fieldOrder": 31
+    },
+    {
+      "fieldName": "data.TEST_RESULTS",
+      "fieldLabel": "data.TEST_RESULTS",
+      "fieldOrder": 32
+    }
+  ],
   "METALMASK": [],
   "MOUNTER": [],
   "VISCOSITY": [],
@@ -739,6 +900,78 @@
       "fieldName": "data.DETAILS",
       "fieldLabel": "data.DETAILS",
       "fieldOrder": 16
+    }
+  ],
+  "VISION_NATIVE": [
+    {
+      "fieldName": "data.BARCODE",
+      "fieldLabel": "data.BARCODE",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.DEVICE",
+      "fieldLabel": "data.DEVICE",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.RESULT",
+      "fieldLabel": "data.RESULT",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.MODEL",
+      "fieldLabel": "data.MODEL",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.DATE",
+      "fieldLabel": "data.DATE",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.TIME",
+      "fieldLabel": "data.TIME",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.TYPE",
+      "fieldLabel": "data.TYPE",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.VOLT_INPUT_V",
+      "fieldLabel": "data.VOLT_INPUT_V",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.VOLT_VALUE_V",
+      "fieldLabel": "data.VOLT_VALUE_V",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.CURR_RESULT",
+      "fieldLabel": "data.CURR_RESULT",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.CURR_MIN_MA",
+      "fieldLabel": "data.CURR_MIN_MA",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.CURR_MAX_MA",
+      "fieldLabel": "data.CURR_MAX_MA",
+      "fieldOrder": 12
+    },
+    {
+      "fieldName": "data.CURR_VALUE_MA",
+      "fieldLabel": "data.CURR_VALUE_MA",
+      "fieldOrder": 13
+    },
+    {
+      "fieldName": "data.RESULTS",
+      "fieldLabel": "data.RESULTS",
+      "fieldOrder": 14
     }
   ]
 }

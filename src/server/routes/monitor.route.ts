@@ -2169,6 +2169,7 @@ ABSOLUTE FORBIDDEN — VRL compilation will FAIL if you use ANY of these:
 - "loop" — RESERVED KEYWORD, causes E205 error.
 - "break" — RESERVED KEYWORD, causes E205 error.
 - "continue" — RESERVED KEYWORD, causes E205 error.
+- obj[variable] or .data[field] — VRL does NOT support dynamic field access. Only integer literals allowed in brackets.
 Instead of loops, use for_each() with array slicing. See PATTERN 2 below.
 
 CRITICAL VRL syntax rules:
@@ -2191,6 +2192,10 @@ CRITICAL VRL syntax rules:
     val = if condition { x } else { y }
     item = { "KEY": val }
 - NEVER use null in VRL. Use "" as default instead.
+- NEVER use dynamic field access like obj[field] or .data[field]. VRL only allows integer literals in brackets: get!(array, [0]).
+  To set named fields, use explicit assignment: .data.FIELD_NAME = value
+  WRONG: .data[field] = val / item[field] = val
+  RIGHT: .data.MY_FIELD = val / item = { "MY_FIELD": val }
 
 PATTERN 1 — Single-line CSV (no header):
   values = split!(.message, ",")
