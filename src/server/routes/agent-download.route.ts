@@ -3,9 +3,9 @@
  * @description Vector 바이너리 다운로드 + 버전 정보 API
  *
  * 초보자 가이드:
- * 1. GET /api/monitor/agent-download/vector  — vector.exe 바이너리 스트림 다운로드
+ * 1. GET /api/monitor/agent-download/vector  — vector.zip 다운로드 (설비 PC에서 압축 해제)
  * 2. GET /api/monitor/agent-download/version — vector-bin/version.json 반환
- * 3. vector-bin/ 디렉토리에 vector.exe + version.json을 수동 배치
+ * 3. 서버의 vector-bin/vector.zip을 서빙합니다
  */
 
 import { FastifyPluginAsync } from 'fastify';
@@ -25,19 +25,19 @@ export const agentDownloadRoute: FastifyPluginAsync = async (app) => {
     return reply.send(data);
   });
 
-  /** GET /api/monitor/agent-download/vector — vector.exe 다운로드 */
+  /** GET /api/monitor/agent-download/vector — vector.zip 다운로드 */
   app.get('/api/monitor/agent-download/vector', async (_req, reply) => {
-    const binaryPath = join(VECTOR_BIN_DIR, 'bin', 'vector.exe');
-    if (!existsSync(binaryPath)) {
-      return reply.status(404).send({ error: 'vector.exe not found in vector-bin/' });
+    const zipPath = join(VECTOR_BIN_DIR, 'vector.zip');
+    if (!existsSync(zipPath)) {
+      return reply.status(404).send({ error: 'vector.zip not found in vector-bin/' });
     }
 
-    const stat = statSync(binaryPath);
-    const stream = createReadStream(binaryPath);
+    const stat = statSync(zipPath);
+    const stream = createReadStream(zipPath);
 
     return reply
-      .header('Content-Type', 'application/octet-stream')
-      .header('Content-Disposition', 'attachment; filename="vector.exe"')
+      .header('Content-Type', 'application/zip')
+      .header('Content-Disposition', 'attachment; filename="vector.zip"')
       .header('Content-Length', stat.size)
       .send(stream);
   });
