@@ -83,7 +83,7 @@ jobs:
 
           robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
             /XF ".env" "ai-config.json" "ai-system-prompt.txt" `
-            /XD ".git" "vector-config\aggregator\backups" "data" "logs" "vector-data" "vector-data-agent"
+            /XD ".git" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
 
           # vector-bin에서 다운로드용 파일만 동기화 (vector.zip, agent-manager.exe)
           $vbSrc = "$src\vector-bin"
