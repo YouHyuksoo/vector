@@ -49,8 +49,8 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
       const ws = createWriteStream(tmpZip);
       await pipeline(Readable.fromWeb(res.body as any), ws);
 
-      /* 2. 압축 해제 대상 디렉토리 생성 */
-      const installDir = dirname(ENV.VECTOR_BIN_PATH);
+      /* 2. 압축 해제 대상 디렉토리 (C:\vector\) — zip 안에 bin\ 폴더가 포함됨 */
+      const installDir = dirname(dirname(ENV.VECTOR_BIN_PATH));
       if (!existsSync(installDir)) mkdirSync(installDir, { recursive: true });
 
       /* 3. zip 압축 해제 */
