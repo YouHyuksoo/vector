@@ -16,6 +16,7 @@ import fastifyCors from '@fastify/cors';
 import { config } from 'dotenv';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { readdirSync, existsSync } from 'fs';
 import statusRoutes from './routes/status.js';
 import configRoutes from './routes/config.js';
 import controlRoutes from './routes/control.js';
@@ -32,11 +33,22 @@ declare const EMBEDDED_APP_JS: string;
 /** pkg exe 실행 여부 감지 */
 const isPkg = !!(process as any).pkg;
 
+/** config 폴더에서 .toml 파일 자동 탐색 */
+function findTomlConfig(configDir: string): string {
+  if (!existsSync(configDir)) return join(configDir, 'vector.toml');
+  const files = readdirSync(configDir).filter(f => f.endsWith('.toml'));
+  if (files.length === 0) return join(configDir, 'vector.toml');
+  if (files.includes('vector.toml')) return join(configDir, 'vector.toml');
+  return join(configDir, files[0]);
+}
+
+const CONFIG_DIR = process.env.VECTOR_CONFIG_DIR || 'C:\\vector\\config';
+
 /** 환경변수 (기본값 포함) */
 export const ENV = {
   PORT: Number(process.env.PORT) || 9090,
   VECTOR_API_URL: process.env.VECTOR_API_URL || 'http://127.0.0.1:8686',
-  VECTOR_CONFIG_PATH: process.env.VECTOR_CONFIG_PATH || 'C:\\vector\\config\\vector.toml',
+  VECTOR_CONFIG_PATH: process.env.VECTOR_CONFIG_PATH || findTomlConfig(CONFIG_DIR),
   VECTOR_BIN_PATH: process.env.VECTOR_BIN_PATH || 'C:\\vector\\bin\\vector.exe',
   MASTER_SERVER_URL: process.env.MASTER_SERVER_URL || 'http://20.10.30.112:3100',
 };
