@@ -10,6 +10,7 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
+import { existsSync } from 'fs';
 import { logger } from '../utils/logger.js';
 import { pushVectorLog } from '../utils/log-buffer.js';
 
@@ -95,10 +96,20 @@ export async function startVector(): Promise<{ success: boolean; message: string
   }
 
   try {
+    if (!existsSync(VECTOR_BIN)) {
+      logger.warn({ path: VECTOR_BIN }, 'Vector binary not found, skipping start');
+      return { success: false, message: `Vector binary not found: ${VECTOR_BIN}` };
+    }
+
     vectorProcess = spawn(VECTOR_BIN, ['--config', VECTOR_CONFIG], {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
+    });
+
+    vectorProcess.on('error', (err) => {
+      logger.error({ err: err.message }, 'Vector process spawn error');
+      vectorProcess = null;
     });
 
     vectorProcess.stdout?.on('data', (data: Buffer) => {
