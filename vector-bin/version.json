@@ -1,0 +1,16 @@
+{
+  "default": "0.45.0",
+  "win7": "0.38.0",
+  "editions": {
+    "default": {
+      "version": "0.45.0",
+      "file": "vector.zip",
+      "minOS": "Windows 10 / Server 2016"
+    },
+    "win7": {
+      "version": "0.38.0",
+      "file": "vector-win7.zip",
+      "minOS": "Windows 7 / Server 2008 R2"
+    }
+  }
+}
