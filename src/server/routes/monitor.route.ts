@@ -22,6 +22,52 @@ import { errorLogRepository } from '../../database/repositories/error-log.reposi
 import { env, updateEnvValue } from '../../config/env.js';
 import type { Env } from '../../config/env.js';
 import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AGENT_CONFIG_DIR } from '../../services/vector-process.service.js';
+
+/**
+ * Win7(Vector 0.38) 호환 TOML 변환
+ * static_metrics (0.41+) → internal_metrics + remap transform 으로 교체
+ */
+function convertTomlForWin7(toml: string): string {
+  // static_metrics 하트비트 섹션에서 태그 추출
+  const tagsMatch = toml.match(
+    /\[sources\.heartbeat\.metrics\.tags\]\s*\n([\s\S]*?)(?=\n\[|\n#\s*──|\s*$)/,
+  );
+  if (!tagsMatch) return toml;
+
+  // 태그 키=값 파싱
+  const tagLines = tagsMatch[1]
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#'));
+
+  // remap source 코드 생성 (태그 주입)
+  const tagAssignments = tagLines
+    .map(l => {
+      const [key, ...rest] = l.split('=');
+      return `.tags.${key.trim()} = ${rest.join('=').trim()}`;
+    })
+    .join('\n');
+
+  // static_metrics 전체 블록 제거 (heartbeat 소스 + metrics + tags)
+  const cleaned = toml
+    .replace(
+      /# ── \[하트비트\][\s\S]*?\[sources\.heartbeat\][\s\S]*?\[sources\.heartbeat\.metrics\.tags\]\s*\n[\s\S]*?(?=\n# ──|\n\[(?!sources\.heartbeat))/,
+      `# ── [하트비트] 주기적 상태 전송 (30초 간격) — Win7 호환 (internal_metrics) ──\n` +
+      `# Vector 0.38에서는 static_metrics를 지원하지 않으므로 internal_metrics를 사용합니다.\n\n` +
+      `[sources.heartbeat_src]\n` +
+      `type = "internal_metrics"\n` +
+      `scrape_interval_secs = 30\n\n` +
+      `[transforms.heartbeat]\n` +
+      `type = "remap"\n` +
+      `inputs = ["heartbeat_src"]\n` +
+      `source = '''\n` +
+      `${tagAssignments}\n` +
+      `.namespace = "agent"\n` +
+      `'''\n\n`,
+    );
+
+  return cleaned;
+}
 import {
   readRegistry, setTableColumns, getRegisteredTableNames,
   setProcedure, getProcedure, deleteTarget, getRegisteredProcedureKeys,
@@ -280,17 +326,19 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   // ─── 다운로드 API ───
 
-  /** Vector 실행파일(zip) 다운로드 */
+  /** Vector 실행파일(zip) 다운로드 — ?edition=win7 으로 Windows 7용 다운로드 지원 */
   app.get('/api/monitor/download/vector-zip', async (_request, reply) => {
-    const zipPath = join(process.cwd(), 'vector-bin', 'vector.zip');
+    const edition = (_request.query as { edition?: string }).edition;
+    const zipFile = edition === 'win7' ? 'vector-win7.zip' : 'vector.zip';
+    const zipPath = join(process.cwd(), 'vector-bin', zipFile);
     if (!existsSync(zipPath)) {
-      return reply.status(404).send({ error: 'vector.zip not found' });
+      return reply.status(404).send({ error: `${zipFile} not found` });
     }
     try {
       const buf = readFileSync(zipPath);
       return reply
         .header('Content-Type', 'application/zip')
-        .header('Content-Disposition', 'attachment; filename="vector.zip"')
+        .header('Content-Disposition', `attachment; filename="${zipFile}"`)
         .send(buf);
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
@@ -314,9 +362,10 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** 설비별 Agent TOML 다운로드 */
+  /** 설비별 Agent TOML 다운로드 — ?edition=win7 시 static_metrics → internal_metrics 자동 변환 */
   app.get('/api/monitor/download/agent/:name', async (request, reply) => {
     const { name } = request.params as { name: string };
+    const edition = (request.query as { edition?: string }).edition;
     if (!/^[A-Za-z0-9_-]+$/.test(name)) {
       return reply.status(400).send({ error: 'Invalid name' });
     }
@@ -325,7 +374,10 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ error: 'Not found' });
     }
     try {
-      const content = readFileSync(filePath, 'utf-8');
+      let content = readFileSync(filePath, 'utf-8');
+      if (edition === 'win7') {
+        content = convertTomlForWin7(content);
+      }
       return reply
         .header('Content-Type', 'application/octet-stream')
         .header('Content-Disposition', `attachment; filename="${name}.toml"`)

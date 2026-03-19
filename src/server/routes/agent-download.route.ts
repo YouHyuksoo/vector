@@ -15,21 +15,27 @@ import { join } from 'path';
 const VECTOR_BIN_DIR = join(process.cwd(), 'vector-bin');
 
 export const agentDownloadRoute: FastifyPluginAsync = async (app) => {
-  /** GET /api/monitor/agent-download/version — 버전 정보 */
+  /** GET /api/monitor/agent-download/version — 버전 정보 (edition별) */
   app.get('/api/monitor/agent-download/version', async (_req, reply) => {
     const versionPath = join(VECTOR_BIN_DIR, 'version.json');
     if (!existsSync(versionPath)) {
       return reply.status(404).send({ error: 'version.json not found' });
     }
     const data = JSON.parse(readFileSync(versionPath, 'utf-8'));
+    const edition = (_req.query as { edition?: string }).edition;
+    if (edition === 'win7') {
+      return reply.send({ version: data.win7 ?? data.default });
+    }
     return reply.send(data);
   });
 
-  /** GET /api/monitor/agent-download/vector — vector.zip 다운로드 */
+  /** GET /api/monitor/agent-download/vector — vector.zip 다운로드 (?edition=win7 지원) */
   app.get('/api/monitor/agent-download/vector', async (_req, reply) => {
-    const zipPath = join(VECTOR_BIN_DIR, 'vector.zip');
+    const edition = (_req.query as { edition?: string }).edition;
+    const zipFile = edition === 'win7' ? 'vector-win7.zip' : 'vector.zip';
+    const zipPath = join(VECTOR_BIN_DIR, zipFile);
     if (!existsSync(zipPath)) {
-      return reply.status(404).send({ error: 'vector.zip not found in vector-bin/' });
+      return reply.status(404).send({ error: `${zipFile} not found in vector-bin/` });
     }
 
     const stat = statSync(zipPath);
@@ -37,7 +43,7 @@ export const agentDownloadRoute: FastifyPluginAsync = async (app) => {
 
     return reply
       .header('Content-Type', 'application/zip')
-      .header('Content-Disposition', 'attachment; filename="vector.zip"')
+      .header('Content-Disposition', `attachment; filename="${zipFile}"`)
       .header('Content-Length', stat.size)
       .send(stream);
   });

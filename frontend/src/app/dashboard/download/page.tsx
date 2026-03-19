@@ -18,6 +18,7 @@ import { QuickGuide } from './components/QuickGuide';
 
 export default function DownloadPage() {
   const [agents, setAgents] = useState<string[]>([]);
+  const [edition, setEdition] = useState<'default' | 'win7'>('default');
   const { t } = useI18n();
 
   useEffect(() => {
@@ -25,6 +26,10 @@ export default function DownloadPage() {
       .then(d => setAgents(d.names))
       .catch(() => {});
   }, []);
+
+  const zipUrl = edition === 'win7'
+    ? '/api/monitor/download/vector-zip?edition=win7'
+    : '/api/monitor/download/vector-zip';
 
   return (
     <>
@@ -52,15 +57,50 @@ export default function DownloadPage() {
             <p className="text-base font-bold text-text dark:text-white">{t('download.vectorExe')}</p>
             <p className="text-sm text-muted-foreground mt-1">{t('download.vectorExeDesc')}</p>
           </div>
+
+          {/* OS 버전 선택 */}
+          <div className="flex gap-2 w-full max-w-xs">
+            <button
+              type="button"
+              onClick={() => setEdition('default')}
+              className={`flex-1 flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-xs font-bold transition-all
+                ${edition === 'default'
+                  ? 'border-success bg-success/10 text-success'
+                  : 'border-border dark:border-border-dark text-muted-foreground hover:border-success/50'}`}
+            >
+              <Icon name="desktop_windows" size="sm" />
+              <span>Windows 10+</span>
+              <span className="text-[10px] font-normal opacity-70">v0.45 ({t('download.editionLatest')})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setEdition('win7')}
+              className={`flex-1 flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-xs font-bold transition-all
+                ${edition === 'win7'
+                  ? 'border-warning bg-warning/10 text-warning'
+                  : 'border-border dark:border-border-dark text-muted-foreground hover:border-warning/50'}`}
+            >
+              <Icon name="history" size="sm" />
+              <span>Windows 7</span>
+              <span className="text-[10px] font-normal opacity-70">v0.38 ({t('download.editionLegacy')})</span>
+            </button>
+          </div>
+          {edition === 'win7' && (
+            <p className="text-[11px] text-warning font-medium px-3 text-center">
+              {t('download.win7Notice')}
+            </p>
+          )}
+
           <a
-            href="/api/monitor/download/vector-zip"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm
-              bg-success text-white hover:bg-success/90
-              shadow-lg shadow-success/20 hover:shadow-success/30
-              transition-all duration-200 hover:-translate-y-0.5"
+            href={zipUrl}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm
+              text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5
+              ${edition === 'win7'
+                ? 'bg-warning hover:bg-warning/90 shadow-warning/20 hover:shadow-warning/30'
+                : 'bg-success hover:bg-success/90 shadow-success/20 hover:shadow-success/30'}`}
           >
             <Icon name="file_download" className="text-white" />
-            {t('download.vectorExeBtn')}
+            {edition === 'win7' ? t('download.vectorExeBtnWin7') : t('download.vectorExeBtn')}
           </a>
           <p className="text-xs text-muted-foreground font-mono">{t('download.vectorExeSize')}</p>
         </Card>
@@ -93,7 +133,15 @@ export default function DownloadPage() {
             <Icon name="description" className="text-accent" />
             {t('download.agentConfig')}
           </p>
-          <p className="text-sm text-muted-foreground mb-4">{t('download.agentConfigDesc')}</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            {t('download.agentConfigDesc')}
+            {edition === 'win7' && (
+              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-warning/10 text-warning">
+                <Icon name="history" size="xs" />
+                {t('download.win7TomlNotice')}
+              </span>
+            )}
+          </p>
 
           {!agents.length ? (
             <p className="text-sm text-muted-foreground text-center py-8">{t('download.noAgents')}</p>
@@ -109,7 +157,7 @@ export default function DownloadPage() {
                     <span className="text-xs text-muted-foreground">.toml</span>
                   </div>
                   <a
-                    href={`/api/monitor/download/agent/${name}`}
+                    href={`/api/monitor/download/agent/${name}${edition === 'win7' ? '?edition=win7' : ''}`}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold
                       bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                   >

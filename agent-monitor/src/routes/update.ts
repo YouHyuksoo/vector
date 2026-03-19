@@ -44,14 +44,16 @@ function findVectorPid(): number | null {
 }
 
 export default async function updateRoutes(app: FastifyInstance): Promise<void> {
-  /** GET /api/update/check — 버전 비교 */
+  /** GET /api/update/check — 버전 비교 (?edition=win7 지원) */
   app.get('/api/update/check', async (_req, reply) => {
     const localVersion = getLocalVersion();
+    const edition = (_req.query as { edition?: string }).edition;
+    const editionParam = edition === 'win7' ? '?edition=win7' : '';
 
     let serverVersion: string | null = null;
     try {
       const res = await fetch(
-        `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/version`,
+        `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/version${editionParam}`,
         { signal: AbortSignal.timeout(5000) },
       );
       if (res.ok) {
@@ -68,11 +70,15 @@ export default async function updateRoutes(app: FastifyInstance): Promise<void> 
       localVersion,
       serverVersion,
       updateAvailable,
+      edition: edition ?? 'default',
     });
   });
 
-  /** POST /api/update/execute — Vector 업데이트 실행 */
+  /** POST /api/update/execute — Vector 업데이트 실행 (?edition=win7 지원) */
   app.post('/api/update/execute', async (_req, reply) => {
+    const edition = (_req.query as { edition?: string }).edition;
+    const editionParam = edition === 'win7' ? '?edition=win7' : '';
+
     try {
       /* 1. Vector 프로세스 중지 */
       const pid = findVectorPid();
@@ -89,7 +95,7 @@ export default async function updateRoutes(app: FastifyInstance): Promise<void> 
       }
 
       /* 3. 새 바이너리 다운로드 */
-      const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector`;
+      const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${editionParam}`;
       const res = await fetch(downloadUrl);
       if (!res.ok || !res.body) {
         /* 다운로드 실패 시 백업 복원 */

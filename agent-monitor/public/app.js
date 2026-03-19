@@ -37,6 +37,7 @@ const I18N = {
     'mgmt.installVector': 'Vector 설치', 'mgmt.vectorUpdate': 'Vector 업데이트',
     'mgmt.checkVersion': '버전 확인', 'mgmt.localVer': '로컬 버전', 'mgmt.serverVer': '서버 버전',
     'mgmt.execUpdate': '업데이트 실행', 'mgmt.installed': '설치됨', 'mgmt.notInstalled': '미설치',
+    'mgmt.win7Notice': 'Windows 7 전용 버전 (v0.38)입니다. 최신 기능이 일부 제한될 수 있습니다.',
     'common.save': '저장', 'common.none': '없음',
     'footer': 'Vector Agent Manager &middot; 설비 PC 종합 관리',
     'toast.setupLoadFail': '설비 정보 로드 실패: ', 'toast.setupSaved': '설비 정보가 저장되었습니다. Vector 재시작이 필요합니다.',
@@ -76,6 +77,7 @@ const I18N = {
     'mgmt.installVector': 'Install Vector', 'mgmt.vectorUpdate': 'Vector Update',
     'mgmt.checkVersion': 'Check Version', 'mgmt.localVer': 'Local Version', 'mgmt.serverVer': 'Server Version',
     'mgmt.execUpdate': 'Run Update', 'mgmt.installed': 'Installed', 'mgmt.notInstalled': 'Not Installed',
+    'mgmt.win7Notice': 'Windows 7 edition (v0.38). Some latest features may not be available.',
     'common.save': 'Save', 'common.none': 'None',
     'footer': 'Vector Agent Manager &middot; Equipment PC Management',
     'toast.setupLoadFail': 'Failed to load equipment info: ', 'toast.setupSaved': 'Equipment info saved. Vector restart required.',
@@ -112,7 +114,7 @@ const I18N = {
     'mgmt.restart': 'Reiniciar', 'mgmt.testConn': 'Probar conexión', 'mgmt.winService': 'Servicio Windows',
     'mgmt.register': 'Registrar', 'mgmt.unregister': 'Eliminar', 'mgmt.installUpdate': 'Instalar / Actualizar',
     'mgmt.installStatus': 'Estado de instalación', 'mgmt.binary': 'Binario', 'mgmt.configFile': 'Archivo config',
-    'mgmt.installVector': 'Instalar Vector', 'mgmt.vectorUpdate': 'Actualizar Vector',
+    'mgmt.installVector': 'Instalar Vector', 'mgmt.win7Notice': 'Edición Windows 7 (v0.38). Algunas funciones pueden no estar disponibles.', 'mgmt.vectorUpdate': 'Actualizar Vector',
     'mgmt.checkVersion': 'Verificar versión', 'mgmt.localVer': 'Versión local', 'mgmt.serverVer': 'Versión servidor',
     'mgmt.execUpdate': 'Ejecutar actualización', 'mgmt.installed': 'Instalado', 'mgmt.notInstalled': 'No instalado',
     'common.save': 'Guardar', 'common.none': 'Ninguno',
@@ -151,7 +153,7 @@ const I18N = {
     'mgmt.restart': 'Khởi động lại', 'mgmt.testConn': 'Kiểm tra kết nối', 'mgmt.winService': 'Dịch vụ Windows',
     'mgmt.register': 'Đăng ký', 'mgmt.unregister': 'Hủy đăng ký', 'mgmt.installUpdate': 'Cài đặt / Cập nhật',
     'mgmt.installStatus': 'Trạng thái cài đặt Vector', 'mgmt.binary': 'File chạy', 'mgmt.configFile': 'File cấu hình',
-    'mgmt.installVector': 'Cài đặt Vector', 'mgmt.vectorUpdate': 'Cập nhật Vector',
+    'mgmt.installVector': 'Cài đặt Vector', 'mgmt.win7Notice': 'Phiên bản Windows 7 (v0.38). Một số tính năng mới có thể không khả dụng.', 'mgmt.vectorUpdate': 'Cập nhật Vector',
     'mgmt.checkVersion': 'Kiểm tra phiên bản', 'mgmt.localVer': 'Phiên bản local', 'mgmt.serverVer': 'Phiên bản server',
     'mgmt.execUpdate': 'Thực hiện cập nhật', 'mgmt.installed': 'Đã cài đặt', 'mgmt.notInstalled': 'Chưa cài đặt',
     'common.save': 'Lưu', 'common.none': 'Không có',
@@ -443,11 +445,19 @@ async function checkInstall() {
   } catch { /* 무시 */ }
 }
 
+/** 선택된 Vector edition 반환 ('default' | 'win7') */
+function getSelectedEdition() {
+  const radio = document.querySelector('input[name="vector-edition"]:checked');
+  return radio ? radio.value : 'default';
+}
+
 async function installVector() {
   document.getElementById('btn-install').disabled = true;
   showToast(t('toast.downloading'), 'info');
+  const edition = getSelectedEdition();
+  const editionParam = edition === 'win7' ? '?edition=win7' : '';
   try {
-    const data = await fetchJSON('/api/install', { method: 'POST' });
+    const data = await fetchJSON(`/api/install${editionParam}`, { method: 'POST' });
     showToast(data.message || '설치 완료', 'success');
     checkInstall();
   } catch (err) {
@@ -457,8 +467,10 @@ async function installVector() {
 }
 
 async function checkUpdate() {
+  const edition = getSelectedEdition();
+  const editionParam = edition === 'win7' ? '?edition=win7' : '';
   try {
-    const data = await fetchJSON('/api/update/check');
+    const data = await fetchJSON(`/api/update/check${editionParam}`);
     document.getElementById('txt-local-ver').textContent = data.localVersion || t('mgmt.notInstalled');
     document.getElementById('txt-server-ver').textContent = data.serverVersion || '-';
     const btnUpdate = document.getElementById('btn-update');
@@ -474,8 +486,10 @@ async function checkUpdate() {
 async function executeUpdate() {
   document.getElementById('btn-update').disabled = true;
   showToast(t('toast.updating'), 'info');
+  const edition = getSelectedEdition();
+  const editionParam = edition === 'win7' ? '?edition=win7' : '';
   try {
-    const data = await fetchJSON('/api/update/execute', { method: 'POST' });
+    const data = await fetchJSON(`/api/update/execute${editionParam}`, { method: 'POST' });
     showToast(data.message || '업데이트 완료', 'success');
     document.getElementById('btn-update').classList.add('hidden');
     checkUpdate();
@@ -727,7 +741,13 @@ function bindEvents() {
   document.getElementById('btn-restart').addEventListener('click', restartVector);
   document.getElementById('btn-test-conn').addEventListener('click', testConnection);
 
-  /* 설치 */
+  /* 설치 — edition 라디오 토글 */
+  document.querySelectorAll('input[name="vector-edition"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const notice = document.getElementById('win7-notice');
+      if (notice) notice.classList.toggle('hidden', radio.value !== 'win7');
+    });
+  });
   document.getElementById('btn-install').addEventListener('click', installVector);
 
   /* 업데이트 */

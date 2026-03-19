@@ -416,6 +416,30 @@
             <div><span data-i18n="mgmt.binary">바이너리</span>: <span id="txt-bin-path">-</span></div>
             <div><span data-i18n="mgmt.configFile">설정파일</span>: <span id="txt-cfg-path">-</span></div>
           </div>
+
+          <!-- OS 버전 선택 -->
+          <div class="flex gap-2">
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="vector-edition" value="default" checked class="sr-only peer">
+              <div class="flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-xs font-bold transition-all
+                border-border peer-checked:border-info peer-checked:bg-info/10 peer-checked:text-info">
+                <span class="material-symbols-outlined text-base">desktop_windows</span>
+                <span>Windows 10+</span>
+                <span class="text-[10px] font-normal opacity-70">v0.45</span>
+              </div>
+            </label>
+            <label class="flex-1 cursor-pointer">
+              <input type="radio" name="vector-edition" value="win7" class="sr-only peer">
+              <div class="flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-xs font-bold transition-all
+                border-border peer-checked:border-warning peer-checked:bg-warning/10 peer-checked:text-warning">
+                <span class="material-symbols-outlined text-base">history</span>
+                <span>Windows 7</span>
+                <span class="text-[10px] font-normal opacity-70">v0.38</span>
+              </div>
+            </label>
+          </div>
+          <p id="win7-notice" class="text-[11px] text-warning font-medium hidden" data-i18n="mgmt.win7Notice">Windows 7 전용 버전 (v0.38)입니다. 최신 기능이 일부 제한될 수 있습니다.</p>
+
           <button id="btn-install"
             class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-info hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
             <span class="material-symbols-outlined text-lg">download</span> <span data-i18n="mgmt.installVector">Vector 설치</span>

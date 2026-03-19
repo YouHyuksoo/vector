@@ -31,13 +31,15 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
     });
   });
 
-  /** POST /api/install — vector.zip 다운로드 → 압축 해제 → 기본 TOML 생성 */
+  /** POST /api/install — vector.zip 다운로드 → 압축 해제 → 기본 TOML 생성 (?edition=win7 지원) */
   app.post('/api/install', async (_req, reply) => {
     const tmpZip = join(tmpdir(), `vector-${Date.now()}.zip`);
+    const edition = (_req.query as { edition?: string }).edition;
 
     try {
-      /* 1. 마스터 서버에서 vector.zip 다운로드 */
-      const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector`;
+      /* 1. 마스터 서버에서 vector.zip 다운로드 (edition 파라미터 전달) */
+      const editionParam = edition === 'win7' ? '?edition=win7' : '';
+      const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${editionParam}`;
       const res = await fetch(downloadUrl);
       if (!res.ok || !res.body) {
         return reply.status(502).send({
