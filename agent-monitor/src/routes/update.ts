@@ -43,12 +43,15 @@ function findVectorPid(): number | null {
   } catch { return null; }
 }
 
+/** 현재 아키텍처가 32비트인지 감지 */
+const isX86 = process.arch === 'ia32';
+
 export default async function updateRoutes(app: FastifyInstance): Promise<void> {
-  /** GET /api/update/check — 버전 비교 (?edition=win7 지원) */
+  /** GET /api/update/check — 버전 비교 (32비트 자동 감지, ?edition=win7 지원) */
   app.get('/api/update/check', async (_req, reply) => {
     const localVersion = getLocalVersion();
-    const edition = (_req.query as { edition?: string }).edition;
-    const editionParam = edition === 'win7' ? '?edition=win7' : '';
+    const edition = (_req.query as { edition?: string }).edition ?? (isX86 ? 'x86' : undefined);
+    const editionParam = edition === 'win7' ? '?edition=win7' : edition === 'x86' ? '?edition=x86' : '';
 
     let serverVersion: string | null = null;
     try {
@@ -74,10 +77,10 @@ export default async function updateRoutes(app: FastifyInstance): Promise<void> 
     });
   });
 
-  /** POST /api/update/execute — Vector 업데이트 실행 (?edition=win7 지원) */
+  /** POST /api/update/execute — Vector 업데이트 실행 (32비트 자동 감지, ?edition=win7 지원) */
   app.post('/api/update/execute', async (_req, reply) => {
-    const edition = (_req.query as { edition?: string }).edition;
-    const editionParam = edition === 'win7' ? '?edition=win7' : '';
+    const edition = (_req.query as { edition?: string }).edition ?? (isX86 ? 'x86' : undefined);
+    const editionParam = edition === 'win7' ? '?edition=win7' : edition === 'x86' ? '?edition=x86' : '';
 
     try {
       /* 1. Vector 프로세스 중지 */

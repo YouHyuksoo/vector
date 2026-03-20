@@ -17,28 +17,32 @@ import { tmpdir } from 'os';
 import AdmZip from 'adm-zip';
 import { ENV } from '../server.js';
 
+/** 현재 아키텍처가 32비트인지 감지 */
+const isX86 = process.arch === 'ia32';
+
 export default async function installRoutes(app: FastifyInstance): Promise<void> {
   /** GET /api/install/status — 설치 상태 확인 */
   app.get('/api/install/status', async (_req, reply) => {
     const binaryExists = existsSync(ENV.VECTOR_BIN_PATH);
-    const configExists = existsSync(ENV.VECTOR_CONFIG_PATH);
+    const configPath = ENV.VECTOR_CONFIG_PATH;
+    const configExists = existsSync(configPath);
     return reply.send({
       installed: binaryExists && configExists,
       binaryExists,
       configExists,
       binaryPath: ENV.VECTOR_BIN_PATH,
-      configPath: ENV.VECTOR_CONFIG_PATH,
+      configPath,
     });
   });
 
   /** POST /api/install — vector.zip 다운로드 → 압축 해제 → 기본 TOML 생성 (?edition=win7 지원) */
   app.post('/api/install', async (_req, reply) => {
     const tmpZip = join(tmpdir(), `vector-${Date.now()}.zip`);
-    const edition = (_req.query as { edition?: string }).edition;
+    const edition = (_req.query as { edition?: string }).edition ?? (isX86 ? 'x86' : undefined);
 
     try {
-      /* 1. 마스터 서버에서 vector.zip 다운로드 (edition 파라미터 전달) */
-      const editionParam = edition === 'win7' ? '?edition=win7' : '';
+      /* 1. 마스터 서버에서 vector.zip 다운로드 (32비트 자동 감지, edition 파라미터 전달) */
+      const editionParam = edition === 'win7' ? '?edition=win7' : edition === 'x86' ? '?edition=x86' : '';
       const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${editionParam}`;
       const res = await fetch(downloadUrl);
       if (!res.ok || !res.body) {
@@ -59,13 +63,15 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
       const zip = new AdmZip(tmpZip);
       zip.extractAllTo(installDir, true);
 
-      /* 4. data 디렉토리 생성 */
-      const dataDir = 'C:\\vector\\data';
+      /* 4. data, config 디렉토리 생성 */
+      const dataDir = join(installDir, 'data');
+      const configDir = join(installDir, 'config');
       if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
+      if (!existsSync(configDir)) mkdirSync(configDir, { recursive: true });
 
       return reply.send({
         success: true,
-        message: 'Vector가 설치되었습니다. 마스터 서버 다운로드 페이지에서 설비 TOML을 다운받아 config 폴더에 넣어주세요.',
+        message: `Vector 바이너리가 설치되었습니다. 마스터 서버 다운로드 페이지에서 설비 TOML을 다운받아 ${configDir} 폴더에 넣어주세요.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
