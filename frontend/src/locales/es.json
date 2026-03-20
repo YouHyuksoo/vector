@@ -461,7 +461,7 @@
     "subtitle": "Archivos de Instalación del Agent",
     "vectorExe": "Ejecutable de Vector",
     "vectorExeDesc": "Motor Vector para PC de equipo (extraer zip para usar)",
-    "vectorExeBtn": "Descargar vector.zip",
+    "vectorExeBtn": "Descargar vector-x64.zip",
     "vectorExeBtnWin7": "Descargar vector-win7.zip",
     "vectorExeBtnX86": "Descargar vector-x86.zip",
     "vectorExeSize": "~40MB",
@@ -491,7 +491,7 @@
     "fluentBitBtn": "Descargar fluent-bit.zip",
     "fluentBitSize": "~5MB",
     "steps": "Pasos de Instalación",
-    "step1": "Descargar vector.zip y extraer en el PC del equipo",
+    "step1": "Descargar vector-x64.zip y extraer en el PC del equipo",
     "step2": "Descargar la configuración TOML para su equipo",
     "step3": "Cambiar las rutas include en el TOML a las ubicaciones reales de logs",
     "step4": "Cambiar la dirección a la IP real del servidor",
@@ -518,7 +518,7 @@
       "registerSvc": "Registrar Servicio",
       "registerSvcDesc": "(Opcional) Pestaña Gestión → Registrar servicio Windows para inicio automático",
       "manualTitle": "Instalación Manual",
-      "manualDesc": "Sin Agent Manager: descargar vector.zip → extraer → descargar TOML en la misma carpeta → editar TOML (ruta de log, IP del servidor) → ejecutar start-vector.bat",
+      "manualDesc": "Sin Agent Manager: descargar vector-x64.zip → extraer → descargar TOML en la misma carpeta → editar TOML (ruta de log, IP del servidor) → ejecutar start-vector.bat",
       "langSupport": "Agent Manager soporta coreano, inglés, español y vietnamita"
     }
   },

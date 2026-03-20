@@ -42,9 +42,11 @@ export default function DownloadPage() {
       : '/api/monitor/download/vector-zip';
 
   /* Agent Manager URL 결정 */
-  const agentManagerUrl = is64
-    ? '/api/monitor/download/agent-manager'
-    : '/api/monitor/download/agent-manager?arch=x86';
+  const agentManagerUrl = !is64
+    ? '/api/monitor/download/agent-manager?arch=x86'
+    : isWin7
+      ? '/api/monitor/download/agent-manager?edition=win7'
+      : '/api/monitor/download/agent-manager';
 
   /* Vector 버전 표시 */
   const vectorVersion = is64 && !isWin7 ? 'v0.45' : 'v0.38';

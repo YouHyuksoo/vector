@@ -461,7 +461,7 @@
     "subtitle": "Agent 설치 파일 배포",
     "vectorExe": "Vector 실행파일",
     "vectorExeDesc": "설비 PC에 설치할 Vector 엔진 (압축 해제 후 사용)",
-    "vectorExeBtn": "vector.zip 다운로드",
+    "vectorExeBtn": "vector-x64.zip 다운로드",
     "vectorExeBtnWin7": "vector-win7.zip 다운로드",
     "vectorExeBtnX86": "vector-x86.zip 다운로드",
     "vectorExeSize": "약 40MB",
@@ -491,7 +491,7 @@
     "fluentBitBtn": "fluent-bit.zip 다운로드",
     "fluentBitSize": "~5MB",
     "steps": "설치 방법",
-    "step1": "vector.zip을 다운로드하여 설비 PC에 압축 해제합니다",
+    "step1": "vector-x64.zip을 다운로드하여 설비 PC에 압축 해제합니다",
     "step2": "해당 설비의 TOML 설정 파일을 다운로드합니다",
     "step3": "TOML 파일의 include 경로를 실제 로그 위치로 변경합니다",
     "step4": "address를 실제 서버 IP로 변경합니다",
@@ -518,7 +518,7 @@
       "registerSvc": "서비스 등록",
       "registerSvcDesc": "(선택) 관리 탭 → Windows 서비스 등록으로 자동 시작",
       "manualTitle": "수동 설치 방법",
-      "manualDesc": "Agent Manager 없이: vector.zip 다운로드 → 압축 해제 → TOML 다운로드 후 같은 폴더 배치 → TOML 편집 (로그 경로, 서버 IP) → start-vector.bat 실행",
+      "manualDesc": "Agent Manager 없이: vector-x64.zip 다운로드 → 압축 해제 → TOML 다운로드 후 같은 폴더 배치 → TOML 편집 (로그 경로, 서버 IP) → start-vector.bat 실행",
       "langSupport": "Agent Manager는 한국어, English, Español, Tiếng Việt을 지원합니다"
     }
   },

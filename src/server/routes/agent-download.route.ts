@@ -29,10 +29,11 @@ export const agentDownloadRoute: FastifyPluginAsync = async (app) => {
     return reply.send(data);
   });
 
-  /** GET /api/monitor/agent-download/vector — vector.zip 다운로드 (?edition=win7 지원) */
+  /** GET /api/monitor/agent-download/vector — vector zip 다운로드 (?edition=win7|x86 지원) */
   app.get('/api/monitor/agent-download/vector', async (_req, reply) => {
     const edition = (_req.query as { edition?: string }).edition;
-    const zipFile = edition === 'win7' ? 'vector-win7.zip' : 'vector.zip';
+    const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip' };
+    const zipFile = zipMap[edition ?? ''] ?? 'vector-x64.zip';
     const zipPath = join(VECTOR_BIN_DIR, zipFile);
     if (!existsSync(zipPath)) {
       return reply.status(404).send({ error: `${zipFile} not found in vector-bin/` });

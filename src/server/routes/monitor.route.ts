@@ -330,7 +330,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   app.get('/api/monitor/download/vector-zip', async (_request, reply) => {
     const edition = (_request.query as { edition?: string }).edition;
     const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip' };
-    const zipFile = zipMap[edition ?? ''] ?? 'vector.zip';
+    const zipFile = zipMap[edition ?? ''] ?? 'vector-x64.zip';
     const zipPath = join(process.cwd(), 'vector-bin', zipFile);
     if (!existsSync(zipPath)) {
       return reply.status(404).send({ error: `${zipFile} not found` });
@@ -346,12 +346,15 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** Agent Manager 다운로드 — ?arch=x86 시 32비트 zip, 기본은 64비트 exe */
+  /** Agent Manager 다운로드 — ?arch=x86|?edition=win7 지원 */
   app.get('/api/monitor/download/agent-manager', async (request, reply) => {
-    const { arch } = request.query as { arch?: string };
-    const isX86 = arch === 'x86';
-    const fileName = isX86 ? 'agent-manager-x86.zip' : 'agent-manager-x64.exe';
-    const contentType = isX86 ? 'application/zip' : 'application/octet-stream';
+    const { arch, edition } = request.query as { arch?: string; edition?: string };
+    const fileName = arch === 'x86'
+      ? 'agent-manager-x86.zip'
+      : edition === 'win7'
+        ? 'agent-manager-win7.exe'
+        : 'agent-manager-x64.exe';
+    const contentType = fileName.endsWith('.zip') ? 'application/zip' : 'application/octet-stream';
     const filePath = join(process.cwd(), 'vector-bin', fileName);
     if (!existsSync(filePath)) {
       return reply.status(404).send({ error: `${fileName} not found` });
@@ -2795,10 +2798,56 @@ function replaceEquipmentBlock(vrlSource: string, equipmentType: string, newCode
       break;
     }
   }
-  if (headerIdx === -1) return null;
 
-  // 중괄호 깊이 추적으로 블록 끝 탐색
-  // 헤더 라인의 마지막 `{`에서 depth=1로 시작
+  // 새 VRL 코드를 2스페이스 인덴트로 포맷
+  const indent = '  ';
+  const indentedCode = newCode.split('\n')
+    .map(l => l.trim() ? indent + l : '')
+    .join('\n');
+
+  // 기존 블록이 없으면 → else 체인 마지막에 새 블록 추가
+  if (headerIdx === -1) {
+    // else 체인의 마지막 `} else {` (unknown 분기) 또는 마지막 `}` 찾기
+    const lastElsePattern = /}\s*else\s*\{/;
+    let lastElseIdx = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (lastElsePattern.test(lines[i])) {
+        lastElseIdx = i;
+        break;
+      }
+    }
+
+    if (lastElseIdx !== -1) {
+      // `} else {` 앞에 새 `} else if` 블록 삽입
+      const newBlock = `} else if .equipment_type == "${equipmentType}" {\n${indentedCode}\n`;
+      const newLines = [
+        ...lines.slice(0, lastElseIdx),
+        newBlock,
+        ...lines.slice(lastElseIdx),
+      ];
+      return newLines.join('\n');
+    }
+
+    // else 블록이 없으면 마지막 닫는 `}` 앞에 추가
+    let lastClosingIdx = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (lines[i].trim() === '}') {
+        lastClosingIdx = i;
+        break;
+      }
+    }
+    if (lastClosingIdx === -1) return null;
+
+    const newBlock = `} else if .equipment_type == "${equipmentType}" {\n${indentedCode}\n`;
+    const newLines = [
+      ...lines.slice(0, lastClosingIdx),
+      newBlock,
+      ...lines.slice(lastClosingIdx),
+    ];
+    return newLines.join('\n');
+  }
+
+  // 기존 블록이 있으면 → 내용 교체
   let depth = 1;
   let closingIdx = -1;
   for (let i = headerIdx + 1; i < lines.length; i++) {
@@ -2815,12 +2864,6 @@ function replaceEquipmentBlock(vrlSource: string, equipmentType: string, newCode
     if (closingIdx !== -1) break;
   }
   if (closingIdx === -1) return null;
-
-  // 새 VRL 코드를 2스페이스 인덴트로 포맷
-  const indent = '  ';
-  const indentedCode = newCode.split('\n')
-    .map(l => l.trim() ? indent + l : '')
-    .join('\n');
 
   // 헤더~닫는줄 사이 내용 교체
   const newLines = [

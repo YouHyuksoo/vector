@@ -461,7 +461,7 @@
     "subtitle": "Agent Installation Files",
     "vectorExe": "Vector Executable",
     "vectorExeDesc": "Vector engine for equipment PC (extract zip to use)",
-    "vectorExeBtn": "Download vector.zip",
+    "vectorExeBtn": "Download vector-x64.zip",
     "vectorExeBtnWin7": "Download vector-win7.zip",
     "vectorExeBtnX86": "Download vector-x86.zip",
     "vectorExeSize": "~40MB",
@@ -491,7 +491,7 @@
     "fluentBitBtn": "Download fluent-bit.zip",
     "fluentBitSize": "~5MB",
     "steps": "Installation Steps",
-    "step1": "Download vector.zip and extract on equipment PC",
+    "step1": "Download vector-x64.zip and extract on equipment PC",
     "step2": "Download the TOML config for your equipment",
     "step3": "Change include paths in TOML to actual log locations",
     "step4": "Change address to actual server IP",
@@ -518,7 +518,7 @@
       "registerSvc": "Register Service",
       "registerSvcDesc": "(Optional) Management tab → Register Windows service for auto-start",
       "manualTitle": "Manual Installation",
-      "manualDesc": "Without Agent Manager: download vector.zip → extract → download TOML to same folder → edit TOML (log path, server IP) → run start-vector.bat",
+      "manualDesc": "Without Agent Manager: download vector-x64.zip → extract → download TOML to same folder → edit TOML (log path, server IP) → run start-vector.bat",
       "langSupport": "Agent Manager supports Korean, English, Español, and Tiếng Việt"
     }
   },
