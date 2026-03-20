@@ -173,7 +173,7 @@ export default function DownloadPage() {
                 ? 'bg-primary hover:bg-primary/90 shadow-primary/20'
                 : 'bg-orange-500 hover:bg-orange-500/90 shadow-orange-500/20'}`}>
             <Icon name="file_download" className="text-white" />
-            {is64 ? t('download.agentManagerBtn') : t('download.agentManagerBtnX86')}
+            {!is64 ? t('download.agentManagerBtnX86') : isWin7 ? t('download.agentManagerBtnWin7') : t('download.agentManagerBtn')}
           </a>
           <p className="text-xs text-muted-foreground font-mono">{t('download.agentManagerSize')}</p>
         </Card>

@@ -12,8 +12,16 @@
 import { FastifyInstance } from 'fastify';
 import { execSync } from 'child_process';
 import { existsSync, renameSync, unlinkSync, createWriteStream } from 'fs';
-import { pipeline } from 'stream/promises';
-import { Readable } from 'stream';
+
+/** stream pipeline을 Promise로 래핑 (Node 14 호환) */
+function pipelineAsync(src: NodeJS.ReadableStream, dst: NodeJS.WritableStream): Promise<void> {
+  return new Promise((resolve, reject) => {
+    src.pipe(dst);
+    dst.on('finish', resolve);
+    dst.on('error', reject);
+    src.on('error', reject);
+  });
+}
 import { ENV } from '../server.js';
 
 /** 로컬 Vector 버전 조회 */
@@ -110,7 +118,7 @@ export default async function updateRoutes(app: FastifyInstance): Promise<void> 
       }
 
       const ws = createWriteStream(ENV.VECTOR_BIN_PATH);
-      await pipeline(Readable.fromWeb(res.body as any), ws);
+      await pipelineAsync(res.body as any, ws);
 
       /* 4. 새 버전 확인 */
       const newVersion = getLocalVersion();

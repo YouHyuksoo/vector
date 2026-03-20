@@ -83,7 +83,7 @@ jobs:
 
           robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
             /XF ".env" "ai-config.json" "ai-system-prompt.txt" `
-            /XD ".git" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
+            /XD ".git" "vector-config\agent" "vector-config\agent-fluent" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
 
           # vector-bin에서 다운로드용 파일만 동기화
           $vbSrc = "$src\vector-bin"
@@ -93,7 +93,7 @@ jobs:
           if (Test-Path "$vbSrc\vector-win7.zip") { Copy-Item "$vbSrc\vector-win7.zip" "$vbDst\vector-win7.zip" -Force }
           if (Test-Path "$vbSrc\vector-x86.zip") { Copy-Item "$vbSrc\vector-x86.zip" "$vbDst\vector-x86.zip" -Force }
           if (Test-Path "$vbSrc\agent-manager-x64.exe") { Copy-Item "$vbSrc\agent-manager-x64.exe" "$vbDst\agent-manager-x64.exe" -Force }
-          if (Test-Path "$vbSrc\agent-manager-win7.exe") { Copy-Item "$vbSrc\agent-manager-win7.exe" "$vbDst\agent-manager-win7.exe" -Force }
+          if (Test-Path "$vbSrc\agent-manager-win7.zip") { Copy-Item "$vbSrc\agent-manager-win7.zip" "$vbDst\agent-manager-win7.zip" -Force }
           if (Test-Path "$vbSrc\agent-manager-x86.zip") { Copy-Item "$vbSrc\agent-manager-x86.zip" "$vbDst\agent-manager-x86.zip" -Force }
           if (Test-Path "$vbSrc\version.json") { Copy-Item "$vbSrc\version.json" "$vbDst\version.json" -Force }
 

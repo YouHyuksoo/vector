@@ -51,9 +51,27 @@ await build({
   },
   banner: {
     js: [
+      '/* Node 14 polyfills for Win7 compatibility */',
       'var __import_meta_url = require("url").pathToFileURL(__filename).href;',
+      '',
+      '/* fetch polyfill */',
       'if(typeof globalThis.fetch==="undefined"){var _nf=require("node-fetch");globalThis.fetch=_nf.default||_nf;globalThis.Headers=_nf.Headers;globalThis.Request=_nf.Request;globalThis.Response=_nf.Response;}',
-      'if(typeof AbortSignal.timeout==="undefined"){AbortSignal.timeout=function(ms){var c=new AbortController();setTimeout(function(){c.abort();},ms);return c.signal;};}',
+      '',
+      '/* AbortController polyfill */',
+      'if(typeof globalThis.AbortController==="undefined"){',
+      '  var _AC=function(){this.signal={aborted:false,reason:undefined,addEventListener:function(){},removeEventListener:function(){},throwIfAborted:function(){if(this.aborted)throw this.reason;},onabort:null};var _s=this.signal;this.abort=function(r){_s.aborted=true;_s.reason=r||new Error("Aborted");if(_s.onabort)_s.onabort();};};',
+      '  globalThis.AbortController=_AC;globalThis.AbortSignal=function(){};',
+      '  globalThis.AbortSignal.timeout=function(ms){var c=new _AC();setTimeout(function(){c.abort(new Error("TimeoutError"));},ms);return c.signal;};',
+      '}else if(typeof AbortSignal.timeout==="undefined"){',
+      '  AbortSignal.timeout=function(ms){var c=new AbortController();setTimeout(function(){c.abort();},ms);return c.signal;};',
+      '}',
+      '',
+      '/* structuredClone polyfill */',
+      'if(typeof globalThis.structuredClone==="undefined"){globalThis.structuredClone=function(v){return JSON.parse(JSON.stringify(v));};}',
+      '',
+      '/* diagnostics_channel.tracingChannel polyfill (Fastify 5 needs Node 20+) */',
+      'try{var _dc=require("diagnostics_channel");if(typeof _dc.tracingChannel==="undefined"){_dc.tracingChannel=function(n){var _ch=function(){return{hasSubscribers:false,publish:function(){},subscribe:function(){},unsubscribe:function(){}};};return{start:_ch(),end:_ch(),asyncStart:_ch(),asyncEnd:_ch(),error:_ch(),subscribe:function(){},unsubscribe:function(){},traceSync:function(fn,ctx){return fn.apply(ctx);},tracePromise:function(fn,ctx){return fn.apply(ctx);},traceCallback:function(fn,ctx){return fn.apply(ctx);}};};}}catch(e){}',
+      '',
       '(async () => {',
     ].join('\n'),
   },
@@ -93,16 +111,26 @@ try {
   process.exit(1);
 }
 
-// 6. win7 — pkg(node16) → Win7+ 64비트
-console.log('[4/5] Packaging win7 (node14, Win7+)...');
+// 6. win7 — Node 14 x64 + server.cjs zip → Win7+ 64비트
+console.log('[4/5] Packaging win7 (node14-x64 zip)...');
+const nodeWin7Path = join(DIST, 'node-win7.exe');
 try {
+  if (!existsSync(nodeWin7Path)) {
+    console.log(`  → Downloading Node.js v${NODE_VERSION} x64 from nodejs.org...`);
+    await download(`https://nodejs.org/dist/v${NODE_VERSION}/win-x64/node.exe`, nodeWin7Path);
+    console.log('  → node-win7.exe downloaded');
+  } else {
+    console.log('  → node-win7.exe already cached');
+  }
+  const win7Bat = ['@echo off', 'cd /d "%~dp0"', 'node-win7.exe server.cjs %*'].join('\r\n');
+  writeFileSync(join(DIST, 'agent-manager-win7.bat'), win7Bat);
   execSync(
-    `npx pkg ${join(DIST, 'server.cjs')} --targets node14-win-x64 --output ${join(DIST, 'agent-manager-win7.exe')} --compress GZip`,
+    `zip -j ${join(DIST, 'agent-manager-win7.zip')} ${nodeWin7Path} ${join(DIST, 'server.cjs')} ${join(DIST, 'agent-manager-win7.bat')} ${join(DIST, '.env')}`,
     { stdio: 'inherit', cwd: __dirname },
   );
-  console.log('  → agent-manager-win7.exe created');
+  console.log('  → agent-manager-win7.zip created');
 } catch (err) {
-  console.error('pkg failed (win7):', err.message);
+  console.error('win7 zip packaging failed:', err.message);
   process.exit(1);
 }
 
@@ -168,5 +196,5 @@ try {
 
 console.log('\nDone!');
 console.log(`  agent-manager-x64.exe  → Win10+ 64비트 (단일 exe)`);
-console.log(`  agent-manager-win7.exe → Win7+  64비트 (단일 exe)`);
-console.log(`  agent-manager-x86.zip  → 32비트 (zip: node-x86 + server.cjs + bat)`);
+console.log(`  agent-manager-win7.zip → Win7+  64비트 (zip: node14 + server.cjs + bat)`);
+console.log(`  agent-manager-x86.zip  → 32비트 (zip: node14-x86 + server.cjs + bat)`);

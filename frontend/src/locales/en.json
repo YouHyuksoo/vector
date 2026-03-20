@@ -473,6 +473,7 @@
     "agentManager": "Agent Manager",
     "agentManagerDesc": "Equipment PC management tool (install/config/monitor/control)",
     "agentManagerBtn": "Download agent-manager-x64.exe",
+    "agentManagerBtnWin7": "Download agent-manager-win7.zip",
     "agentManagerBtnX86": "Download agent-manager-x86.zip",
     "agentManagerSize": "~45MB",
     "archLabel": "Equipment PC Architecture",

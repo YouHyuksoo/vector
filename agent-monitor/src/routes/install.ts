@@ -11,8 +11,16 @@
 import { FastifyInstance } from 'fastify';
 import { existsSync, mkdirSync, createWriteStream, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
-import { pipeline } from 'stream/promises';
-import { Readable } from 'stream';
+
+/** stream pipeline을 Promise로 래핑 (Node 14 호환) */
+function pipelineAsync(src: NodeJS.ReadableStream, dst: NodeJS.WritableStream): Promise<void> {
+  return new Promise((resolve, reject) => {
+    src.pipe(dst);
+    dst.on('finish', resolve);
+    dst.on('error', reject);
+    src.on('error', reject);
+  });
+}
 import { tmpdir } from 'os';
 import AdmZip from 'adm-zip';
 import { ENV } from '../server.js';
@@ -53,7 +61,7 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
       }
 
       const ws = createWriteStream(tmpZip);
-      await pipeline(Readable.fromWeb(res.body as any), ws);
+      await pipelineAsync(res.body as any, ws);
 
       /* 2. 압축 해제 대상 디렉토리 (C:\vector\) — zip 안에 bin\ 폴더가 포함됨 */
       const installDir = dirname(dirname(ENV.VECTOR_BIN_PATH));

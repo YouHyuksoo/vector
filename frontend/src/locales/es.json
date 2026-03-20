@@ -473,6 +473,7 @@
     "agentManager": "Agent Manager",
     "agentManagerDesc": "Herramienta de gestión integral para PC de equipos",
     "agentManagerBtn": "Descargar agent-manager-x64.exe",
+    "agentManagerBtnWin7": "Descargar agent-manager-win7.zip",
     "agentManagerBtnX86": "Descargar agent-manager-x86.zip",
     "agentManagerSize": "~45MB",
     "archLabel": "Arquitectura del PC",

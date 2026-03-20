@@ -352,7 +352,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     const fileName = arch === 'x86'
       ? 'agent-manager-x86.zip'
       : edition === 'win7'
-        ? 'agent-manager-win7.exe'
+        ? 'agent-manager-win7.zip'
         : 'agent-manager-x64.exe';
     const contentType = fileName.endsWith('.zip') ? 'application/zip' : 'application/octet-stream';
     const filePath = join(process.cwd(), 'vector-bin', fileName);
