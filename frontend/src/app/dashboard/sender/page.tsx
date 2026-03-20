@@ -15,10 +15,13 @@ import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import { EquipmentList } from './components/EquipmentList';
 import { AgentConfigPanel } from './components/AgentConfigPanel';
+import { FluentConfigPanel } from './components/FluentConfigPanel';
 import { usePipelineStatus } from '@/hooks/usePipelineStatus';
 
 export default function SenderPage() {
+  const [agentMode, setAgentMode] = useState<'vector' | 'fluent'>('vector');
   const [names, setNames] = useState<string[]>([]);
+  const [fluentNames, setFluentNames] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   type DescEntry = string | { description?: string; encoding?: string };
@@ -40,15 +43,28 @@ export default function SenderPage() {
 
   const fetchNames = useCallback(async () => {
     try {
-      const data = await apiFetch<{ names: string[]; descriptions?: Record<string, DescEntry> }>('/api/monitor/agent/configs');
-      setNames(data.names);
-      setRawDescs(data.descriptions || {});
-      setSelected(prev => (!prev && data.names.length > 0) ? data.names[0] : prev);
+      const [vecData, flData] = await Promise.all([
+        apiFetch<{ names: string[]; descriptions?: Record<string, DescEntry> }>('/api/monitor/agent/configs'),
+        apiFetch<{ names: string[] }>('/api/monitor/agent-fluent/configs'),
+      ]);
+      setNames(vecData.names);
+      setFluentNames(flData.names);
+      setRawDescs(vecData.descriptions || {});
+      setSelected(prev => (!prev && vecData.names.length > 0) ? vecData.names[0] : prev);
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchNames(); }, [fetchNames]);
+
+  const isFluent = agentMode === 'fluent';
+  const activeNames = isFluent ? fluentNames : names;
+
+  const handleModeChange = (mode: 'vector' | 'fluent') => {
+    setAgentMode(mode);
+    const list = mode === 'fluent' ? fluentNames : names;
+    setSelected(list.length > 0 ? list[0] : null);
+  };
 
   const handleAdd = async () => {
     const trimmed = newName.trim().toUpperCase();
@@ -57,10 +73,14 @@ export default function SenderPage() {
       return;
     }
     try {
-      await apiFetch('/api/monitor/agent/configs', {
+      const url = isFluent ? '/api/monitor/agent-fluent/configs' : '/api/monitor/agent/configs';
+      const body = isFluent
+        ? { name: trimmed }
+        : { name: trimmed, description: newDesc.trim() || undefined };
+      await apiFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed, description: newDesc.trim() || undefined }),
+        body: JSON.stringify(body),
       });
       setShowAdd(false);
       setNewName('');
@@ -77,9 +97,12 @@ export default function SenderPage() {
   const handleDelete = async () => {
     if (!selected) return;
     try {
-      await apiFetch(`/api/monitor/agent/config/${selected}`, { method: 'DELETE' });
+      const url = isFluent
+        ? `/api/monitor/agent-fluent/config/${selected}`
+        : `/api/monitor/agent/config/${selected}`;
+      await apiFetch(url, { method: 'DELETE' });
       setShowDelete(false);
-      const remaining = names.filter(n => n !== selected);
+      const remaining = activeNames.filter(n => n !== selected);
       setSelected(remaining.length > 0 ? remaining[0] : null);
       await fetchNames();
       setRefreshKey(k => k + 1);
@@ -121,37 +144,78 @@ export default function SenderPage() {
   return (
     <>
       {/* 페이지 헤더 */}
-      <div className="flex items-center gap-2">
-        <Icon name="upload" className="text-accent" />
-        <h1 className="text-xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-accent to-primary">
-          {t('sender.title')}
-        </h1>
-        <span className="text-muted-foreground text-sm font-normal">/ {t('sender.subtitle')}</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon name="upload" className="text-accent" />
+          <h1 className="text-xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-accent to-primary">
+            {t('sender.title')}
+          </h1>
+          <span className="text-muted-foreground text-sm font-normal">/ {t('sender.subtitle')}</span>
+        </div>
+        {/* Vector / Fluent Bit 모드 전환 */}
+        <div className="flex gap-2">
+          <button onClick={() => handleModeChange('vector')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all border-2
+              ${!isFluent
+                ? 'border-accent bg-accent/10 text-accent'
+                : 'border-border dark:border-border-dark text-muted-foreground hover:border-accent/40'}`}>
+            <Icon name="terminal" size="sm" />
+            Vector (.toml)
+          </button>
+          <button onClick={() => handleModeChange('fluent')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all border-2
+              ${isFluent
+                ? 'border-info bg-info/10 text-info'
+                : 'border-border dark:border-border-dark text-muted-foreground hover:border-info/40'}`}>
+            <Icon name="air" size="sm" />
+            Fluent Bit (.conf)
+          </button>
+        </div>
       </div>
 
       {/* 상단: 설비 목록 → 하단: 설정 */}
       <div className="flex flex-col gap-6">
-        <EquipmentList
-          names={names}
-          descriptions={descriptions}
-          pipelineStatus={pipelineStatus}
-          selected={selected}
-          onSelect={setSelected}
-          onAdd={() => setShowAdd(true)}
-          onDelete={() => setShowDelete(true)}
-          onDescriptionUpdate={handleDescUpdate}
-        />
+        {isFluent ? (
+          /* Fluent Bit 모드: Vector EquipmentList와 동일한 패턴 */
+          <EquipmentList
+            names={fluentNames}
+            descriptions={{}}
+            pipelineStatus={{}}
+            selected={selected}
+            onSelect={setSelected}
+            onAdd={() => setShowAdd(true)}
+            onDelete={() => setShowDelete(true)}
+            onDescriptionUpdate={() => {}}
+            fluentMode
+          />
+        ) : (
+          /* Vector 모드: 기존 EquipmentList */
+          <EquipmentList
+            names={names}
+            descriptions={descriptions}
+            pipelineStatus={pipelineStatus}
+            selected={selected}
+            onSelect={setSelected}
+            onAdd={() => setShowAdd(true)}
+            onDelete={() => setShowDelete(true)}
+            onDescriptionUpdate={handleDescUpdate}
+          />
+        )}
 
         {/* 하단: 설정 패널 */}
         <div className="flex flex-col gap-3">
           {selected ? (
-            <AgentConfigPanel
-              key={selected} name={selected} onDownload={handleDownload}
-              description={descriptions[selected] || ''}
-              encoding={getEncStr(rawDescs[selected])}
-              onDescriptionSave={(desc, enc) => handleDescUpdate(selected, desc, enc)}
-              onSaved={handleSaved}
-            />
+            isFluent ? (
+              <FluentConfigPanel key={selected} name={selected} onSaved={handleSaved} />
+            ) : (
+              <AgentConfigPanel
+                key={selected} name={selected} onDownload={handleDownload}
+                description={descriptions[selected] || ''}
+                encoding={getEncStr(rawDescs[selected])}
+                onDescriptionSave={(desc, enc) => handleDescUpdate(selected, desc, enc)}
+                onSaved={handleSaved}
+              />
+            )
           ) : (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-2">
               <Icon name="inventory_2" size="xl" />

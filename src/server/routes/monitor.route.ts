@@ -21,7 +21,7 @@ import iconv from 'iconv-lite';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
 import { env, updateEnvValue } from '../../config/env.js';
 import type { Env } from '../../config/env.js';
-import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AGENT_CONFIG_DIR } from '../../services/vector-process.service.js';
+import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AGENT_CONFIG_DIR, FLUENT_CONFIG_DIR } from '../../services/vector-process.service.js';
 
 /**
  * Win7(Vector 0.38) 호환 TOML 변환
@@ -326,10 +326,11 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   // ─── 다운로드 API ───
 
-  /** Vector 실행파일(zip) 다운로드 — ?edition=win7 으로 Windows 7용 다운로드 지원 */
+  /** Vector 실행파일(zip) 다운로드 — ?edition=win7|x86 으로 버전 선택 */
   app.get('/api/monitor/download/vector-zip', async (_request, reply) => {
     const edition = (_request.query as { edition?: string }).edition;
-    const zipFile = edition === 'win7' ? 'vector-win7.zip' : 'vector.zip';
+    const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip' };
+    const zipFile = zipMap[edition ?? ''] ?? 'vector.zip';
     const zipPath = join(process.cwd(), 'vector-bin', zipFile);
     if (!existsSync(zipPath)) {
       return reply.status(404).send({ error: `${zipFile} not found` });
@@ -345,17 +346,21 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** Agent Manager 실행파일 다운로드 */
-  app.get('/api/monitor/download/agent-manager', async (_request, reply) => {
-    const exePath = join(process.cwd(), 'vector-bin', 'agent-manager.exe');
-    if (!existsSync(exePath)) {
-      return reply.status(404).send({ error: 'agent-manager.exe not found' });
+  /** Agent Manager 다운로드 — ?arch=x86 시 32비트 zip, 기본은 64비트 exe */
+  app.get('/api/monitor/download/agent-manager', async (request, reply) => {
+    const { arch } = request.query as { arch?: string };
+    const isX86 = arch === 'x86';
+    const fileName = isX86 ? 'agent-manager-x86.zip' : 'agent-manager-x64.exe';
+    const contentType = isX86 ? 'application/zip' : 'application/octet-stream';
+    const filePath = join(process.cwd(), 'vector-bin', fileName);
+    if (!existsSync(filePath)) {
+      return reply.status(404).send({ error: `${fileName} not found` });
     }
     try {
-      const buf = readFileSync(exePath);
+      const buf = readFileSync(filePath);
       return reply
-        .header('Content-Type', 'application/octet-stream')
-        .header('Content-Disposition', 'attachment; filename="agent-manager.exe"')
+        .header('Content-Type', contentType)
+        .header('Content-Disposition', `attachment; filename="${fileName}"`)
         .send(buf);
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
@@ -382,6 +387,129 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         .header('Content-Type', 'application/octet-stream')
         .header('Content-Disposition', `attachment; filename="${name}.toml"`)
         .send(content);
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** Fluent Bit 실행파일(zip) 다운로드 */
+  app.get('/api/monitor/download/fluent-bit', async (_request, reply) => {
+    const zipPath = join(process.cwd(), 'vector-bin', 'fluent-bit.zip');
+    if (!existsSync(zipPath)) {
+      return reply.status(404).send({ error: 'fluent-bit.zip not found' });
+    }
+    try {
+      const buf = readFileSync(zipPath);
+      return reply
+        .header('Content-Type', 'application/zip')
+        .header('Content-Disposition', 'attachment; filename="fluent-bit.zip"')
+        .send(buf);
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** Fluent Bit 설비 설정 목록 조회 */
+  app.get('/api/monitor/agent-fluent/configs', async (_request, reply) => {
+    try {
+      if (!existsSync(FLUENT_CONFIG_DIR)) mkdirSync(FLUENT_CONFIG_DIR, { recursive: true });
+      const files = readdirSync(FLUENT_CONFIG_DIR)
+        .filter(f => f.endsWith('.conf'))
+        .map(f => f.replace('.conf', ''));
+      return reply.send({ names: files });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** Fluent Bit 설비 설정 다운로드 */
+  app.get('/api/monitor/download/agent-fluent/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (!/^[A-Za-z0-9_-]+$/.test(name)) {
+      return reply.status(400).send({ error: 'Invalid name' });
+    }
+    const filePath = join(FLUENT_CONFIG_DIR, `${name}.conf`);
+    if (!existsSync(filePath)) {
+      return reply.status(404).send({ error: 'Not found' });
+    }
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return reply
+        .header('Content-Type', 'application/octet-stream')
+        .header('Content-Disposition', `attachment; filename="${name}.conf"`)
+        .send(content);
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  // ─── Fluent Bit Agent 설정 CRUD API ───
+
+  const fluentPath = (name: string) => join(FLUENT_CONFIG_DIR, `${name}.conf`);
+
+  /** Fluent Bit 특정 설비 설정 조회 */
+  app.get('/api/monitor/agent-fluent/config/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (!/^[A-Za-z0-9_-]+$/.test(name)) return reply.status(400).send({ error: 'Invalid name' });
+    const filePath = fluentPath(name);
+    if (!existsSync(filePath)) return reply.status(404).send({ error: 'Not found' });
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return reply.send({ content, filePath, name });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** Fluent Bit 설비 설정 저장 (백업 포함) */
+  app.put('/api/monitor/agent-fluent/config/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const { content } = request.body as { content: string };
+    if (!/^[A-Za-z0-9_-]+$/.test(name)) return reply.status(400).send({ error: 'Invalid name' });
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return reply.status(400).send({ error: 'Invalid content' });
+    }
+    const filePath = fluentPath(name);
+    try {
+      if (existsSync(filePath)) {
+        writeFileSync(filePath + '.bak', readFileSync(filePath, 'utf-8'), 'utf-8');
+      }
+      writeFileSync(filePath, content, 'utf-8');
+      logger.info({ name }, 'Fluent Bit config updated');
+      return reply.send({ success: true, backedUp: true });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** 새 Fluent Bit 설비 생성 */
+  app.post('/api/monitor/agent-fluent/configs', async (request, reply) => {
+    const { name, content } = request.body as { name: string; content?: string };
+    if (!name || !/^[A-Za-z0-9_-]+$/.test(name)) return reply.status(400).send({ error: 'Invalid name' });
+    if (!existsSync(FLUENT_CONFIG_DIR)) mkdirSync(FLUENT_CONFIG_DIR, { recursive: true });
+    const filePath = fluentPath(name);
+    if (existsSync(filePath)) return reply.status(409).send({ error: 'Already exists' });
+    try {
+      writeFileSync(filePath, content || getDefaultFluentConf(name), 'utf-8');
+      logger.info({ name }, 'Fluent Bit config created');
+      return reply.send({ success: true, name });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
+  /** Fluent Bit 설비 설정 삭제 */
+  app.delete('/api/monitor/agent-fluent/config/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (!/^[A-Za-z0-9_-]+$/.test(name)) return reply.status(400).send({ error: 'Invalid name' });
+    const filePath = fluentPath(name);
+    if (!existsSync(filePath)) return reply.status(404).send({ error: 'Not found' });
+    try {
+      unlinkSync(filePath);
+      const bakPath = filePath + '.bak';
+      if (existsSync(bakPath)) unlinkSync(bakPath);
+      logger.info({ name }, 'Fluent Bit config deleted');
+      return reply.send({ success: true });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -2754,4 +2882,68 @@ function extractVrlFields(tomlContent: string): Record<string, string[]> {
   }
 
   return result;
+}
+
+/** Fluent Bit 새 설비 기본 conf 템플릿 */
+function getDefaultFluentConf(name: string): string {
+  const lower = name.toLowerCase();
+  return `# =============================================================================
+#  Fluent Bit Agent (송신기) - ${name} 설비
+# =============================================================================
+#
+#  역할: ${name} 설비 PC의 로그 파일을 중앙 서버(Aggregator)로 전송합니다.
+#
+#  설치 방법:
+#    1. 설비 PC에 Fluent Bit를 설치합니다 (fluent-bit.exe)
+#    2. 이 파일을 설비 PC에 복사합니다
+#    3. [FILTER] 섹션에서 equipment_id, line_code 등을 변경합니다  ← 변경 필요
+#    4. [INPUT] 섹션에서 Path를 실제 로그 위치로 변경합니다       ← 변경 필요
+#    5. [OUTPUT] 섹션에서 Host를 실제 서버 IP로 변경합니다        ← 변경 필요
+#
+#  실행: fluent-bit -c ${name}.conf
+#
+# =============================================================================
+
+[SERVICE]
+    Flush        1
+    Log_Level    info
+    storage.path C:\\fluent-bit-data\\${lower}
+    storage.sync normal
+
+# ── [파서] 파일 전체를 하나의 이벤트로 묶기 ──
+[MULTILINE_PARSER]
+    Name          multiline_all
+    Type          regex
+    Flush_timeout 1000
+    Rule          "start_state" "/^.+$/" "cont"
+    Rule          "cont"        "/^.+$/" "cont"
+
+# ── [소스] 파일 감시 ──
+[INPUT]
+    Name             tail
+    Tag              work_logs
+    Path             C:\\logs\\${lower}\\*.txt,C:\\logs\\${lower}\\*.csv    # ← 변경 필요
+    Read_from_Head   true
+    DB               C:\\fluent-bit-data\\${lower}\\tail.db
+    Refresh_Interval 5
+    Multiline        On
+    Parser_Firstline multiline_all
+
+# ── [메타데이터 태깅] ──
+[FILTER]
+    Name          modify
+    Match         work_logs
+    Add           equipment_type ${name}
+    Add           log_type       INSPECTION
+    Add           line_code      LINE-01        # ← 변경 필요
+    Add           equipment_id   ${name}-001    # ← 변경 필요
+
+# ── [출력] Aggregator 서버로 전송 ──
+[OUTPUT]
+    Name            forward
+    Match           *
+    Host            20.10.30.112    # ← 변경 필요
+    Port            24224
+    storage.total_limit_size 256M
+`;
 }

@@ -91,7 +91,9 @@ jobs:
           if (!(Test-Path $vbDst)) { New-Item -ItemType Directory -Path $vbDst -Force }
           if (Test-Path "$vbSrc\vector.zip") { Copy-Item "$vbSrc\vector.zip" "$vbDst\vector.zip" -Force }
           if (Test-Path "$vbSrc\vector-win7.zip") { Copy-Item "$vbSrc\vector-win7.zip" "$vbDst\vector-win7.zip" -Force }
-          if (Test-Path "$vbSrc\agent-manager.exe") { Copy-Item "$vbSrc\agent-manager.exe" "$vbDst\agent-manager.exe" -Force }
+          if (Test-Path "$vbSrc\vector-x86.zip") { Copy-Item "$vbSrc\vector-x86.zip" "$vbDst\vector-x86.zip" -Force }
+          if (Test-Path "$vbSrc\agent-manager-x64.exe") { Copy-Item "$vbSrc\agent-manager-x64.exe" "$vbDst\agent-manager-x64.exe" -Force }
+          if (Test-Path "$vbSrc\agent-manager-x86.zip") { Copy-Item "$vbSrc\agent-manager-x86.zip" "$vbDst\agent-manager-x86.zip" -Force }
           if (Test-Path "$vbSrc\version.json") { Copy-Item "$vbSrc\version.json" "$vbDst\version.json" -Force }
 
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }

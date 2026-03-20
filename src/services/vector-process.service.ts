@@ -17,6 +17,7 @@ import { pushVectorLog } from '../utils/log-buffer.js';
 export const VECTOR_BIN = join(process.cwd(), 'vector-bin', 'bin', 'vector.exe');
 export const VECTOR_CONFIG = join(process.cwd(), 'vector-config', 'aggregator', 'vector-aggregator.toml');
 export const AGENT_CONFIG_DIR = join(process.cwd(), 'vector-config', 'agent');
+export const FLUENT_CONFIG_DIR = join(process.cwd(), 'vector-config', 'agent-fluent');
 const VECTOR_API_URL = 'http://127.0.0.1:8687';
 
 let vectorProcess: ChildProcess | null = null;

@@ -30,25 +30,32 @@ import serviceRoutes from './routes/service.js';
 declare const EMBEDDED_INDEX_HTML: string;
 declare const EMBEDDED_APP_JS: string;
 
-/** pkg exe 실행 여부 감지 */
-const isPkg = !!(process as any).pkg;
+/** 번들 모드 감지 (pkg exe 또는 esbuild 번들 + node 직접 실행) */
+const isPkg = !!(process as any).pkg || typeof EMBEDDED_INDEX_HTML !== 'undefined';
 
-/** config 폴더에서 .toml 파일 자동 탐색 */
-function findTomlConfig(configDir: string): string {
-  if (!existsSync(configDir)) return join(configDir, 'vector.toml');
-  const files = readdirSync(configDir).filter(f => f.endsWith('.toml'));
-  if (files.length === 0) return join(configDir, 'vector.toml');
-  if (files.includes('vector.toml')) return join(configDir, 'vector.toml');
-  return join(configDir, files[0]);
-}
-
+/**
+ * C:\vector\config\ 에서 .toml 파일을 동적 탐색합니다
+ * PC마다 고유 이름의 TOML을 사용하므로 매 접근 시 재탐색
+ */
 const CONFIG_DIR = process.env.VECTOR_CONFIG_DIR || 'C:\\vector\\config';
 
-/** 환경변수 (기본값 포함) */
+function findTomlConfig(): string | null {
+  try {
+    if (!existsSync(CONFIG_DIR)) return null;
+    const files = readdirSync(CONFIG_DIR).filter(f => f.endsWith('.toml') && !f.endsWith('.bak.toml'));
+    return files.length > 0 ? join(CONFIG_DIR, files[0]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 환경변수 (기본값 포함) — VECTOR_CONFIG_PATH는 매 접근 시 동적 탐색 */
 export const ENV = {
   PORT: Number(process.env.PORT) || 9090,
   VECTOR_API_URL: process.env.VECTOR_API_URL || 'http://127.0.0.1:8686',
-  VECTOR_CONFIG_PATH: process.env.VECTOR_CONFIG_PATH || findTomlConfig(CONFIG_DIR),
+  get VECTOR_CONFIG_PATH(): string {
+    return process.env.VECTOR_CONFIG_PATH || findTomlConfig() || join(CONFIG_DIR, 'vector.toml');
+  },
   VECTOR_BIN_PATH: process.env.VECTOR_BIN_PATH || 'C:\\vector\\bin\\vector.exe',
   MASTER_SERVER_URL: process.env.MASTER_SERVER_URL || 'http://20.10.30.112:3100',
 };

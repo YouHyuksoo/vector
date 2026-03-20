@@ -1,16 +1,25 @@
 {
   "default": "0.45.0",
   "win7": "0.38.0",
+  "x86": "0.38.0",
   "editions": {
     "default": {
       "version": "0.45.0",
       "file": "vector.zip",
+      "arch": "x64",
       "minOS": "Windows 10 / Server 2016"
     },
     "win7": {
       "version": "0.38.0",
       "file": "vector-win7.zip",
+      "arch": "x64",
       "minOS": "Windows 7 / Server 2008 R2"
+    },
+    "x86": {
+      "version": "0.38.0",
+      "file": "vector-x86.zip",
+      "arch": "x86",
+      "minOS": "Windows 7+ (32-bit)"
     }
   }
 }

@@ -25,9 +25,10 @@ interface EquipmentListProps {
   onAdd: () => void;
   onDelete: () => void;
   onDescriptionUpdate: (name: string, desc: string) => void;
+  fluentMode?: boolean;
 }
 
-export function EquipmentList({ names, descriptions, pipelineStatus, selected, onSelect, onAdd, onDelete, onDescriptionUpdate }: EquipmentListProps) {
+export function EquipmentList({ names, descriptions, pipelineStatus, selected, onSelect, onAdd, onDelete, onDescriptionUpdate, fluentMode }: EquipmentListProps) {
   const { t } = useI18n();
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -59,7 +60,7 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-text dark:text-white flex items-center gap-1.5">
-          <Icon name="devices" className="text-accent" size="sm" />
+          <Icon name={fluentMode ? 'air' : 'devices'} className={fluentMode ? 'text-info' : 'text-accent'} size="sm" />
           {t('sender.equipmentList')}
           <span className="text-muted-foreground font-normal">({names.length})</span>
         </p>
@@ -80,9 +81,9 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
           const desc = descriptions[name];
           const isSel = selected === name;
           const isEditing = editing === name;
-          const pipeline = pipelineStatus[name];
+          const pipeline = fluentMode ? undefined : pipelineStatus[name];
           const doneCount = pipeline?.doneCount ?? 0;
-          const isComplete = doneCount === 5;
+          const isComplete = !fluentMode && doneCount === 5;
 
           return (
             <button
@@ -90,7 +91,9 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
               onClick={() => onSelect(name)}
               className={`flex flex-col gap-1 px-2.5 py-2 rounded-lg text-left transition-all duration-200 group
                 ${isSel
-                  ? 'bg-accent/10 text-accent border border-accent/30 font-bold'
+                  ? fluentMode
+                    ? 'bg-info/10 text-info border border-info/30 font-bold'
+                    : 'bg-accent/10 text-accent border border-accent/30 font-bold'
                   : isComplete
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-2 border-emerald-400/60 dark:border-emerald-500/40 shadow-sm shadow-emerald-200/50 dark:shadow-emerald-900/30'
                     : 'bg-surface dark:bg-surface-dark hover:bg-accent/5 dark:hover:bg-accent/5 text-text dark:text-white border border-transparent'
@@ -100,10 +103,13 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
                 <Icon
                   name={isSel ? 'radio_button_checked' : isComplete ? 'check_circle' : 'radio_button_unchecked'}
                   size="xs"
-                  className={`shrink-0 ${isSel ? 'text-accent' : isComplete ? 'text-success' : 'text-muted-foreground'}`}
+                  className={`shrink-0 ${isSel ? (fluentMode ? 'text-info' : 'text-accent') : isComplete ? 'text-success' : 'text-muted-foreground'}`}
                 />
                 <span className="text-xs font-bold truncate">{name}</span>
-                {pipeline?.targetType && (
+                {fluentMode ? (
+                  <span className="shrink-0 px-1 py-px rounded text-[8px] font-bold uppercase leading-none
+                    bg-info/10 text-info">CONF</span>
+                ) : pipeline?.targetType ? (
                   <span className={`shrink-0 px-1 py-px rounded text-[8px] font-bold uppercase leading-none
                     ${pipeline.targetType === 'PROCEDURE'
                       ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300'
@@ -111,7 +117,7 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
                     }`}>
                     {pipeline.targetType === 'PROCEDURE' ? 'PROC' : 'TBL'}
                   </span>
-                )}
+                ) : null}
                 {!isEditing && (
                   <span
                     onClick={e => startEdit(name, e)}
