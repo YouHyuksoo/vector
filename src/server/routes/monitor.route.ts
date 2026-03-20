@@ -2904,7 +2904,7 @@ function extractVrlFields(tomlContent: string): Record<string, string[]> {
 
     // equipment_type 블록 감지: if/else if .equipment_type == "XXX"
     const typeMatch = trimmed.match(
-      /(?:else\s+)?if\s+\.equipment_type\s*==\s*"([A-Z_]+)"/,
+      /(?:else\s+)?if\s+\.equipment_type\s*==\s*"([A-Z0-9_]+)"/,
     );
     if (typeMatch) {
       currentType = typeMatch[1];

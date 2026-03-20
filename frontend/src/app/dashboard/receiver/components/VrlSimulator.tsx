@@ -63,6 +63,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
   const [startRow, setStartRow] = useState('');
   const [kvDelimiter, setKvDelimiter] = useState(':');
   const [sectionMarkers, setSectionMarkers] = useState('');
+  const [codeFromServer, setCodeFromServer] = useState(false);
 
   /** 선택된 에이전트의 equipmentType 추출 */
   const equipmentType = selectedAgent ? (agents[selectedAgent]?.equipmentType || '') : '';
@@ -94,6 +95,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
         };
       }>(`/api/monitor/vrl/code/${type}`);
       setVrlCode(res.code || '');
+      setCodeFromServer(!!res.code);
       if (res.logStructure) {
         setLogStructure(res.logStructure.type);
         setHasHeader(res.logStructure.hasHeader);
@@ -175,6 +177,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
       );
       if (res.success && res.vrlCode) {
         setVrlCode(res.vrlCode);
+        setCodeFromServer(false);
       } else {
         setAiError(res.error || 'Generation failed');
       }
@@ -568,7 +571,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
               </div>
               <textarea
                 value={vrlCode}
-                onChange={e => setVrlCode(e.target.value)}
+                onChange={e => { setVrlCode(e.target.value); setCodeFromServer(false); }}
                 placeholder={t('vrlSim.vrlCodePlaceholder')}
                 className="w-full flex-1 min-h-[280px] px-3 py-2 text-xs font-mono border rounded-lg resize-y
                   bg-white dark:bg-slate-800 border-border"
@@ -589,7 +592,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
                 variant="ghost"
                 leftIcon="upload"
                 onClick={handleApply}
-                disabled={applying || !vrlCode || !result?.success}
+                disabled={applying || !vrlCode || (!result?.success && !codeFromServer)}
               >
                 {applying ? t('vrlSim.applying') : t('vrlSim.apply')}
               </Button>
