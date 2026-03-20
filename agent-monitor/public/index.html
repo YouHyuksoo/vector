@@ -5,7 +5,7 @@
 
   초보자 가이드:
   1. 3개 탭 (상태/설정/관리)으로 구성된 Agent Manager UI입니다
-  2. Tailwind CDN + oklch CSS 변수로 다크모드를 지원합니다
+  2. 빌드된 Tailwind CSS + oklch CSS 변수로 다크모드를 지원합니다 (오프라인 환경 지원)
   3. data-i18n 속성으로 한국어/영어/스페인어/베트남어 전환 지원
   4. app.js에서 API를 호출하여 DOM을 업데이트합니다
 -->
@@ -15,46 +15,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agent Manager</title>
 
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 로컬 폰트 (오프라인 환경 지원) -->
+  <link rel="stylesheet" href="fonts/fonts.css" />
 
-  <!-- Google Fonts: Outfit + Fira Code + Material Symbols -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
-
-  <!-- Tailwind config -->
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            bg: 'var(--background)',
-            fg: 'var(--foreground)',
-            card: 'var(--card)',
-            'card-hover': 'var(--card-hover)',
-            primary: 'var(--primary)',
-            'primary-hover': 'var(--primary-hover)',
-            accent: 'var(--accent)',
-            secondary: 'var(--secondary)',
-            border: 'var(--border)',
-            muted: 'var(--muted)',
-            'muted-fg': 'var(--muted-fg)',
-            success: 'var(--success)',
-            warning: 'var(--warning)',
-            error: 'var(--error)',
-            info: 'var(--info)',
-          },
-          fontFamily: {
-            sans: ['Outfit', 'sans-serif'],
-            mono: ['Fira Code', 'monospace'],
-          },
-        },
-      },
-    }
-  </script>
+  <!-- Tailwind CSS (빌드된 정적 파일) -->
+  <link rel="stylesheet" href="tailwind.css" />
 
   <!-- oklch CSS 변수 + 커스텀 스타일 -->
   <style>

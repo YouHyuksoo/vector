@@ -36,7 +36,7 @@ const I18N = {
     'mgmt.installStatus': 'Vector 설치 상태', 'mgmt.binary': '바이너리', 'mgmt.configFile': '설정파일',
     'mgmt.installVector': 'Vector 설치', 'mgmt.vectorUpdate': 'Vector 업데이트',
     'mgmt.checkVersion': '버전 확인', 'mgmt.localVer': '로컬 버전', 'mgmt.serverVer': '서버 버전',
-    'mgmt.execUpdate': '업데이트 실행', 'mgmt.installed': '설치됨', 'mgmt.notInstalled': '미설치',
+    'mgmt.execUpdate': '업데이트 실행', 'mgmt.installed': '설치됨', 'mgmt.notInstalled': '미설치', 'mgmt.needsConfig': 'TOML 설정파일 필요',
     'mgmt.win7Notice': 'Windows 7 전용 버전 (v0.38)입니다. 최신 기능이 일부 제한될 수 있습니다.',
     'common.save': '저장', 'common.none': '없음',
     'footer': 'Vector Agent Manager &middot; 설비 PC 종합 관리',
@@ -76,7 +76,7 @@ const I18N = {
     'mgmt.installStatus': 'Vector Install Status', 'mgmt.binary': 'Binary', 'mgmt.configFile': 'Config File',
     'mgmt.installVector': 'Install Vector', 'mgmt.vectorUpdate': 'Vector Update',
     'mgmt.checkVersion': 'Check Version', 'mgmt.localVer': 'Local Version', 'mgmt.serverVer': 'Server Version',
-    'mgmt.execUpdate': 'Run Update', 'mgmt.installed': 'Installed', 'mgmt.notInstalled': 'Not Installed',
+    'mgmt.execUpdate': 'Run Update', 'mgmt.installed': 'Installed', 'mgmt.notInstalled': 'Not Installed', 'mgmt.needsConfig': 'TOML config needed',
     'mgmt.win7Notice': 'Windows 7 edition (v0.38). Some latest features may not be available.',
     'common.save': 'Save', 'common.none': 'None',
     'footer': 'Vector Agent Manager &middot; Equipment PC Management',
@@ -116,7 +116,7 @@ const I18N = {
     'mgmt.installStatus': 'Estado de instalación', 'mgmt.binary': 'Binario', 'mgmt.configFile': 'Archivo config',
     'mgmt.installVector': 'Instalar Vector', 'mgmt.win7Notice': 'Edición Windows 7 (v0.38). Algunas funciones pueden no estar disponibles.', 'mgmt.vectorUpdate': 'Actualizar Vector',
     'mgmt.checkVersion': 'Verificar versión', 'mgmt.localVer': 'Versión local', 'mgmt.serverVer': 'Versión servidor',
-    'mgmt.execUpdate': 'Ejecutar actualización', 'mgmt.installed': 'Instalado', 'mgmt.notInstalled': 'No instalado',
+    'mgmt.execUpdate': 'Ejecutar actualización', 'mgmt.installed': 'Instalado', 'mgmt.notInstalled': 'No instalado', 'mgmt.needsConfig': 'Archivo TOML necesario',
     'common.save': 'Guardar', 'common.none': 'Ninguno',
     'footer': 'Vector Agent Manager &middot; Gestión de PC de equipos',
     'toast.setupLoadFail': 'Error al cargar info: ', 'toast.setupSaved': 'Info guardada. Reinicie Vector.',
@@ -155,7 +155,7 @@ const I18N = {
     'mgmt.installStatus': 'Trạng thái cài đặt Vector', 'mgmt.binary': 'File chạy', 'mgmt.configFile': 'File cấu hình',
     'mgmt.installVector': 'Cài đặt Vector', 'mgmt.win7Notice': 'Phiên bản Windows 7 (v0.38). Một số tính năng mới có thể không khả dụng.', 'mgmt.vectorUpdate': 'Cập nhật Vector',
     'mgmt.checkVersion': 'Kiểm tra phiên bản', 'mgmt.localVer': 'Phiên bản local', 'mgmt.serverVer': 'Phiên bản server',
-    'mgmt.execUpdate': 'Thực hiện cập nhật', 'mgmt.installed': 'Đã cài đặt', 'mgmt.notInstalled': 'Chưa cài đặt',
+    'mgmt.execUpdate': 'Thực hiện cập nhật', 'mgmt.installed': 'Đã cài đặt', 'mgmt.notInstalled': 'Chưa cài đặt', 'mgmt.needsConfig': 'Cần file TOML cấu hình',
     'common.save': 'Lưu', 'common.none': 'Không có',
     'footer': 'Vector Agent Manager &middot; Quản lý PC thiết bị',
     'toast.setupLoadFail': 'Lỗi tải thông tin: ', 'toast.setupSaved': 'Đã lưu. Cần khởi động lại Vector.',
@@ -437,11 +437,21 @@ async function checkInstall() {
   try {
     const data = await fetchJSON('/api/install/status');
     const el = document.getElementById('txt-install-status');
-    el.textContent = data.installed ? t('mgmt.installed') : t('mgmt.notInstalled');
-    el.className = `text-xs font-mono px-2 py-0.5 rounded ${data.installed ? 'bg-success/20 text-success' : 'bg-error/20 text-error'}`;
+
+    if (data.installed) {
+      el.textContent = t('mgmt.installed');
+      el.className = 'text-xs font-mono px-2 py-0.5 rounded bg-success/20 text-success';
+    } else if (data.binaryExists && !data.configExists) {
+      el.textContent = t('mgmt.needsConfig');
+      el.className = 'text-xs font-mono px-2 py-0.5 rounded bg-warning/20 text-warning';
+    } else {
+      el.textContent = t('mgmt.notInstalled');
+      el.className = 'text-xs font-mono px-2 py-0.5 rounded bg-error/20 text-error';
+    }
+
     document.getElementById('txt-bin-path').textContent = `${data.binaryPath} (${data.binaryExists ? 'O' : 'X'})`;
     document.getElementById('txt-cfg-path').textContent = `${data.configPath} (${data.configExists ? 'O' : 'X'})`;
-    document.getElementById('btn-install').disabled = data.installed;
+    document.getElementById('btn-install').disabled = data.binaryExists;
   } catch { /* 무시 */ }
 }
 

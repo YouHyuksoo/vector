@@ -1,0 +1,71 @@
+# =============================================================================
+#  Vector Agent (송신기) - COATING1 설비
+# =============================================================================
+
+data_dir = "C:\vector-data-coating1"
+
+[api]
+enabled = true
+address = "127.0.0.1:8686"
+
+[sources.work_logs]
+type = "file"
+include = [
+  "C:\logs\coating1\*.txt",
+  "C:\logs\coating1\*.csv",
+  "C:\logs\coating1\*.log",
+]
+read_from = "beginning"
+fingerprint.strategy = "checksum"
+fingerprint.lines = 1
+ignore_older_secs = 86400
+
+# ── 파일 전체를 하나의 이벤트로 묶기 ──
+[sources.work_logs.multiline]
+start_pattern = "^"
+condition_pattern = '^$$NEVER_MATCH'
+mode = "halt_before"
+timeout_ms = 1000
+
+# ── [하트비트] 주기적 상태 전송 (30초 간격) ──
+[sources.heartbeat]
+type = "static_metrics"
+interval_secs = 30
+namespace = "agent"
+
+[[sources.heartbeat.metrics]]
+name = "heartbeat"
+kind = "absolute"
+
+[sources.heartbeat.metrics.value.gauge]
+value = 1
+
+[sources.heartbeat.metrics.tags]
+equipment_type = "COATING1"
+equipment_id = "COATING1-001"
+line_code = "LINE-01"
+log_type = "INSPECTION"
+
+# ── [설비 설정] ──
+
+[transforms.add_metadata]
+type = "remap"
+inputs = ["work_logs"]
+source = '''
+.equipment_type = "COATING1"
+.log_type = "INSPECTION"
+.line_code = "LINE-01"
+.equipment_id = "COATING1-001"
+'''
+
+# ── [출력] Aggregator 서버로 전송 ──
+
+[sinks.to_aggregator]
+type = "vector"
+inputs = ["add_metadata", "heartbeat"]
+address = "20.10.30.112:6000"
+
+[sinks.to_aggregator.buffer]
+type = "disk"
+max_size = 268435488
+when_full = "block"

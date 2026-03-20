@@ -839,6 +839,54 @@ if .equipment_type == "SP" {
       .data.DETAILS = push(.data.DETAILS, item)
     }
   }
+} else if .equipment_type == "COATING1" {
+  # ── COATING1 ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "COATING2" {
+  # ── COATING2 ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "COATINGVISION" {
+  # ── COATINGVISION ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "COATINGREVIEW" {
+  # ── COATINGREVIEW ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
 } else {
   log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
   .data = {}
