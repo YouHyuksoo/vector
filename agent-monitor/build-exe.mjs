@@ -38,7 +38,7 @@ await build({
   entryPoints: [join(__dirname, 'src/server.ts')],
   bundle: true,
   platform: 'node',
-  target: 'node16',
+  target: 'node14',
   format: 'cjs',
   outfile: join(DIST, 'server.cjs'),
   external: [],
@@ -50,7 +50,12 @@ await build({
     'import.meta.url': '__import_meta_url',
   },
   banner: {
-    js: 'var __import_meta_url = require("url").pathToFileURL(__filename).href;\n(async () => {',
+    js: [
+      'var __import_meta_url = require("url").pathToFileURL(__filename).href;',
+      'if(typeof globalThis.fetch==="undefined"){var _nf=require("node-fetch");globalThis.fetch=_nf.default||_nf;globalThis.Headers=_nf.Headers;globalThis.Request=_nf.Request;globalThis.Response=_nf.Response;}',
+      'if(typeof AbortSignal.timeout==="undefined"){AbortSignal.timeout=function(ms){var c=new AbortController();setTimeout(function(){c.abort();},ms);return c.signal;};}',
+      '(async () => {',
+    ].join('\n'),
   },
   footer: {
     js: [
@@ -89,10 +94,10 @@ try {
 }
 
 // 6. win7 — pkg(node16) → Win7+ 64비트
-console.log('[4/5] Packaging win7 (node16, Win7+)...');
+console.log('[4/5] Packaging win7 (node14, Win7+)...');
 try {
   execSync(
-    `npx pkg ${join(DIST, 'server.cjs')} --targets node16-win-x64 --output ${join(DIST, 'agent-manager-win7.exe')} --compress GZip`,
+    `npx pkg ${join(DIST, 'server.cjs')} --targets node14-win-x64 --output ${join(DIST, 'agent-manager-win7.exe')} --compress GZip`,
     { stdio: 'inherit', cwd: __dirname },
   );
   console.log('  → agent-manager-win7.exe created');
@@ -128,12 +133,12 @@ function download(url, dest) {
   });
 }
 
-const NODE_VERSION = '16.20.2';
+const NODE_VERSION = '14.21.3';
 const nodeX86Url = `https://nodejs.org/dist/v${NODE_VERSION}/win-x86/node.exe`;
 const nodeX86Path = join(DIST, 'node-x86.exe');
 
 try {
-  // 7-1. Node.js x86 바이너리 다운로드 (Node 16 = Win7 호환)
+  // 7-1. Node.js x86 바이너리 다운로드 (Node 14 = Win7 호환)
   if (!existsSync(nodeX86Path)) {
     console.log(`  → Downloading Node.js v${NODE_VERSION} x86 from nodejs.org...`);
     await download(nodeX86Url, nodeX86Path);
