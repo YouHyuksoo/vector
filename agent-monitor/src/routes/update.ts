@@ -51,15 +51,29 @@ function findVectorPid(): number | null {
   } catch { return null; }
 }
 
-/** 현재 아키텍처가 32비트인지 감지 */
+/** OS + 아키텍처 자동 감지로 적합한 Vector edition 결정 */
+import { release } from 'os';
 const isX86 = process.arch === 'ia32';
+const isWin7 = parseInt(release().split('.')[0], 10) < 10; // 6.x = Win7/8, 10.x = Win10+
+
+function detectEdition(): string | undefined {
+  if (isX86) return 'x86';       // 32비트는 OS 무관하게 x86 (Node14 빌드, Win7 호환)
+  if (isWin7) return 'win7';     // 64비트 + Win7
+  return undefined;              // 64비트 + Win10+ (기본값)
+}
+
+function editionToParam(edition?: string): string {
+  if (edition === 'win7') return '?edition=win7';
+  if (edition === 'x86') return '?edition=x86';
+  return '';
+}
 
 export default async function updateRoutes(app: FastifyInstance): Promise<void> {
-  /** GET /api/update/check — 버전 비교 (32비트 자동 감지, ?edition=win7 지원) */
+  /** GET /api/update/check — 버전 비교 (OS/아키텍처 자동 감지) */
   app.get('/api/update/check', async (_req, reply) => {
     const localVersion = getLocalVersion();
-    const edition = (_req.query as { edition?: string }).edition ?? (isX86 ? 'x86' : undefined);
-    const editionParam = edition === 'win7' ? '?edition=win7' : edition === 'x86' ? '?edition=x86' : '';
+    const edition = (_req.query as { edition?: string }).edition ?? detectEdition();
+    const editionParam = editionToParam(edition);
 
     let serverVersion: string | null = null;
     try {
@@ -85,10 +99,10 @@ export default async function updateRoutes(app: FastifyInstance): Promise<void> 
     });
   });
 
-  /** POST /api/update/execute — Vector 업데이트 실행 (32비트 자동 감지, ?edition=win7 지원) */
+  /** POST /api/update/execute — Vector 업데이트 실행 (OS/아키텍처 자동 감지) */
   app.post('/api/update/execute', async (_req, reply) => {
-    const edition = (_req.query as { edition?: string }).edition ?? (isX86 ? 'x86' : undefined);
-    const editionParam = edition === 'win7' ? '?edition=win7' : edition === 'x86' ? '?edition=x86' : '';
+    const edition = (_req.query as { edition?: string }).edition ?? detectEdition();
+    const editionParam = editionToParam(edition);
 
     try {
       /* 1. Vector 프로세스 중지 */

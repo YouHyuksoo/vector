@@ -21,12 +21,25 @@ function pipelineAsync(src: NodeJS.ReadableStream, dst: NodeJS.WritableStream): 
     src.on('error', reject);
   });
 }
-import { tmpdir } from 'os';
+import { tmpdir, release } from 'os';
 import AdmZip from 'adm-zip';
 import { ENV } from '../server.js';
 
-/** 현재 아키텍처가 32비트인지 감지 */
+/** OS + 아키텍처 자동 감지 */
 const isX86 = process.arch === 'ia32';
+const isWin7 = parseInt(release().split('.')[0], 10) < 10;
+
+function detectEdition(): string | undefined {
+  if (isX86) return 'x86';
+  if (isWin7) return 'win7';
+  return undefined;
+}
+
+function editionToParam(edition?: string): string {
+  if (edition === 'win7') return '?edition=win7';
+  if (edition === 'x86') return '?edition=x86';
+  return '';
+}
 
 export default async function installRoutes(app: FastifyInstance): Promise<void> {
   /** GET /api/install/status — 설치 상태 확인 */
@@ -46,11 +59,11 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
   /** POST /api/install — vector.zip 다운로드 → 압축 해제 → 기본 TOML 생성 (?edition=win7 지원) */
   app.post('/api/install', async (_req, reply) => {
     const tmpZip = join(tmpdir(), `vector-${Date.now()}.zip`);
-    const edition = (_req.query as { edition?: string }).edition ?? (isX86 ? 'x86' : undefined);
+    const edition = (_req.query as { edition?: string }).edition ?? detectEdition();
 
     try {
-      /* 1. 마스터 서버에서 vector.zip 다운로드 (32비트 자동 감지, edition 파라미터 전달) */
-      const editionParam = edition === 'win7' ? '?edition=win7' : edition === 'x86' ? '?edition=x86' : '';
+      /* 1. 마스터 서버에서 Vector 다운로드 (OS/아키텍처 자동 감지) */
+      const editionParam = editionToParam(edition);
       const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${editionParam}`;
       const res = await fetch(downloadUrl);
       if (!res.ok || !res.body) {
