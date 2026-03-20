@@ -349,11 +349,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   /** Agent Manager 다운로드 — ?arch=x86|?edition=win7 지원 */
   app.get('/api/monitor/download/agent-manager', async (request, reply) => {
     const { arch, edition } = request.query as { arch?: string; edition?: string };
-    const fileName = arch === 'x86'
-      ? 'agent-manager-x86.zip'
-      : edition === 'win7'
-        ? 'agent-manager-win7.zip'
-        : 'agent-manager-x64.exe';
+    const fileName = edition === 'win7-x86'
+      ? 'agent-manager-win7-x86.zip'
+      : arch === 'x86'
+        ? 'agent-manager-x86.zip'
+        : edition === 'win7'
+          ? 'agent-manager-win7.zip'
+          : 'agent-manager-x64.exe';
     const contentType = fileName.endsWith('.zip') ? 'application/zip' : 'application/octet-stream';
     const filePath = join(process.cwd(), 'vector-bin', fileName);
     if (!existsSync(filePath)) {

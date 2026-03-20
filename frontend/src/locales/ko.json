@@ -474,6 +474,7 @@
     "agentManagerDesc": "설비 PC 종합 관리 프로그램 (설치/설정/모니터링/제어)",
     "agentManagerBtn": "agent-manager-x64.exe 다운로드",
     "agentManagerBtnWin7": "agent-manager-win7.zip 다운로드",
+    "agentManagerBtnWin7X86": "agent-manager-win7-x86.zip 다운로드",
     "agentManagerBtnX86": "agent-manager-x86.zip 다운로드",
     "agentManagerSize": "약 45MB",
     "archLabel": "설비 PC 아키텍처",

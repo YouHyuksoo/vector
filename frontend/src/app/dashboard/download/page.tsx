@@ -41,12 +41,10 @@ export default function DownloadPage() {
       ? '/api/monitor/download/vector-zip?edition=win7'
       : '/api/monitor/download/vector-zip';
 
-  /* Agent Manager URL 결정 */
-  const agentManagerUrl = !is64
-    ? '/api/monitor/download/agent-manager?arch=x86'
-    : isWin7
-      ? '/api/monitor/download/agent-manager?edition=win7'
-      : '/api/monitor/download/agent-manager';
+  /* Agent Manager URL 결정 (4가지 조합) */
+  const agentManagerUrl = isWin7
+    ? (is64 ? '/api/monitor/download/agent-manager?edition=win7' : '/api/monitor/download/agent-manager?edition=win7-x86')
+    : (is64 ? '/api/monitor/download/agent-manager' : '/api/monitor/download/agent-manager?arch=x86');
 
   /* Vector 버전 표시 */
   const vectorVersion = is64 && !isWin7 ? 'v0.45' : 'v0.38';
@@ -173,7 +171,9 @@ export default function DownloadPage() {
                 ? 'bg-primary hover:bg-primary/90 shadow-primary/20'
                 : 'bg-orange-500 hover:bg-orange-500/90 shadow-orange-500/20'}`}>
             <Icon name="file_download" className="text-white" />
-            {!is64 ? t('download.agentManagerBtnX86') : isWin7 ? t('download.agentManagerBtnWin7') : t('download.agentManagerBtn')}
+            {isWin7
+              ? (is64 ? t('download.agentManagerBtnWin7') : t('download.agentManagerBtnWin7X86'))
+              : (is64 ? t('download.agentManagerBtn') : t('download.agentManagerBtnX86'))}
           </a>
           <p className="text-xs text-muted-foreground font-mono">{t('download.agentManagerSize')}</p>
         </Card>
