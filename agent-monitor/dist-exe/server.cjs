@@ -47756,6 +47756,7 @@ async function main() {
     <div class="hdr-left">
       <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
       <span class="hdr-logo">Agent Manager</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 02:30</span>
       <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
     </div>
     <div class="hdr-right">
@@ -48121,6 +48122,7 @@ async function main() {
     <div class="hdr-left">
       <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
       <span class="hdr-logo">Agent Manager</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 02:30</span>
       <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
     </div>
     <div class="hdr-right">

@@ -27,7 +27,8 @@ if (!existsSync(DIST)) mkdirSync(DIST, { recursive: true });
 
 // 2. public 파일을 읽어서 JS 상수로 임베딩 준비
 console.log('[1/5] Reading public assets for embedding...');
-const indexHtml = readFileSync(join(__dirname, 'public/index.html'), 'utf-8');
+const buildTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+const indexHtml = readFileSync(join(__dirname, 'public/index.html'), 'utf-8').replace('BUILD_TIMESTAMP', buildTime);
 const appJs = readFileSync(join(__dirname, 'public/app.js'), 'utf-8');
 const tailwindCss = readFileSync(join(__dirname, 'public/tailwind.css'), 'utf-8');
 const fontsCss = readFileSync(join(__dirname, 'public/fonts/fonts.css'), 'utf-8');
