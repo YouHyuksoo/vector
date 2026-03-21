@@ -330,17 +330,8 @@
             <div><span data-i18n="mgmt.binary">바이너리</span>: <span id="txt-bin-path">-</span></div>
             <div><span data-i18n="mgmt.configFile">설정파일</span>: <span id="txt-cfg-path">-</span></div>
           </div>
-          <div class="edition-row">
-            <label class="edition-pick">
-              <input type="radio" name="vector-edition" value="default" checked>
-              <div class="edition-card">Win 10+<div class="edition-ver">v0.45</div></div>
-            </label>
-            <label class="edition-pick">
-              <input type="radio" name="vector-edition" value="win7">
-              <div class="edition-card">Win 7<div class="edition-ver">v0.38</div></div>
-            </label>
-          </div>
-          <p id="win7-notice" style="display:none;font-size:11px;color:var(--amber);margin-top:6px" data-i18n="mgmt.win7Notice">Windows 7 전용 (v0.38)</p>
+          <p style="font-size:12px;color:var(--fg3);margin-bottom:8px">OS/비트 자동 감지하여 맞는 Vector를 설치합니다</p>
+          <p id="win7-notice" style="display:none"></p>
           <button id="btn-install" class="btn btn-blue" style="width:100%;justify-content:center;margin-top:10px">
             <span class="material-symbols-outlined" style="font-size:18px">download</span><span data-i18n="mgmt.installVector">Vector 설치</span>
           </button>
