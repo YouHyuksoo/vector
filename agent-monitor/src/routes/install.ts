@@ -9,18 +9,8 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { existsSync, mkdirSync, createWriteStream, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
 import { dirname, join } from 'path';
-
-/** stream pipeline을 Promise로 래핑 (Node 14 호환) */
-function pipelineAsync(src: NodeJS.ReadableStream, dst: NodeJS.WritableStream): Promise<void> {
-  return new Promise((resolve, reject) => {
-    src.pipe(dst);
-    dst.on('finish', resolve);
-    dst.on('error', reject);
-    src.on('error', reject);
-  });
-}
 import { tmpdir, release } from 'os';
 import AdmZip from 'adm-zip';
 import { ENV } from '../server.js';
@@ -66,15 +56,15 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
       const editionParam = editionToParam(edition);
       const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${editionParam}`;
       const res = await fetch(downloadUrl);
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         return reply.status(502).send({
           success: false,
           error: `다운로드 실패: HTTP ${res.status}`,
         });
       }
 
-      const ws = createWriteStream(tmpZip);
-      await pipelineAsync(res.body as any, ws);
+      const buf = Buffer.from(await res.arrayBuffer());
+      writeFileSync(tmpZip, buf);
 
       /* 2. 압축 해제 대상 디렉토리 (C:\vector\) */
       const installDir = dirname(ENV.VECTOR_BIN_PATH);

@@ -42663,8 +42663,8 @@ var require_static = __commonJS({
               }
             }
           }
-          for (const [dirname4, rootPath] of indexDirs.entries()) {
-            const pathname = dirname4 + (dirname4.endsWith("/") ? "" : "/");
+          for (const [dirname5, rootPath] of indexDirs.entries()) {
+            const pathname = dirname5 + (dirname5.endsWith("/") ? "" : "/");
             const file = "/" + pathname.replace(prefix, "");
             setUpHeadAndGet(routeOpts, pathname, file, rootPath);
             if (opts.redirect === true) {
@@ -47262,14 +47262,6 @@ var import_fs5 = require("fs");
 var import_path2 = require("path");
 var import_os = require("os");
 var import_adm_zip = __toESM(require_adm_zip(), 1);
-function pipelineAsync(src, dst) {
-  return new Promise((resolve, reject) => {
-    src.pipe(dst);
-    dst.on("finish", resolve);
-    dst.on("error", reject);
-    src.on("error", reject);
-  });
-}
 var isX86 = process.arch === "ia32";
 var isWin7 = parseInt((0, import_os.release)().split(".")[0], 10) < 10;
 function detectEdition() {
@@ -47302,14 +47294,14 @@ async function installRoutes(app) {
       const editionParam = editionToParam(edition);
       const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${editionParam}`;
       const res = await fetch(downloadUrl);
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         return reply.status(502).send({
           success: false,
           error: `\uB2E4\uC6B4\uB85C\uB4DC \uC2E4\uD328: HTTP ${res.status}`
         });
       }
-      const ws = (0, import_fs5.createWriteStream)(tmpZip);
-      await pipelineAsync(res.body, ws);
+      const buf = Buffer.from(await res.arrayBuffer());
+      (0, import_fs5.writeFileSync)(tmpZip, buf);
       const installDir = (0, import_path2.dirname)(ENV.VECTOR_BIN_PATH);
       if (!(0, import_fs5.existsSync)(installDir)) (0, import_fs5.mkdirSync)(installDir, { recursive: true });
       const zip = new import_adm_zip.default(tmpZip);
@@ -47347,14 +47339,6 @@ var import_path3 = require("path");
 var import_os2 = require("os");
 var import_adm_zip2 = __toESM(require_adm_zip(), 1);
 var import_os3 = require("os");
-function pipelineAsync2(src, dst) {
-  return new Promise((resolve, reject) => {
-    src.pipe(dst);
-    dst.on("finish", resolve);
-    dst.on("error", reject);
-    src.on("error", reject);
-  });
-}
 function getLocalVersion() {
   try {
     if (!(0, import_fs6.existsSync)(ENV.VECTOR_BIN_PATH)) return null;
@@ -47435,7 +47419,7 @@ async function updateRoutes(app) {
       }
       const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${editionParam}`;
       const res = await fetch(downloadUrl);
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         if ((0, import_fs6.existsSync)(backupPath)) (0, import_fs6.renameSync)(backupPath, ENV.VECTOR_BIN_PATH);
         return reply.status(502).send({
           success: false,
@@ -47444,15 +47428,15 @@ async function updateRoutes(app) {
       }
       const tmpZip = (0, import_path3.join)((0, import_os2.tmpdir)(), `vector-update-${Date.now()}.zip`);
       try {
-        const ws = (0, import_fs6.createWriteStream)(tmpZip);
-        await pipelineAsync2(res.body, ws);
+        const buf = Buffer.from(await res.arrayBuffer());
+        (0, import_fs6.writeFileSync)(tmpZip, buf);
         const zip = new import_adm_zip2.default(tmpZip);
         const binEntry = zip.getEntry("bin/vector.exe");
         if (!binEntry) {
           if ((0, import_fs6.existsSync)(backupPath)) (0, import_fs6.renameSync)(backupPath, ENV.VECTOR_BIN_PATH);
           return reply.status(500).send({ success: false, error: "zip\uC5D0\uC11C bin/vector.exe\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4." });
         }
-        zip.extractEntryTo(binEntry, require("path").dirname(ENV.VECTOR_BIN_PATH), false, true);
+        zip.extractEntryTo(binEntry, (0, import_path3.dirname)(ENV.VECTOR_BIN_PATH), false, true);
       } finally {
         try {
           if ((0, import_fs6.existsSync)(tmpZip)) (0, import_fs6.unlinkSync)(tmpZip);
@@ -47756,7 +47740,7 @@ async function main() {
     <div class="hdr-left">
       <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
       <span class="hdr-logo">Agent Manager</span>
-      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 02:30</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 02:49</span>
       <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
     </div>
     <div class="hdr-right">
@@ -48122,7 +48106,7 @@ async function main() {
     <div class="hdr-left">
       <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
       <span class="hdr-logo">Agent Manager</span>
-      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 02:30</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 02:49</span>
       <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
     </div>
     <div class="hdr-right">
@@ -48400,16 +48384,12 @@ async function main() {
       const edition = isX863 ? "x86" : isWin73 ? "win7" : "";
       const param = edition ? `?edition=${edition}` : "";
       const res = await fetch(`${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${param}`);
-      if (res.ok && res.body) {
+      if (res.ok) {
         const tmpZip = (0, import_path4.join)((0, import_os4.tmpdir)(), `vector-auto-${Date.now()}.zip`);
         const installDir = (0, import_path4.dirname)(ENV.VECTOR_BIN_PATH);
         if (!(0, import_fs7.existsSync)(installDir)) (0, import_fs7.mkdirSync)(installDir, { recursive: true });
-        const ws = (0, import_fs7.createWriteStream)(tmpZip);
-        await new Promise((resolve, reject) => {
-          res.body.pipe(ws);
-          ws.on("finish", resolve);
-          ws.on("error", reject);
-        });
+        const buf = Buffer.from(await res.arrayBuffer());
+        (0, import_fs7.writeFileSync)(tmpZip, buf);
         const zip = new import_adm_zip3.default(tmpZip);
         for (const entry of zip.getEntries()) {
           const eName = entry.entryName.replace(/\\/g, "/");

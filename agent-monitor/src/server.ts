@@ -157,16 +157,12 @@ async function main() {
       const edition = isX86 ? 'x86' : isWin7 ? 'win7' : '';
       const param = edition ? `?edition=${edition}` : '';
       const res = await fetch(`${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${param}`);
-      if (res.ok && res.body) {
+      if (res.ok) {
         const tmpZip = join(tmpdir(), `vector-auto-${Date.now()}.zip`);
         const installDir = dirname(ENV.VECTOR_BIN_PATH);
         if (!existsSync(installDir)) mkdirSync(installDir, { recursive: true });
-        const ws = createWriteStream(tmpZip);
-        await new Promise<void>((resolve, reject) => {
-          (res.body as any).pipe(ws);
-          ws.on('finish', resolve);
-          ws.on('error', reject);
-        });
+        const buf = Buffer.from(await res.arrayBuffer());
+        writeFileSync(tmpZip, buf);
         const zip = new AdmZip(tmpZip);
         for (const entry of zip.getEntries()) {
           const eName = entry.entryName.replace(/\\/g, '/');
