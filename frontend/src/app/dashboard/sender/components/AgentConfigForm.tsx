@@ -168,9 +168,12 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
           <div className="relative">
             <textarea value={f.logPaths} rows={2}
               onChange={e => u(c => setInclude(c, e.target.value))}
-              placeholder={'C:\\logs\\*.csv'}
+              placeholder={'C:\\logs\\설비명\\*.csv\nC:\\logs\\설비명\\*.txt'}
               className="w-full px-2.5 py-1.5 text-xs font-mono border rounded-lg resize-y
                 bg-white dark:bg-slate-800 border-border" />
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              따옴표 없이 경로만 입력 (줄바꿈으로 여러 경로 추가)
+            </p>
             <div className="absolute right-2 top-2">
               <Tip text={t('sender.form.tooltip.logPaths')} />
             </div>
