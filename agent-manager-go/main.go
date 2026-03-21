@@ -523,6 +523,9 @@ func handleVectorStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// data_dir 폴더 자동 생성 (없으면 Vector 시작 실패)
+	ensureDataDir(cfgPath)
+
 	cmd := exec.Command(vectorBinPath, "--config", cfgPath)
 	cmd.SysProcAttr = windowsHideAttr()
 	err := cmd.Start()
@@ -892,7 +895,10 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 	content, _ := io.ReadAll(resp.Body)
 
 	os.MkdirAll(configDir, 0755)
-	os.WriteFile(filepath.Join(configDir, name+".toml"), content, 0644)
+	tomlPath := filepath.Join(configDir, name+".toml")
+	os.WriteFile(tomlPath, content, 0644)
+	// TOML 저장 후 data_dir 폴더 자동 생성
+	ensureDataDir(tomlPath)
 	jsonResp(w, map[string]any{"success": true, "message": fmt.Sprintf("%s.toml saved to %s", name, configDir)})
 }
 
@@ -923,6 +929,28 @@ func autoInstallVector() {
 }
 
 // ─── HTTP 유틸 ───
+
+// ensureDataDir — TOML에서 data_dir을 읽어 폴더가 없으면 자동 생성
+func ensureDataDir(tomlPath string) {
+	content, err := os.ReadFile(tomlPath)
+	if err != nil {
+		return
+	}
+	for _, line := range strings.Split(string(content), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "data_dir") {
+			// data_dir = 'C:\vector-data-xxx' 또는 "C:\\vector-data-xxx"
+			val := trimmed[strings.Index(trimmed, "=")+1:]
+			val = strings.TrimSpace(val)
+			val = strings.Trim(val, `"'`)
+			val = strings.ReplaceAll(val, `\\`, `\`)
+			if val != "" {
+				os.MkdirAll(val, 0755)
+			}
+			break
+		}
+	}
+}
 
 func httpGet(url string) (*http.Response, error) {
 	client := &http.Client{Timeout: 5 * time.Second}
