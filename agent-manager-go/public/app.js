@@ -812,7 +812,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initLang();
   initDarkMode();
   bindEvents();
-  await Promise.all([poll(), loadRecentLogs(), loadTomlList(), loadSetup(), loadConfig()]);
+  await Promise.all([poll(), loadRecentLogs(), loadTomlList(), loadSetup(), loadConfig(), checkInstall(), loadServiceStatus()]);
   pollTimer = setInterval(poll, POLL_INTERVAL);
   setInterval(loadRecentLogs, 30000);
 });
