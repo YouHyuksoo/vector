@@ -51,6 +51,14 @@ await build({
   format: 'cjs',
   outfile: join(DIST, 'server.cjs'),
   external: [],
+  plugins: [{
+    name: 'mock-diagnostics-channel',
+    setup(build) {
+      build.onResolve({ filter: /^diagnostics_channel$/ }, () => ({
+        path: join(__dirname, 'src', 'diagnostics-channel-mock.cjs'),
+      }));
+    },
+  }],
   minify: false,
   sourcemap: false,
   define: {
@@ -90,8 +98,7 @@ await build({
       '/* structuredClone polyfill */',
       'if(typeof globalThis.structuredClone==="undefined"){globalThis.structuredClone=function(v){return JSON.parse(JSON.stringify(v));};}',
       '',
-      '/* diagnostics_channel.tracingChannel polyfill (Fastify 5 + Pino need Node 20+) */',
-      'try{var _dc=require("diagnostics_channel");if(typeof _dc.tracingChannel==="undefined"){_dc.tracingChannel=function(n){var _ch=function(){return{hasSubscribers:false,publish:function(){},subscribe:function(){},unsubscribe:function(){}};};return{start:_ch(),end:_ch(),asyncStart:_ch(),asyncEnd:_ch(),error:_ch(),subscribe:function(){},unsubscribe:function(){},traceSync:function(fn,ctx,thisArg){if(arguments.length<=3)return fn.call(thisArg);var a=[];for(var i=3;i<arguments.length;i++)a.push(arguments[i]);return fn.apply(thisArg,a);},tracePromise:function(fn,ctx,thisArg){if(arguments.length<=3)return fn.call(thisArg);var a=[];for(var i=3;i<arguments.length;i++)a.push(arguments[i]);return fn.apply(thisArg,a);},traceCallback:function(fn,ctx,thisArg){if(arguments.length<=3)return fn.call(thisArg);var a=[];for(var i=3;i<arguments.length;i++)a.push(arguments[i]);return fn.apply(thisArg,a);}};};}}catch(e){}',
+      '/* diagnostics_channel: esbuild alias로 mock 번들됨 (Node 12/14 호환) */',
       '',
       '(async () => {',
     ].join('\n'),
@@ -109,6 +116,13 @@ await build({
     ].join('\n'),
   },
 });
+// 번들 후 처리: 남은 require("diagnostics_channel")을 인라인 mock으로 치환
+const cjsPath = join(DIST, 'server.cjs');
+let cjsContent = readFileSync(cjsPath, 'utf-8');
+const mockCode = readFileSync(join(__dirname, 'src', 'diagnostics-channel-mock.cjs'), 'utf-8');
+const mockInline = '(function(){var m={};(function(module){' + mockCode + '})(m);return m.exports;})()';
+cjsContent = cjsContent.replace(/require\(["']diagnostics_channel["']\)/g, mockInline);
+writeFileSync(cjsPath, cjsContent, 'utf-8');
 console.log('  → dist-exe/server.cjs created (self-contained)');
 
 // 4. .env.example 복사 (선택적)
@@ -132,13 +146,15 @@ try {
   process.exit(1);
 }
 
-// 6. win7 — Node 14 x64 + server.cjs zip → Win7+ 64비트
-console.log('[4/5] Packaging win7 (node14-x64 zip)...');
+const NODE_WIN7_VERSION = '14.17.0';
+
+// 6. win7 — Node 12 x64 + server.cjs zip → Win7+ 64비트 (Node 12 = Win7 공식 지원)
+console.log('[4/5] Packaging win7 (node12-x64 zip)...');
 const nodeWin7Path = join(DIST, 'node-win7.exe');
 try {
   if (!existsSync(nodeWin7Path)) {
-    console.log(`  → Downloading Node.js v${NODE_VERSION} x64 from nodejs.org...`);
-    await download(`https://nodejs.org/dist/v${NODE_VERSION}/win-x64/node.exe`, nodeWin7Path);
+    console.log(`  → Downloading Node.js v${NODE_WIN7_VERSION} x64 from nodejs.org...`);
+    await download(`https://nodejs.org/dist/v${NODE_WIN7_VERSION}/win-x64/node.exe`, nodeWin7Path);
     console.log('  → node-win7.exe downloaded');
   } else {
     console.log('  → node-win7.exe already cached');
@@ -182,16 +198,15 @@ function download(url, dest) {
   });
 }
 
-const NODE_VERSION = '14.21.3';
-const nodeX86Url = `https://nodejs.org/dist/v${NODE_VERSION}/win-x86/node.exe`;
+const nodeX86Url = `https://nodejs.org/dist/v${NODE_WIN7_VERSION}/win-x86/node.exe`;
 const nodeX86Path = join(DIST, 'node-x86.exe');
 
 try {
-  // 7-1. Node.js x86 바이너리 다운로드 (Node 14 = Win7 호환)
+  // 7-1. Node.js x86 바이너리 다운로드 (Node 12 = Win7 32-bit 공식 지원 마지막 버전)
   if (!existsSync(nodeX86Path)) {
-    console.log(`  → Downloading Node.js v${NODE_VERSION} x86 from nodejs.org...`);
+    console.log(`  → Downloading Node.js v${NODE_WIN7_VERSION} x86 from nodejs.org...`);
     await download(nodeX86Url, nodeX86Path);
-    console.log('  → node-x86.exe downloaded');
+    console.log('  → node-x86.exe downloaded (Node 12 for Win7 compat)');
   } else {
     console.log('  → node-x86.exe already cached');
   }
