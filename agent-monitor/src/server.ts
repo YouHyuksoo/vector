@@ -29,6 +29,12 @@ import serviceRoutes from './routes/service.js';
 /** pkg exe 빌드 시 esbuild define으로 주입되는 임베딩 상수 */
 declare const EMBEDDED_INDEX_HTML: string;
 declare const EMBEDDED_APP_JS: string;
+declare const EMBEDDED_TAILWIND_CSS: string;
+declare const EMBEDDED_FONTS_CSS: string;
+declare const EMBEDDED_FONT_OUTFIT_LATIN_EXT: string;
+declare const EMBEDDED_FONT_OUTFIT_LATIN: string;
+declare const EMBEDDED_FONT_FIRACODE: string;
+declare const EMBEDDED_FONT_MATERIAL: string;
 
 /** 번들 모드 감지 (pkg exe 또는 esbuild 번들 + node 직접 실행) */
 const isPkg = !!(process as any).pkg || typeof EMBEDDED_INDEX_HTML !== 'undefined';
@@ -71,6 +77,12 @@ async function main() {
     app.get('/', (_req, reply) => reply.type('text/html').send(EMBEDDED_INDEX_HTML));
     app.get('/index.html', (_req, reply) => reply.type('text/html').send(EMBEDDED_INDEX_HTML));
     app.get('/app.js', (_req, reply) => reply.type('application/javascript').send(EMBEDDED_APP_JS));
+    app.get('/tailwind.css', (_req, reply) => reply.type('text/css').send(EMBEDDED_TAILWIND_CSS));
+    app.get('/fonts/fonts.css', (_req, reply) => reply.type('text/css').send(EMBEDDED_FONTS_CSS));
+    app.get('/fonts/outfit-latin-ext.woff2', (_req, reply) => reply.type('font/woff2').send(Buffer.from(EMBEDDED_FONT_OUTFIT_LATIN_EXT, 'base64')));
+    app.get('/fonts/outfit-latin.woff2', (_req, reply) => reply.type('font/woff2').send(Buffer.from(EMBEDDED_FONT_OUTFIT_LATIN, 'base64')));
+    app.get('/fonts/firacode-latin.woff2', (_req, reply) => reply.type('font/woff2').send(Buffer.from(EMBEDDED_FONT_FIRACODE, 'base64')));
+    app.get('/fonts/material-symbols.woff2', (_req, reply) => reply.type('font/woff2').send(Buffer.from(EMBEDDED_FONT_MATERIAL, 'base64')));
   } else {
     /* 개발 모드: public/ 디렉토리에서 정적 파일 서빙 */
     const __filename = fileURLToPath(import.meta.url);

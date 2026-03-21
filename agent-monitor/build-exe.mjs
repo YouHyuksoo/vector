@@ -29,8 +29,16 @@ if (!existsSync(DIST)) mkdirSync(DIST, { recursive: true });
 console.log('[1/5] Reading public assets for embedding...');
 const indexHtml = readFileSync(join(__dirname, 'public/index.html'), 'utf-8');
 const appJs = readFileSync(join(__dirname, 'public/app.js'), 'utf-8');
+const tailwindCss = readFileSync(join(__dirname, 'public/tailwind.css'), 'utf-8');
+const fontsCss = readFileSync(join(__dirname, 'public/fonts/fonts.css'), 'utf-8');
+const fontOutfitLatinExt = readFileSync(join(__dirname, 'public/fonts/outfit-latin-ext.woff2')).toString('base64');
+const fontOutfitLatin = readFileSync(join(__dirname, 'public/fonts/outfit-latin.woff2')).toString('base64');
+const fontFiracode = readFileSync(join(__dirname, 'public/fonts/firacode-latin.woff2')).toString('base64');
+const fontMaterial = readFileSync(join(__dirname, 'public/fonts/material-symbols.woff2')).toString('base64');
 console.log(`  → index.html: ${(indexHtml.length / 1024).toFixed(1)}KB`);
 console.log(`  → app.js: ${(appJs.length / 1024).toFixed(1)}KB`);
+console.log(`  → tailwind.css: ${(tailwindCss.length / 1024).toFixed(1)}KB`);
+console.log(`  → fonts: 4 woff2 files embedded`);
 
 // 3. esbuild로 단일 CJS 번들 생성 (public 파일 인라인 임베딩)
 console.log('[2/5] Bundling with esbuild (CJS + embedded assets)...');
@@ -47,6 +55,12 @@ await build({
   define: {
     'EMBEDDED_INDEX_HTML': JSON.stringify(indexHtml),
     'EMBEDDED_APP_JS': JSON.stringify(appJs),
+    'EMBEDDED_TAILWIND_CSS': JSON.stringify(tailwindCss),
+    'EMBEDDED_FONTS_CSS': JSON.stringify(fontsCss),
+    'EMBEDDED_FONT_OUTFIT_LATIN_EXT': JSON.stringify(fontOutfitLatinExt),
+    'EMBEDDED_FONT_OUTFIT_LATIN': JSON.stringify(fontOutfitLatin),
+    'EMBEDDED_FONT_FIRACODE': JSON.stringify(fontFiracode),
+    'EMBEDDED_FONT_MATERIAL': JSON.stringify(fontMaterial),
     'import.meta.url': '__import_meta_url',
   },
   banner: {
