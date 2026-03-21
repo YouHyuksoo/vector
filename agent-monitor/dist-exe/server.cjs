@@ -13,11 +13,17 @@ if(typeof globalThis.AbortController==="undefined"){
   AbortSignal.timeout=function(ms){var c=new AbortController();setTimeout(function(){c.abort();},ms);return c.signal;};
 }
 
+/* Object.hasOwn polyfill (Node 16.7+) */
+if(typeof Object.hasOwn==="undefined"){Object.hasOwn=function(o,k){return Object.prototype.hasOwnProperty.call(o,k);};}
+
+/* String.replaceAll polyfill (Node 15+) */
+if(typeof String.prototype.replaceAll==="undefined"){String.prototype.replaceAll=function(s,r){return this.split(s).join(r);};}
+
 /* structuredClone polyfill */
 if(typeof globalThis.structuredClone==="undefined"){globalThis.structuredClone=function(v){return JSON.parse(JSON.stringify(v));};}
 
-/* diagnostics_channel.tracingChannel polyfill (Fastify 5 needs Node 20+) */
-try{var _dc=require("diagnostics_channel");if(typeof _dc.tracingChannel==="undefined"){_dc.tracingChannel=function(n){var _ch=function(){return{hasSubscribers:false,publish:function(){},subscribe:function(){},unsubscribe:function(){}};};return{start:_ch(),end:_ch(),asyncStart:_ch(),asyncEnd:_ch(),error:_ch(),subscribe:function(){},unsubscribe:function(){},traceSync:function(fn,ctx){return fn.apply(ctx);},tracePromise:function(fn,ctx){return fn.apply(ctx);},traceCallback:function(fn,ctx){return fn.apply(ctx);}};};}}catch(e){}
+/* diagnostics_channel.tracingChannel polyfill (Fastify 5 + Pino need Node 20+) */
+try{var _dc=require("diagnostics_channel");if(typeof _dc.tracingChannel==="undefined"){_dc.tracingChannel=function(n){var _ch=function(){return{hasSubscribers:false,publish:function(){},subscribe:function(){},unsubscribe:function(){}};};return{start:_ch(),end:_ch(),asyncStart:_ch(),asyncEnd:_ch(),error:_ch(),subscribe:function(){},unsubscribe:function(){},traceSync:function(fn,ctx,thisArg){if(arguments.length<=3)return fn.call(thisArg);var a=[];for(var i=3;i<arguments.length;i++)a.push(arguments[i]);return fn.apply(thisArg,a);},tracePromise:function(fn,ctx,thisArg){if(arguments.length<=3)return fn.call(thisArg);var a=[];for(var i=3;i<arguments.length;i++)a.push(arguments[i]);return fn.apply(thisArg,a);},traceCallback:function(fn,ctx,thisArg){if(arguments.length<=3)return fn.call(thisArg);var a=[];for(var i=3;i<arguments.length;i++)a.push(arguments[i]);return fn.apply(thisArg,a);}};};}}catch(e){}
 
 (async () => {
 "use strict";
@@ -47740,7 +47746,7 @@ async function main() {
     <div class="hdr-left">
       <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
       <span class="hdr-logo">Agent Manager</span>
-      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 02:49</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 03:45</span>
       <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
     </div>
     <div class="hdr-right">
@@ -48106,7 +48112,7 @@ async function main() {
     <div class="hdr-left">
       <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
       <span class="hdr-logo">Agent Manager</span>
-      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 02:49</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 03:45</span>
       <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
     </div>
     <div class="hdr-right">
