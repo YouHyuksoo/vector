@@ -25,5 +25,8 @@ vector-data-agent/
 # Backup files
 *.bak
 
+# Large node binaries
+agent-monitor/dist-exe/node-win7.exe
+
 # PM2 logs
 logs/
