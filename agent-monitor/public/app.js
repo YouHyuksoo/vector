@@ -802,7 +802,7 @@ async function downloadToml(name) {
     });
     showToast(data.message || name + '.toml 저장 완료', 'success');
     /* 설정 새로고침 */
-    setTimeout(function() { loadSetupForm(); loadConfig(); }, 500);
+    setTimeout(function() { loadSetup(); loadConfig(); }, 500);
   } catch (err) {
     showToast('TOML 다운로드 실패: ' + err.message, 'error');
   }
@@ -812,7 +812,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initLang();
   initDarkMode();
   bindEvents();
-  await Promise.all([poll(), loadRecentLogs(), loadTomlList()]);
+  await Promise.all([poll(), loadRecentLogs(), loadTomlList(), loadSetup(), loadConfig()]);
   pollTimer = setInterval(poll, POLL_INTERVAL);
   setInterval(loadRecentLogs, 30000);
 });
