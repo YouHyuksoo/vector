@@ -208,6 +208,15 @@ try {
   process.exit(1);
 }
 
+// 8. vector-bin/ 에 자동 복사 (서버 다운로드 API가 여기서 서빙)
+const VECTOR_BIN = join(__dirname, '..', 'vector-bin');
+if (existsSync(VECTOR_BIN)) {
+  cpSync(join(DIST, 'agent-manager-x64.exe'), join(VECTOR_BIN, 'agent-manager-x64.exe'));
+  cpSync(join(DIST, 'agent-manager-win7.zip'), join(VECTOR_BIN, 'agent-manager-win7.zip'));
+  cpSync(join(DIST, 'agent-manager-x86.zip'), join(VECTOR_BIN, 'agent-manager-x86.zip'));
+  console.log('[8/8] Copied to vector-bin/ (server download)');
+}
+
 console.log('\nDone!');
 console.log(`  agent-manager-x64.exe  → Win10+ 64비트 (단일 exe)`);
 console.log(`  agent-manager-win7.zip → Win7+  64비트 (zip: node14 + server.cjs + bat)`);
