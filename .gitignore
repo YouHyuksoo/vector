@@ -9,8 +9,11 @@ coverage/
 # AI config (API keys)
 config/ai-config.json
 
-# 서버에서 동적 관리되는 데이터 파일 (배포 시 덮어쓰기 방지는 deploy.yml에서 처리)
+# 서버에서 동적 관리되는 파일 (git에 포함하지 않음)
 config/parse-fields.json
+vector-config/agent/*.toml
+vector-config/agent-fluent/*.conf
+vector-config/aggregator/vector-aggregator.toml
 
 # Vector binary & runtime data
 vector-bin/
