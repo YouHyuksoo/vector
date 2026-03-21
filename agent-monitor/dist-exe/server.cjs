@@ -47575,10 +47575,10 @@ async function main() {
     app.get("/", (_req, reply) => reply.type("text/html").send(`<!DOCTYPE html>
 <!--
   @file agent-monitor/public/index.html
-  @description Vector Agent Manager - \uC124\uBE44 PC \uC885\uD569 \uAD00\uB9AC \uB300\uC2DC\uBCF4\uB4DC (\uB2E4\uAD6D\uC5B4 \uC9C0\uC6D0)
+  @description Vector Agent Manager - \uC124\uBE44 PC \uC885\uD569 \uAD00\uB9AC \uB300\uC2DC\uBCF4\uB4DC (\uB2E8\uC77C \uD398\uC774\uC9C0)
 
   \uCD08\uBCF4\uC790 \uAC00\uC774\uB4DC:
-  1. 3\uAC1C \uD0ED (\uC0C1\uD0DC/\uC124\uC815/\uAD00\uB9AC)\uC73C\uB85C \uAD6C\uC131\uB41C Agent Manager UI\uC785\uB2C8\uB2E4
+  1. \uBAA8\uB4E0 \uAE30\uB2A5\uC774 \uD55C \uD398\uC774\uC9C0\uC5D0 \uD45C\uC2DC\uB418\uB294 Agent Manager UI\uC785\uB2C8\uB2E4
   2. \uBE4C\uB4DC\uB41C Tailwind CSS + oklch CSS \uBCC0\uC218\uB85C \uB2E4\uD06C\uBAA8\uB4DC\uB97C \uC9C0\uC6D0\uD569\uB2C8\uB2E4 (\uC624\uD504\uB77C\uC778 \uD658\uACBD \uC9C0\uC6D0)
   3. data-i18n \uC18D\uC131\uC73C\uB85C \uD55C\uAD6D\uC5B4/\uC601\uC5B4/\uC2A4\uD398\uC778\uC5B4/\uBCA0\uD2B8\uB0A8\uC5B4 \uC804\uD658 \uC9C0\uC6D0
   4. app.js\uC5D0\uC11C API\uB97C \uD638\uCD9C\uD558\uC5EC DOM\uC744 \uC5C5\uB370\uC774\uD2B8\uD569\uB2C8\uB2E4
@@ -47588,14 +47588,8 @@ async function main() {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agent Manager</title>
-
-  <!-- \uB85C\uCEEC \uD3F0\uD2B8 (\uC624\uD504\uB77C\uC778 \uD658\uACBD \uC9C0\uC6D0) -->
   <link rel="stylesheet" href="fonts/fonts.css" />
-
-  <!-- Tailwind CSS (\uBE4C\uB4DC\uB41C \uC815\uC801 \uD30C\uC77C) -->
   <link rel="stylesheet" href="tailwind.css" />
-
-  <!-- oklch CSS \uBCC0\uC218 + \uCEE4\uC2A4\uD140 \uC2A4\uD0C0\uC77C -->
   <style>
     :root {
       --background: oklch(0.98 0.002 248);
@@ -47631,33 +47625,28 @@ async function main() {
     @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(-12px); } }
     .toast-enter { animation: toast-in 0.25s ease-out; }
     .toast-exit { animation: toast-out 0.3s ease-in forwards; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: var(--muted); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .card-base { transition: box-shadow 0.2s ease, transform 0.2s ease; }
-    .card-base:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.08); transform: translateY(-2px); }
-    .dark .card-base:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
-    .tab-btn { transition: all 0.2s; }
-    .tab-btn.active { border-color: var(--primary); color: var(--primary); }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    /* tab compat: app.js\uC5D0\uC11C tab-content.active \uD1A0\uAE00\uD558\uBBC0\uB85C \uD56D\uC0C1 \uBCF4\uC774\uB3C4\uB85D */
+    .tab-content { display: block !important; }
   </style>
 </head>
 
 <body class="bg-bg text-fg min-h-screen transition-colors duration-300">
 
-  <!-- \uD1A0\uC2A4\uD2B8 \uC54C\uB9BC \uC601\uC5ED -->
+  <!-- \uD1A0\uC2A4\uD2B8 \uC54C\uB9BC -->
   <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2"></div>
 
-  <!-- \uD5E4\uB354 \uBC14 -->
+  <!-- \uD5E4\uB354 -->
   <header class="sticky top-0 z-40 bg-card border-b border-border backdrop-blur-sm">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <span class="material-symbols-outlined text-primary text-3xl">settings_suggest</span>
-        <h1 class="text-xl font-bold tracking-tight">Agent Manager</h1>
+    <div class="max-w-[1400px] mx-auto px-3 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-2xl">settings_suggest</span>
+        <h1 class="text-lg font-bold tracking-tight">Agent Manager</h1>
+        <span id="header-version" class="text-[10px] text-muted-fg font-mono ml-1"></span>
       </div>
-      <div class="flex items-center gap-3">
-        <span id="header-version" class="text-xs text-muted-fg font-mono hidden sm:inline"></span>
+      <div class="flex items-center gap-2">
         <select id="sel-lang"
           class="px-2 py-1 rounded-lg bg-secondary border border-border text-xs font-semibold text-fg cursor-pointer focus:outline-none">
           <option value="ko">\uD55C\uAD6D\uC5B4</option>
@@ -47666,348 +47655,342 @@ async function main() {
           <option value="vi">Ti\u1EBFng Vi\u1EC7t</option>
         </select>
         <button id="btn-dark-toggle"
-          class="p-2 rounded-lg bg-secondary text-fg hover:bg-card-hover transition-colors"
-          title="\uB2E4\uD06C\uBAA8\uB4DC \uC804\uD658">
-          <span class="material-symbols-outlined text-xl" id="icon-theme">light_mode</span>
+          class="p-1.5 rounded-lg bg-secondary text-fg hover:bg-card-hover transition-colors">
+          <span class="material-symbols-outlined text-lg" id="icon-theme">light_mode</span>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- \uD0ED \uB124\uBE44\uAC8C\uC774\uC158 -->
-  <nav class="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
-    <div class="flex gap-1 border-b border-border">
-      <button class="tab-btn active px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="status">
-        <span class="material-symbols-outlined text-base align-middle mr-1">monitor_heart</span><span data-i18n="tab.status">\uC0C1\uD0DC</span>
-      </button>
-      <button class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="settings">
-        <span class="material-symbols-outlined text-base align-middle mr-1">tune</span><span data-i18n="tab.settings">\uC124\uC815</span>
-      </button>
-      <button class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="management">
-        <span class="material-symbols-outlined text-base align-middle mr-1">build</span><span data-i18n="tab.management">\uAD00\uB9AC</span>
-      </button>
-    </div>
+  <!-- \uD0ED \uB124\uBE44\uAC8C\uC774\uC158 (\uC228\uAE40 \u2014 app.js \uD638\uD658\uC6A9) -->
+  <nav class="hidden">
+    <button class="tab-btn active" data-tab="status"></button>
+    <button class="tab-btn" data-tab="settings"></button>
+    <button class="tab-btn" data-tab="management"></button>
   </nav>
 
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+  <main class="max-w-[1400px] mx-auto px-3 py-3">
 
-    <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 \uC0C1\uD0DC \uD0ED \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-    <div id="tab-status" class="tab-content active space-y-6">
+    <!-- \u2550\u2550\u2550 \uC0C1\uB2E8: \uC0C1\uD0DC + \uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4 \u2550\u2550\u2550 -->
+    <div id="tab-status" class="tab-content active">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
+        <!-- \uC88C\uCE21: \uC0C1\uD0DC \uCE74\uB4DC + \uC804\uC1A1 \uD604\uD669 -->
+        <div class="space-y-3">
+          <!-- \uC0C1\uD0DC \uCE74\uB4DC 3\uAC1C + \uC81C\uC5B4 \uBC84\uD2BC \uD55C \uC904 -->
+          <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <div class="bg-card rounded-lg border border-border p-3">
+              <div class="flex items-center gap-1 text-muted-fg text-[10px] mb-1">
+                <span class="material-symbols-outlined text-sm" id="icon-status">error</span>
+                <span data-i18n="status.runState">\uC2E4\uD589 \uC0C1\uD0DC</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="dot-status" class="inline-block w-2.5 h-2.5 rounded-full bg-error"></span>
+                <span id="txt-status" class="text-base font-bold" data-i18n="status.checking">\uD655\uC778 \uC911...</span>
+              </div>
+              <div class="text-[10px] text-muted-fg mt-0.5">PID: <span id="txt-pid" class="font-mono">-</span></div>
+            </div>
+            <div class="bg-card rounded-lg border border-border p-3">
+              <div class="flex items-center gap-1 text-muted-fg text-[10px] mb-1">
+                <span class="material-symbols-outlined text-sm">schedule</span><span data-i18n="status.uptime">\uAC00\uB3D9 \uC2DC\uAC04</span>
+              </div>
+              <div id="txt-uptime" class="text-base font-bold">-</div>
+            </div>
+            <div class="bg-card rounded-lg border border-border p-3">
+              <div class="flex items-center gap-1 text-muted-fg text-[10px] mb-1">
+                <span class="material-symbols-outlined text-sm">info</span><span data-i18n="status.version">\uBC84\uC804</span>
+              </div>
+              <div id="txt-version" class="text-base font-bold font-mono">-</div>
+            </div>
+            <!-- \uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4 (4\uBC88\uC9F8 \uCE78) -->
+            <div class="bg-card rounded-lg border border-border p-3 hidden sm:flex flex-col justify-center">
+              <div class="flex flex-wrap gap-1.5">
+                <button id="btn-start"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-success hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none">
+                  <span class="material-symbols-outlined text-sm">play_arrow</span> <span data-i18n="mgmt.start">\uC2DC\uC791</span>
+                </button>
+                <button id="btn-stop"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-error hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none">
+                  <span class="material-symbols-outlined text-sm">stop</span> <span data-i18n="mgmt.stop">\uC911\uC9C0</span>
+                </button>
+                <button id="btn-restart"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-warning hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none">
+                  <span class="material-symbols-outlined text-sm">restart_alt</span> <span data-i18n="mgmt.restart">\uC7AC\uC2DC\uC791</span>
+                </button>
+                <button id="btn-test-conn"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-fg bg-secondary border border-border hover:bg-card-hover disabled:opacity-40 disabled:pointer-events-none">
+                  <span class="material-symbols-outlined text-sm">lan</span> <span data-i18n="mgmt.testConn">\uD14C\uC2A4\uD2B8</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
-      <!-- \uC0C1\uD0DC \uCE74\uB4DC \uADF8\uB9AC\uB4DC -->
-      <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="card-base bg-card rounded-xl border border-border p-5">
-          <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
-            <span class="material-symbols-outlined text-lg" id="icon-status">error</span>
-            <span data-i18n="status.runState">\uC2E4\uD589 \uC0C1\uD0DC</span>
+          <!-- \uC804\uC1A1 \uD604\uD669 (\uCEF4\uD329\uD2B8) -->
+          <div class="bg-card rounded-lg border border-border p-3 space-y-2">
+            <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+              <span class="material-symbols-outlined text-primary text-base">swap_vert</span><span data-i18n="status.transfer">\uC804\uC1A1 \uD604\uD669</span>
+            </h2>
+            <div class="grid grid-cols-4 gap-2">
+              <div class="bg-secondary rounded-md p-2 text-center">
+                <div class="text-muted-fg text-[10px] mb-0.5">Events In</div>
+                <div id="txt-events-in" class="text-lg font-bold text-info">0</div>
+              </div>
+              <div class="bg-secondary rounded-md p-2 text-center">
+                <div class="text-muted-fg text-[10px] mb-0.5">Events Out</div>
+                <div id="txt-events-out" class="text-lg font-bold text-success">0</div>
+              </div>
+              <div class="bg-secondary rounded-md p-2 text-center">
+                <div class="text-muted-fg text-[10px] mb-0.5">Errors</div>
+                <div id="txt-errors" class="text-lg font-bold text-error">0</div>
+              </div>
+              <div class="bg-secondary rounded-md p-2 text-center">
+                <div class="text-muted-fg text-[10px] mb-0.5">Buffer</div>
+                <div id="txt-buffer-pct" class="text-lg font-bold">0%</div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] text-muted-fg mb-0.5">
+                <span data-i18n="status.bufferUsage">\uBC84\uD37C \uC0AC\uC6A9\uB7C9</span><span id="txt-buffer-detail">0 / 0 bytes</span>
+              </div>
+              <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div id="bar-buffer" class="h-full rounded-full bg-primary transition-all duration-500" style="width:0%"></div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <h3 class="text-[10px] font-semibold text-muted-fg mb-0.5">Sources</h3>
+                <div id="list-sources" class="text-xs font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">\uC5C6\uC74C</span></div>
+              </div>
+              <div>
+                <h3 class="text-[10px] font-semibold text-muted-fg mb-0.5">Sinks</h3>
+                <div id="list-sinks" class="text-xs font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">\uC5C6\uC74C</span></div>
+              </div>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <span id="dot-status" class="inline-block w-3 h-3 rounded-full bg-error"></span>
-            <span id="txt-status" class="text-xl font-bold" data-i18n="status.checking">\uD655\uC778 \uC911...</span>
-          </div>
-          <div class="text-xs text-muted-fg mt-1">PID: <span id="txt-pid" class="font-mono">-</span></div>
-        </div>
-        <div class="card-base bg-card rounded-xl border border-border p-5">
-          <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
-            <span class="material-symbols-outlined text-lg">schedule</span><span data-i18n="status.uptime">\uAC00\uB3D9 \uC2DC\uAC04</span>
-          </div>
-          <div id="txt-uptime" class="text-xl font-bold">-</div>
-        </div>
-        <div class="card-base bg-card rounded-xl border border-border p-5">
-          <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
-            <span class="material-symbols-outlined text-lg">info</span><span data-i18n="status.version">\uBC84\uC804</span>
-          </div>
-          <div id="txt-version" class="text-xl font-bold font-mono">-</div>
-        </div>
-      </section>
 
-      <!-- \uC804\uC1A1 \uD604\uD669 -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">swap_vert</span><span data-i18n="status.transfer">\uC804\uC1A1 \uD604\uD669</span>
-        </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div class="bg-secondary rounded-lg p-3 text-center">
-            <div class="flex items-center justify-center gap-1 text-muted-fg text-xs mb-1">
-              <span class="material-symbols-outlined text-base">download</span> Events In
+          <!-- \uCD5C\uADFC \uAC10\uC2DC \uD30C\uC77C -->
+          <div class="bg-card rounded-lg border border-border p-3 space-y-2">
+            <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+              <span class="material-symbols-outlined text-primary text-base">folder_open</span><span data-i18n="status.recentFiles">\uCD5C\uADFC \uAC10\uC2DC \uD30C\uC77C</span>
+            </h2>
+            <div id="watch-paths" class="text-[10px] text-muted-fg font-mono"></div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-left text-[10px] text-muted-fg border-b border-border">
+                    <th class="pb-1 pr-3" data-i18n="status.fileName">\uD30C\uC77C\uBA85</th>
+                    <th class="pb-1 pr-3 hidden sm:table-cell" data-i18n="status.directory">\uB514\uB809\uD1A0\uB9AC</th>
+                    <th class="pb-1 pr-3" data-i18n="status.modifiedAt">\uC218\uC815 \uC2DC\uAC04</th>
+                    <th class="pb-1 text-right" data-i18n="status.size">\uD06C\uAE30</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-files">
+                  <tr><td colspan="4" class="py-4 text-center text-muted-fg italic text-xs" data-i18n="status.loadingFiles">\uD30C\uC77C \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uB294 \uC911...</td></tr>
+                </tbody>
+              </table>
             </div>
-            <div id="txt-events-in" class="text-2xl font-bold text-info">0</div>
-          </div>
-          <div class="bg-secondary rounded-lg p-3 text-center">
-            <div class="flex items-center justify-center gap-1 text-muted-fg text-xs mb-1">
-              <span class="material-symbols-outlined text-base">upload</span> Events Out
-            </div>
-            <div id="txt-events-out" class="text-2xl font-bold text-success">0</div>
-          </div>
-          <div class="bg-secondary rounded-lg p-3 text-center">
-            <div class="flex items-center justify-center gap-1 text-muted-fg text-xs mb-1">
-              <span class="material-symbols-outlined text-base">warning</span> Errors
-            </div>
-            <div id="txt-errors" class="text-2xl font-bold text-error">0</div>
-          </div>
-          <div class="bg-secondary rounded-lg p-3 text-center">
-            <div class="flex items-center justify-center gap-1 text-muted-fg text-xs mb-1">
-              <span class="material-symbols-outlined text-base">storage</span> Buffer
-            </div>
-            <div id="txt-buffer-pct" class="text-2xl font-bold">0%</div>
           </div>
         </div>
-        <div>
-          <div class="flex justify-between text-xs text-muted-fg mb-1">
-            <span data-i18n="status.bufferUsage">\uBC84\uD37C \uC0AC\uC6A9\uB7C9</span><span id="txt-buffer-detail">0 / 0 bytes</span>
-          </div>
-          <div class="h-2 rounded-full bg-muted overflow-hidden">
-            <div id="bar-buffer" class="h-full rounded-full bg-primary transition-all duration-500" style="width:0%"></div>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <h3 class="text-xs font-semibold text-muted-fg mb-1">Sources</h3>
-            <div id="list-sources" class="text-sm font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">\uC5C6\uC74C</span></div>
-          </div>
-          <div>
-            <h3 class="text-xs font-semibold text-muted-fg mb-1">Sinks</h3>
-            <div id="list-sinks" class="text-sm font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">\uC5C6\uC74C</span></div>
-          </div>
-        </div>
-      </section>
 
-      <!-- \uCD5C\uADFC \uAC10\uC2DC \uD30C\uC77C -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-3">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">folder_open</span><span data-i18n="status.recentFiles">\uCD5C\uADFC \uAC10\uC2DC \uD30C\uC77C</span>
-        </h2>
-        <div id="watch-paths" class="text-xs text-muted-fg font-mono"></div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left text-xs text-muted-fg border-b border-border">
-                <th class="pb-2 pr-4" data-i18n="status.fileName">\uD30C\uC77C\uBA85</th>
-                <th class="pb-2 pr-4 hidden sm:table-cell" data-i18n="status.directory">\uB514\uB809\uD1A0\uB9AC</th>
-                <th class="pb-2 pr-4" data-i18n="status.modifiedAt">\uC218\uC815 \uC2DC\uAC04</th>
-                <th class="pb-2 text-right" data-i18n="status.size">\uD06C\uAE30</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-files">
-              <tr><td colspan="4" class="py-8 text-center text-muted-fg italic" data-i18n="status.loadingFiles">\uD30C\uC77C \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uB294 \uC911...</td></tr>
-            </tbody>
-          </table>
+        <!-- \uC6B0\uCE21 \uC0AC\uC774\uB4DC\uBC14: \uC124\uC815 + \uAD00\uB9AC -->
+        <div class="space-y-3">
+
+          <!-- \uC124\uBE44 \uC815\uBCF4 (\uC124\uC815) -->
+          <div id="tab-settings" class="tab-content space-y-3">
+            <div class="flex gap-1.5">
+              <button id="btn-mode-form" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-primary text-white">
+                <span class="material-symbols-outlined text-xs align-middle mr-0.5">edit_note</span><span data-i18n="settings.formMode">\uD3FC \uBAA8\uB4DC</span>
+              </button>
+              <button id="btn-mode-toml" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-secondary text-fg border border-border">
+                <span class="material-symbols-outlined text-xs align-middle mr-0.5">code</span><span data-i18n="settings.tomlMode">TOML</span>
+              </button>
+            </div>
+
+            <!-- \uD3FC \uBAA8\uB4DC -->
+            <section id="settings-form" class="bg-card rounded-lg border border-border p-3 space-y-2">
+              <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+                <span class="material-symbols-outlined text-primary text-base">badge</span><span data-i18n="settings.equipInfo">\uC124\uBE44 \uC815\uBCF4</span>
+              </h2>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.equipId">\uC124\uBE44 ID</label>
+                  <input id="inp-eq-id" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="AOI-01" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.equipType">\uC124\uBE44 \uD0C0\uC785</label>
+                  <input id="inp-eq-type" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="AOI" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.ipAddr">IP \uC8FC\uC18C</label>
+                  <input id="inp-ip" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="192.168.1.100" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.lineCode">\uB77C\uC778 \uCF54\uB4DC</label>
+                  <input id="inp-line" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="LINE-01" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.logType">\uB85C\uADF8 \uD0C0\uC785</label>
+                  <input id="inp-log-type" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="INSPECTION" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.logPath">\uB85C\uADF8 \uACBD\uB85C</label>
+                  <input id="inp-include" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="C:\\logs\\*.log" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.aggAddr">Aggregator IP</label>
+                  <input id="inp-sink-addr" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="20.10.30.112" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.aggPort">\uD3EC\uD2B8</label>
+                  <input id="inp-sink-port" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="9000" />
+                </div>
+              </div>
+              <button id="btn-save-setup"
+                class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-white bg-primary hover:bg-primary-hover transition-all">
+                <span class="material-symbols-outlined text-sm">save</span> <span data-i18n="settings.saveSetup">\uC800\uC7A5</span>
+              </button>
+            </section>
+
+            <!-- TOML \uD3B8\uC9D1 -->
+            <section id="settings-toml" class="bg-card rounded-lg border border-border p-3 space-y-2 hidden">
+              <div class="flex items-center justify-between gap-2">
+                <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+                  <span class="material-symbols-outlined text-primary text-base">settings</span><span data-i18n="settings.tomlConfig">TOML</span>
+                </h2>
+                <span id="txt-config-path" class="text-[10px] text-muted-fg font-mono truncate max-w-[180px]"></span>
+              </div>
+              <textarea id="editor-config"
+                class="w-full h-52 p-2 rounded-md bg-secondary border border-border font-mono text-[11px] leading-relaxed text-fg resize-y focus:outline-none focus:ring-1 focus:ring-primary/40"
+                spellcheck="false" data-i18n-placeholder="settings.loadingConfig"></textarea>
+              <div class="flex gap-1.5">
+                <button id="btn-save-config"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-white bg-primary hover:bg-primary-hover">
+                  <span class="material-symbols-outlined text-sm">save</span> <span data-i18n="common.save">\uC800\uC7A5</span>
+                </button>
+                <button id="btn-revert-config"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-fg bg-secondary border border-border hover:bg-card-hover">
+                  <span class="material-symbols-outlined text-sm">undo</span> <span data-i18n="settings.revert">\uB418\uB3CC\uB9AC\uAE30</span>
+                </button>
+              </div>
+              <p class="text-[10px] text-warning flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">info</span>
+                <span data-i18n="settings.restartNeeded">\uC800\uC7A5 \uD6C4 Vector \uC7AC\uC2DC\uC791 \uD544\uC694</span>
+              </p>
+            </section>
+          </div>
+
+          <!-- \uAD00\uB9AC \uC139\uC158 -->
+          <div id="tab-management" class="tab-content space-y-3">
+            <!-- Windows \uC11C\uBE44\uC2A4 -->
+            <div class="bg-card rounded-lg border border-border p-3 space-y-2">
+              <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+                <span class="material-symbols-outlined text-primary text-base">miscellaneous_services</span><span data-i18n="mgmt.winService">Windows \uC11C\uBE44\uC2A4</span>
+              </h2>
+              <div class="space-y-2">
+                <div class="bg-secondary rounded-md p-2.5 flex items-center justify-between">
+                  <div>
+                    <span class="text-xs font-semibold">VectorAgent</span>
+                    <span id="svc-vector-state" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted ml-1.5">-</span>
+                  </div>
+                  <div class="flex gap-1">
+                    <button onclick="installService('vector')" class="text-[10px] px-2 py-1 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">\uB4F1\uB85D</button>
+                    <button onclick="uninstallService('vector')" class="text-[10px] px-2 py-1 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">\uD574\uC81C</button>
+                  </div>
+                </div>
+                <div class="bg-secondary rounded-md p-2.5 flex items-center justify-between">
+                  <div>
+                    <span class="text-xs font-semibold">AgentManager</span>
+                    <span id="svc-manager-state" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted ml-1.5">-</span>
+                  </div>
+                  <div class="flex gap-1">
+                    <button onclick="installService('manager')" class="text-[10px] px-2 py-1 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">\uB4F1\uB85D</button>
+                    <button onclick="uninstallService('manager')" class="text-[10px] px-2 py-1 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">\uD574\uC81C</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- \uC124\uCE58 / \uC5C5\uB370\uC774\uD2B8 -->
+            <div class="bg-card rounded-lg border border-border p-3 space-y-2">
+              <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+                <span class="material-symbols-outlined text-primary text-base">cloud_download</span><span data-i18n="mgmt.installUpdate">\uC124\uCE58 / \uC5C5\uB370\uC774\uD2B8</span>
+              </h2>
+              <!-- \uC124\uCE58 \uC0C1\uD0DC -->
+              <div class="bg-secondary rounded-md p-2.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold" data-i18n="mgmt.installStatus">\uC124\uCE58 \uC0C1\uD0DC</span>
+                  <span id="txt-install-status" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted" data-i18n="status.checking">\uD655\uC778 \uC911...</span>
+                </div>
+                <div class="text-[10px] text-muted-fg font-mono">
+                  <div><span data-i18n="mgmt.binary">\uBC14\uC774\uB108\uB9AC</span>: <span id="txt-bin-path">-</span></div>
+                  <div><span data-i18n="mgmt.configFile">\uC124\uC815\uD30C\uC77C</span>: <span id="txt-cfg-path">-</span></div>
+                </div>
+                <div class="flex gap-1.5">
+                  <label class="flex-1 cursor-pointer">
+                    <input type="radio" name="vector-edition" value="default" checked class="sr-only peer">
+                    <div class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md border-2 text-[10px] font-bold transition-all
+                      border-border peer-checked:border-info peer-checked:bg-info/10 peer-checked:text-info">
+                      <span>Win 10+</span>
+                      <span class="text-[9px] font-normal opacity-70">v0.45</span>
+                    </div>
+                  </label>
+                  <label class="flex-1 cursor-pointer">
+                    <input type="radio" name="vector-edition" value="win7" class="sr-only peer">
+                    <div class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md border-2 text-[10px] font-bold transition-all
+                      border-border peer-checked:border-warning peer-checked:bg-warning/10 peer-checked:text-warning">
+                      <span>Win 7</span>
+                      <span class="text-[9px] font-normal opacity-70">v0.38</span>
+                    </div>
+                  </label>
+                </div>
+                <p id="win7-notice" class="text-[10px] text-warning font-medium hidden" data-i18n="mgmt.win7Notice">Windows 7 \uC804\uC6A9 (v0.38)</p>
+                <button id="btn-install"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-white bg-info hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none w-full justify-center">
+                  <span class="material-symbols-outlined text-sm">download</span> <span data-i18n="mgmt.installVector">Vector \uC124\uCE58</span>
+                </button>
+              </div>
+              <!-- \uC5C5\uB370\uC774\uD2B8 -->
+              <div class="bg-secondary rounded-md p-2.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold" data-i18n="mgmt.vectorUpdate">\uC5C5\uB370\uC774\uD2B8</span>
+                  <button id="btn-check-update" onclick="checkUpdate()"
+                    class="text-[10px] px-2 py-1 rounded bg-secondary border border-border font-semibold hover:bg-card-hover" data-i18n="mgmt.checkVersion">\uBC84\uC804 \uD655\uC778</button>
+                </div>
+                <div class="text-[10px] text-muted-fg font-mono">
+                  <div><span data-i18n="mgmt.localVer">\uB85C\uCEEC</span>: <span id="txt-local-ver">-</span></div>
+                  <div><span data-i18n="mgmt.serverVer">\uC11C\uBC84</span>: <span id="txt-server-ver">-</span></div>
+                </div>
+                <button id="btn-update"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-white bg-warning hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none hidden w-full justify-center">
+                  <span class="material-symbols-outlined text-sm">system_update</span> <span data-i18n="mgmt.execUpdate">\uC5C5\uB370\uC774\uD2B8</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
 
-    <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 \uC124\uC815 \uD0ED \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-    <div id="tab-settings" class="tab-content space-y-6">
-
-      <!-- \uBAA8\uB4DC \uC804\uD658 -->
-      <div class="flex gap-2">
-        <button id="btn-mode-form" class="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white">
-          <span class="material-symbols-outlined text-base align-middle mr-1">edit_note</span><span data-i18n="settings.formMode">\uD3FC \uBAA8\uB4DC</span>
+    <!-- \uBAA8\uBC14\uC77C\uC6A9 \uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4 (sm \uC774\uD558\uC5D0\uC11C\uB9CC \uD45C\uC2DC) -->
+    <div class="sm:hidden mt-3 bg-card rounded-lg border border-border p-3">
+      <div class="flex flex-wrap gap-1.5">
+        <button onclick="document.getElementById('btn-start').click()"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-success">
+          <span class="material-symbols-outlined text-sm">play_arrow</span> <span data-i18n="mgmt.start">\uC2DC\uC791</span>
         </button>
-        <button id="btn-mode-toml" class="px-4 py-2 rounded-lg text-sm font-semibold bg-secondary text-fg border border-border">
-          <span class="material-symbols-outlined text-base align-middle mr-1">code</span><span data-i18n="settings.tomlMode">TOML \uD3B8\uC9D1</span>
+        <button onclick="document.getElementById('btn-stop').click()"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-error">
+          <span class="material-symbols-outlined text-sm">stop</span> <span data-i18n="mgmt.stop">\uC911\uC9C0</span>
+        </button>
+        <button onclick="document.getElementById('btn-restart').click()"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-warning">
+          <span class="material-symbols-outlined text-sm">restart_alt</span> <span data-i18n="mgmt.restart">\uC7AC\uC2DC\uC791</span>
         </button>
       </div>
-
-      <!-- \uD3FC \uBAA8\uB4DC -->
-      <section id="settings-form" class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">badge</span><span data-i18n="settings.equipInfo">\uC124\uBE44 \uC815\uBCF4</span>
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.equipId">\uC124\uBE44 ID (equipment_id)</label>
-            <input id="inp-eq-id" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="AOI-01" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.equipType">\uC124\uBE44 \uD0C0\uC785 (equipment_type)</label>
-            <input id="inp-eq-type" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="AOI" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.ipAddr">IP \uC8FC\uC18C</label>
-            <input id="inp-ip" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="192.168.1.100" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.lineCode">\uB77C\uC778 \uCF54\uB4DC (line_code)</label>
-            <input id="inp-line" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="LINE-01" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.logType">\uB85C\uADF8 \uD0C0\uC785 (log_type)</label>
-            <input id="inp-log-type" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="INSPECTION" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.logPath">\uB85C\uADF8 \uACBD\uB85C (include)</label>
-            <input id="inp-include" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="C:\\logs\\*.log" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.aggAddr">Aggregator \uC8FC\uC18C</label>
-            <input id="inp-sink-addr" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="20.10.30.112" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.aggPort">Aggregator \uD3EC\uD2B8</label>
-            <input id="inp-sink-port" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="9000" />
-          </div>
-        </div>
-        <button id="btn-save-setup"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-primary hover:bg-primary-hover transition-all duration-200 hover:-translate-y-0.5">
-          <span class="material-symbols-outlined text-lg">save</span> <span data-i18n="settings.saveSetup">\uC124\uBE44 \uC815\uBCF4 \uC800\uC7A5</span>
-        </button>
-      </section>
-
-      <!-- TOML \uD3B8\uC9D1 \uBAA8\uB4DC -->
-      <section id="settings-toml" class="bg-card rounded-xl border border-border p-5 space-y-3 hidden">
-        <div class="flex items-center justify-between flex-wrap gap-2">
-          <h2 class="flex items-center gap-2 text-lg font-semibold">
-            <span class="material-symbols-outlined text-primary">settings</span><span data-i18n="settings.tomlConfig">TOML \uC124\uC815</span>
-          </h2>
-          <span id="txt-config-path" class="text-xs text-muted-fg font-mono truncate max-w-xs"></span>
-        </div>
-        <textarea id="editor-config"
-          class="w-full h-80 p-4 rounded-lg bg-secondary border border-border font-mono text-sm leading-relaxed text-fg resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
-          spellcheck="false" data-i18n-placeholder="settings.loadingConfig"></textarea>
-        <div class="flex gap-2">
-          <button id="btn-save-config"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-primary hover:bg-primary-hover transition-all duration-200 hover:-translate-y-0.5">
-            <span class="material-symbols-outlined text-lg">save</span> <span data-i18n="common.save">\uC800\uC7A5</span>
-          </button>
-          <button id="btn-revert-config"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-fg bg-secondary border border-border hover:bg-card-hover transition-all duration-200 hover:-translate-y-0.5">
-            <span class="material-symbols-outlined text-lg">undo</span> <span data-i18n="settings.revert">\uB418\uB3CC\uB9AC\uAE30</span>
-          </button>
-        </div>
-        <p class="text-xs text-warning flex items-center gap-1">
-          <span class="material-symbols-outlined text-base">info</span>
-          <span data-i18n="settings.restartNeeded">\uC800\uC7A5 \uD6C4 Vector \uC7AC\uC2DC\uC791\uC774 \uD544\uC694\uD569\uB2C8\uB2E4 (\uAD00\uB9AC \uD0ED\uC5D0\uC11C \uC7AC\uC2DC\uC791)</span>
-        </p>
-      </section>
-    </div>
-
-    <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 \uAD00\uB9AC \uD0ED \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-    <div id="tab-management" class="tab-content space-y-6">
-
-      <!-- \uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4 -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">play_circle</span><span data-i18n="mgmt.processCtrl">\uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4</span>
-        </h2>
-        <div class="flex flex-wrap gap-3">
-          <button id="btn-start"
-            class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-success hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">play_arrow</span> <span data-i18n="mgmt.start">\uC2DC\uC791</span>
-          </button>
-          <button id="btn-stop"
-            class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-error hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">stop</span> <span data-i18n="mgmt.stop">\uC911\uC9C0</span>
-          </button>
-          <button id="btn-restart"
-            class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-warning hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">restart_alt</span> <span data-i18n="mgmt.restart">\uC7AC\uC2DC\uC791</span>
-          </button>
-          <button id="btn-test-conn"
-            class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-fg bg-secondary border border-border hover:bg-card-hover transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">lan</span> <span data-i18n="mgmt.testConn">\uC5F0\uACB0 \uD14C\uC2A4\uD2B8</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- Windows \uC11C\uBE44\uC2A4 -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">miscellaneous_services</span><span data-i18n="mgmt.winService">Windows \uC11C\uBE44\uC2A4</span>
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="bg-secondary rounded-lg p-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-semibold">VectorAgent</span>
-              <span id="svc-vector-state" class="text-xs font-mono px-2 py-0.5 rounded bg-muted">-</span>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="installService('vector')" class="text-xs px-3 py-1.5 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">\uB4F1\uB85D</button>
-              <button onclick="uninstallService('vector')" class="text-xs px-3 py-1.5 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">\uD574\uC81C</button>
-            </div>
-          </div>
-          <div class="bg-secondary rounded-lg p-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-semibold">VectorAgentManager</span>
-              <span id="svc-manager-state" class="text-xs font-mono px-2 py-0.5 rounded bg-muted">-</span>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="installService('manager')" class="text-xs px-3 py-1.5 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">\uB4F1\uB85D</button>
-              <button onclick="uninstallService('manager')" class="text-xs px-3 py-1.5 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">\uD574\uC81C</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- \uC124\uCE58 / \uC5C5\uB370\uC774\uD2B8 -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">cloud_download</span><span data-i18n="mgmt.installUpdate">\uC124\uCE58 / \uC5C5\uB370\uC774\uD2B8</span>
-        </h2>
-
-        <!-- \uC124\uCE58 \uC0C1\uD0DC -->
-        <div class="bg-secondary rounded-lg p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold" data-i18n="mgmt.installStatus">Vector \uC124\uCE58 \uC0C1\uD0DC</span>
-            <span id="txt-install-status" class="text-xs font-mono px-2 py-0.5 rounded bg-muted" data-i18n="status.checking">\uD655\uC778 \uC911...</span>
-          </div>
-          <div class="text-xs text-muted-fg font-mono">
-            <div><span data-i18n="mgmt.binary">\uBC14\uC774\uB108\uB9AC</span>: <span id="txt-bin-path">-</span></div>
-            <div><span data-i18n="mgmt.configFile">\uC124\uC815\uD30C\uC77C</span>: <span id="txt-cfg-path">-</span></div>
-          </div>
-
-          <!-- OS \uBC84\uC804 \uC120\uD0DD -->
-          <div class="flex gap-2">
-            <label class="flex-1 cursor-pointer">
-              <input type="radio" name="vector-edition" value="default" checked class="sr-only peer">
-              <div class="flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-xs font-bold transition-all
-                border-border peer-checked:border-info peer-checked:bg-info/10 peer-checked:text-info">
-                <span class="material-symbols-outlined text-base">desktop_windows</span>
-                <span>Windows 10+</span>
-                <span class="text-[10px] font-normal opacity-70">v0.45</span>
-              </div>
-            </label>
-            <label class="flex-1 cursor-pointer">
-              <input type="radio" name="vector-edition" value="win7" class="sr-only peer">
-              <div class="flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-xs font-bold transition-all
-                border-border peer-checked:border-warning peer-checked:bg-warning/10 peer-checked:text-warning">
-                <span class="material-symbols-outlined text-base">history</span>
-                <span>Windows 7</span>
-                <span class="text-[10px] font-normal opacity-70">v0.38</span>
-              </div>
-            </label>
-          </div>
-          <p id="win7-notice" class="text-[11px] text-warning font-medium hidden" data-i18n="mgmt.win7Notice">Windows 7 \uC804\uC6A9 \uBC84\uC804 (v0.38)\uC785\uB2C8\uB2E4. \uCD5C\uC2E0 \uAE30\uB2A5\uC774 \uC77C\uBD80 \uC81C\uD55C\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.</p>
-
-          <button id="btn-install"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-info hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">download</span> <span data-i18n="mgmt.installVector">Vector \uC124\uCE58</span>
-          </button>
-        </div>
-
-        <!-- \uC5C5\uB370\uC774\uD2B8 -->
-        <div class="bg-secondary rounded-lg p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold" data-i18n="mgmt.vectorUpdate">Vector \uC5C5\uB370\uC774\uD2B8</span>
-            <button id="btn-check-update" onclick="checkUpdate()"
-              class="text-xs px-3 py-1.5 rounded bg-secondary border border-border font-semibold hover:bg-card-hover" data-i18n="mgmt.checkVersion">\uBC84\uC804 \uD655\uC778</button>
-          </div>
-          <div class="text-xs text-muted-fg font-mono">
-            <div><span data-i18n="mgmt.localVer">\uB85C\uCEEC \uBC84\uC804</span>: <span id="txt-local-ver">-</span></div>
-            <div><span data-i18n="mgmt.serverVer">\uC11C\uBC84 \uBC84\uC804</span>: <span id="txt-server-ver">-</span></div>
-          </div>
-          <button id="btn-update"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-warning hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none hidden">
-            <span class="material-symbols-outlined text-lg">system_update</span> <span data-i18n="mgmt.execUpdate">\uC5C5\uB370\uC774\uD2B8 \uC2E4\uD589</span>
-          </button>
-        </div>
-      </section>
     </div>
 
   </main>
 
-  <!-- \uD478\uD130 -->
-  <footer class="text-center text-xs text-muted-fg py-6">
+  <footer class="text-center text-[10px] text-muted-fg py-3">
     <span data-i18n="footer">Vector Agent Manager &middot; \uC124\uBE44 PC \uC885\uD569 \uAD00\uB9AC</span>
   </footer>
 
@@ -48018,10 +48001,10 @@ async function main() {
     app.get("/index.html", (_req, reply) => reply.type("text/html").send(`<!DOCTYPE html>
 <!--
   @file agent-monitor/public/index.html
-  @description Vector Agent Manager - \uC124\uBE44 PC \uC885\uD569 \uAD00\uB9AC \uB300\uC2DC\uBCF4\uB4DC (\uB2E4\uAD6D\uC5B4 \uC9C0\uC6D0)
+  @description Vector Agent Manager - \uC124\uBE44 PC \uC885\uD569 \uAD00\uB9AC \uB300\uC2DC\uBCF4\uB4DC (\uB2E8\uC77C \uD398\uC774\uC9C0)
 
   \uCD08\uBCF4\uC790 \uAC00\uC774\uB4DC:
-  1. 3\uAC1C \uD0ED (\uC0C1\uD0DC/\uC124\uC815/\uAD00\uB9AC)\uC73C\uB85C \uAD6C\uC131\uB41C Agent Manager UI\uC785\uB2C8\uB2E4
+  1. \uBAA8\uB4E0 \uAE30\uB2A5\uC774 \uD55C \uD398\uC774\uC9C0\uC5D0 \uD45C\uC2DC\uB418\uB294 Agent Manager UI\uC785\uB2C8\uB2E4
   2. \uBE4C\uB4DC\uB41C Tailwind CSS + oklch CSS \uBCC0\uC218\uB85C \uB2E4\uD06C\uBAA8\uB4DC\uB97C \uC9C0\uC6D0\uD569\uB2C8\uB2E4 (\uC624\uD504\uB77C\uC778 \uD658\uACBD \uC9C0\uC6D0)
   3. data-i18n \uC18D\uC131\uC73C\uB85C \uD55C\uAD6D\uC5B4/\uC601\uC5B4/\uC2A4\uD398\uC778\uC5B4/\uBCA0\uD2B8\uB0A8\uC5B4 \uC804\uD658 \uC9C0\uC6D0
   4. app.js\uC5D0\uC11C API\uB97C \uD638\uCD9C\uD558\uC5EC DOM\uC744 \uC5C5\uB370\uC774\uD2B8\uD569\uB2C8\uB2E4
@@ -48031,14 +48014,8 @@ async function main() {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agent Manager</title>
-
-  <!-- \uB85C\uCEEC \uD3F0\uD2B8 (\uC624\uD504\uB77C\uC778 \uD658\uACBD \uC9C0\uC6D0) -->
   <link rel="stylesheet" href="fonts/fonts.css" />
-
-  <!-- Tailwind CSS (\uBE4C\uB4DC\uB41C \uC815\uC801 \uD30C\uC77C) -->
   <link rel="stylesheet" href="tailwind.css" />
-
-  <!-- oklch CSS \uBCC0\uC218 + \uCEE4\uC2A4\uD140 \uC2A4\uD0C0\uC77C -->
   <style>
     :root {
       --background: oklch(0.98 0.002 248);
@@ -48074,33 +48051,28 @@ async function main() {
     @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(-12px); } }
     .toast-enter { animation: toast-in 0.25s ease-out; }
     .toast-exit { animation: toast-out 0.3s ease-in forwards; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: var(--muted); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    .card-base { transition: box-shadow 0.2s ease, transform 0.2s ease; }
-    .card-base:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.08); transform: translateY(-2px); }
-    .dark .card-base:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
-    .tab-btn { transition: all 0.2s; }
-    .tab-btn.active { border-color: var(--primary); color: var(--primary); }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    /* tab compat: app.js\uC5D0\uC11C tab-content.active \uD1A0\uAE00\uD558\uBBC0\uB85C \uD56D\uC0C1 \uBCF4\uC774\uB3C4\uB85D */
+    .tab-content { display: block !important; }
   </style>
 </head>
 
 <body class="bg-bg text-fg min-h-screen transition-colors duration-300">
 
-  <!-- \uD1A0\uC2A4\uD2B8 \uC54C\uB9BC \uC601\uC5ED -->
+  <!-- \uD1A0\uC2A4\uD2B8 \uC54C\uB9BC -->
   <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2"></div>
 
-  <!-- \uD5E4\uB354 \uBC14 -->
+  <!-- \uD5E4\uB354 -->
   <header class="sticky top-0 z-40 bg-card border-b border-border backdrop-blur-sm">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <span class="material-symbols-outlined text-primary text-3xl">settings_suggest</span>
-        <h1 class="text-xl font-bold tracking-tight">Agent Manager</h1>
+    <div class="max-w-[1400px] mx-auto px-3 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-2xl">settings_suggest</span>
+        <h1 class="text-lg font-bold tracking-tight">Agent Manager</h1>
+        <span id="header-version" class="text-[10px] text-muted-fg font-mono ml-1"></span>
       </div>
-      <div class="flex items-center gap-3">
-        <span id="header-version" class="text-xs text-muted-fg font-mono hidden sm:inline"></span>
+      <div class="flex items-center gap-2">
         <select id="sel-lang"
           class="px-2 py-1 rounded-lg bg-secondary border border-border text-xs font-semibold text-fg cursor-pointer focus:outline-none">
           <option value="ko">\uD55C\uAD6D\uC5B4</option>
@@ -48109,348 +48081,342 @@ async function main() {
           <option value="vi">Ti\u1EBFng Vi\u1EC7t</option>
         </select>
         <button id="btn-dark-toggle"
-          class="p-2 rounded-lg bg-secondary text-fg hover:bg-card-hover transition-colors"
-          title="\uB2E4\uD06C\uBAA8\uB4DC \uC804\uD658">
-          <span class="material-symbols-outlined text-xl" id="icon-theme">light_mode</span>
+          class="p-1.5 rounded-lg bg-secondary text-fg hover:bg-card-hover transition-colors">
+          <span class="material-symbols-outlined text-lg" id="icon-theme">light_mode</span>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- \uD0ED \uB124\uBE44\uAC8C\uC774\uC158 -->
-  <nav class="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
-    <div class="flex gap-1 border-b border-border">
-      <button class="tab-btn active px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="status">
-        <span class="material-symbols-outlined text-base align-middle mr-1">monitor_heart</span><span data-i18n="tab.status">\uC0C1\uD0DC</span>
-      </button>
-      <button class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="settings">
-        <span class="material-symbols-outlined text-base align-middle mr-1">tune</span><span data-i18n="tab.settings">\uC124\uC815</span>
-      </button>
-      <button class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-muted-fg hover:text-fg" data-tab="management">
-        <span class="material-symbols-outlined text-base align-middle mr-1">build</span><span data-i18n="tab.management">\uAD00\uB9AC</span>
-      </button>
-    </div>
+  <!-- \uD0ED \uB124\uBE44\uAC8C\uC774\uC158 (\uC228\uAE40 \u2014 app.js \uD638\uD658\uC6A9) -->
+  <nav class="hidden">
+    <button class="tab-btn active" data-tab="status"></button>
+    <button class="tab-btn" data-tab="settings"></button>
+    <button class="tab-btn" data-tab="management"></button>
   </nav>
 
-  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+  <main class="max-w-[1400px] mx-auto px-3 py-3">
 
-    <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 \uC0C1\uD0DC \uD0ED \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-    <div id="tab-status" class="tab-content active space-y-6">
+    <!-- \u2550\u2550\u2550 \uC0C1\uB2E8: \uC0C1\uD0DC + \uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4 \u2550\u2550\u2550 -->
+    <div id="tab-status" class="tab-content active">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
+        <!-- \uC88C\uCE21: \uC0C1\uD0DC \uCE74\uB4DC + \uC804\uC1A1 \uD604\uD669 -->
+        <div class="space-y-3">
+          <!-- \uC0C1\uD0DC \uCE74\uB4DC 3\uAC1C + \uC81C\uC5B4 \uBC84\uD2BC \uD55C \uC904 -->
+          <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <div class="bg-card rounded-lg border border-border p-3">
+              <div class="flex items-center gap-1 text-muted-fg text-[10px] mb-1">
+                <span class="material-symbols-outlined text-sm" id="icon-status">error</span>
+                <span data-i18n="status.runState">\uC2E4\uD589 \uC0C1\uD0DC</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="dot-status" class="inline-block w-2.5 h-2.5 rounded-full bg-error"></span>
+                <span id="txt-status" class="text-base font-bold" data-i18n="status.checking">\uD655\uC778 \uC911...</span>
+              </div>
+              <div class="text-[10px] text-muted-fg mt-0.5">PID: <span id="txt-pid" class="font-mono">-</span></div>
+            </div>
+            <div class="bg-card rounded-lg border border-border p-3">
+              <div class="flex items-center gap-1 text-muted-fg text-[10px] mb-1">
+                <span class="material-symbols-outlined text-sm">schedule</span><span data-i18n="status.uptime">\uAC00\uB3D9 \uC2DC\uAC04</span>
+              </div>
+              <div id="txt-uptime" class="text-base font-bold">-</div>
+            </div>
+            <div class="bg-card rounded-lg border border-border p-3">
+              <div class="flex items-center gap-1 text-muted-fg text-[10px] mb-1">
+                <span class="material-symbols-outlined text-sm">info</span><span data-i18n="status.version">\uBC84\uC804</span>
+              </div>
+              <div id="txt-version" class="text-base font-bold font-mono">-</div>
+            </div>
+            <!-- \uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4 (4\uBC88\uC9F8 \uCE78) -->
+            <div class="bg-card rounded-lg border border-border p-3 hidden sm:flex flex-col justify-center">
+              <div class="flex flex-wrap gap-1.5">
+                <button id="btn-start"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-success hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none">
+                  <span class="material-symbols-outlined text-sm">play_arrow</span> <span data-i18n="mgmt.start">\uC2DC\uC791</span>
+                </button>
+                <button id="btn-stop"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-error hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none">
+                  <span class="material-symbols-outlined text-sm">stop</span> <span data-i18n="mgmt.stop">\uC911\uC9C0</span>
+                </button>
+                <button id="btn-restart"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-warning hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none">
+                  <span class="material-symbols-outlined text-sm">restart_alt</span> <span data-i18n="mgmt.restart">\uC7AC\uC2DC\uC791</span>
+                </button>
+                <button id="btn-test-conn"
+                  class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-fg bg-secondary border border-border hover:bg-card-hover disabled:opacity-40 disabled:pointer-events-none">
+                  <span class="material-symbols-outlined text-sm">lan</span> <span data-i18n="mgmt.testConn">\uD14C\uC2A4\uD2B8</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
-      <!-- \uC0C1\uD0DC \uCE74\uB4DC \uADF8\uB9AC\uB4DC -->
-      <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="card-base bg-card rounded-xl border border-border p-5">
-          <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
-            <span class="material-symbols-outlined text-lg" id="icon-status">error</span>
-            <span data-i18n="status.runState">\uC2E4\uD589 \uC0C1\uD0DC</span>
+          <!-- \uC804\uC1A1 \uD604\uD669 (\uCEF4\uD329\uD2B8) -->
+          <div class="bg-card rounded-lg border border-border p-3 space-y-2">
+            <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+              <span class="material-symbols-outlined text-primary text-base">swap_vert</span><span data-i18n="status.transfer">\uC804\uC1A1 \uD604\uD669</span>
+            </h2>
+            <div class="grid grid-cols-4 gap-2">
+              <div class="bg-secondary rounded-md p-2 text-center">
+                <div class="text-muted-fg text-[10px] mb-0.5">Events In</div>
+                <div id="txt-events-in" class="text-lg font-bold text-info">0</div>
+              </div>
+              <div class="bg-secondary rounded-md p-2 text-center">
+                <div class="text-muted-fg text-[10px] mb-0.5">Events Out</div>
+                <div id="txt-events-out" class="text-lg font-bold text-success">0</div>
+              </div>
+              <div class="bg-secondary rounded-md p-2 text-center">
+                <div class="text-muted-fg text-[10px] mb-0.5">Errors</div>
+                <div id="txt-errors" class="text-lg font-bold text-error">0</div>
+              </div>
+              <div class="bg-secondary rounded-md p-2 text-center">
+                <div class="text-muted-fg text-[10px] mb-0.5">Buffer</div>
+                <div id="txt-buffer-pct" class="text-lg font-bold">0%</div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-[10px] text-muted-fg mb-0.5">
+                <span data-i18n="status.bufferUsage">\uBC84\uD37C \uC0AC\uC6A9\uB7C9</span><span id="txt-buffer-detail">0 / 0 bytes</span>
+              </div>
+              <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div id="bar-buffer" class="h-full rounded-full bg-primary transition-all duration-500" style="width:0%"></div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <h3 class="text-[10px] font-semibold text-muted-fg mb-0.5">Sources</h3>
+                <div id="list-sources" class="text-xs font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">\uC5C6\uC74C</span></div>
+              </div>
+              <div>
+                <h3 class="text-[10px] font-semibold text-muted-fg mb-0.5">Sinks</h3>
+                <div id="list-sinks" class="text-xs font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">\uC5C6\uC74C</span></div>
+              </div>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <span id="dot-status" class="inline-block w-3 h-3 rounded-full bg-error"></span>
-            <span id="txt-status" class="text-xl font-bold" data-i18n="status.checking">\uD655\uC778 \uC911...</span>
-          </div>
-          <div class="text-xs text-muted-fg mt-1">PID: <span id="txt-pid" class="font-mono">-</span></div>
-        </div>
-        <div class="card-base bg-card rounded-xl border border-border p-5">
-          <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
-            <span class="material-symbols-outlined text-lg">schedule</span><span data-i18n="status.uptime">\uAC00\uB3D9 \uC2DC\uAC04</span>
-          </div>
-          <div id="txt-uptime" class="text-xl font-bold">-</div>
-        </div>
-        <div class="card-base bg-card rounded-xl border border-border p-5">
-          <div class="flex items-center gap-2 text-muted-fg text-sm mb-2">
-            <span class="material-symbols-outlined text-lg">info</span><span data-i18n="status.version">\uBC84\uC804</span>
-          </div>
-          <div id="txt-version" class="text-xl font-bold font-mono">-</div>
-        </div>
-      </section>
 
-      <!-- \uC804\uC1A1 \uD604\uD669 -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">swap_vert</span><span data-i18n="status.transfer">\uC804\uC1A1 \uD604\uD669</span>
-        </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div class="bg-secondary rounded-lg p-3 text-center">
-            <div class="flex items-center justify-center gap-1 text-muted-fg text-xs mb-1">
-              <span class="material-symbols-outlined text-base">download</span> Events In
+          <!-- \uCD5C\uADFC \uAC10\uC2DC \uD30C\uC77C -->
+          <div class="bg-card rounded-lg border border-border p-3 space-y-2">
+            <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+              <span class="material-symbols-outlined text-primary text-base">folder_open</span><span data-i18n="status.recentFiles">\uCD5C\uADFC \uAC10\uC2DC \uD30C\uC77C</span>
+            </h2>
+            <div id="watch-paths" class="text-[10px] text-muted-fg font-mono"></div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs">
+                <thead>
+                  <tr class="text-left text-[10px] text-muted-fg border-b border-border">
+                    <th class="pb-1 pr-3" data-i18n="status.fileName">\uD30C\uC77C\uBA85</th>
+                    <th class="pb-1 pr-3 hidden sm:table-cell" data-i18n="status.directory">\uB514\uB809\uD1A0\uB9AC</th>
+                    <th class="pb-1 pr-3" data-i18n="status.modifiedAt">\uC218\uC815 \uC2DC\uAC04</th>
+                    <th class="pb-1 text-right" data-i18n="status.size">\uD06C\uAE30</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-files">
+                  <tr><td colspan="4" class="py-4 text-center text-muted-fg italic text-xs" data-i18n="status.loadingFiles">\uD30C\uC77C \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uB294 \uC911...</td></tr>
+                </tbody>
+              </table>
             </div>
-            <div id="txt-events-in" class="text-2xl font-bold text-info">0</div>
-          </div>
-          <div class="bg-secondary rounded-lg p-3 text-center">
-            <div class="flex items-center justify-center gap-1 text-muted-fg text-xs mb-1">
-              <span class="material-symbols-outlined text-base">upload</span> Events Out
-            </div>
-            <div id="txt-events-out" class="text-2xl font-bold text-success">0</div>
-          </div>
-          <div class="bg-secondary rounded-lg p-3 text-center">
-            <div class="flex items-center justify-center gap-1 text-muted-fg text-xs mb-1">
-              <span class="material-symbols-outlined text-base">warning</span> Errors
-            </div>
-            <div id="txt-errors" class="text-2xl font-bold text-error">0</div>
-          </div>
-          <div class="bg-secondary rounded-lg p-3 text-center">
-            <div class="flex items-center justify-center gap-1 text-muted-fg text-xs mb-1">
-              <span class="material-symbols-outlined text-base">storage</span> Buffer
-            </div>
-            <div id="txt-buffer-pct" class="text-2xl font-bold">0%</div>
           </div>
         </div>
-        <div>
-          <div class="flex justify-between text-xs text-muted-fg mb-1">
-            <span data-i18n="status.bufferUsage">\uBC84\uD37C \uC0AC\uC6A9\uB7C9</span><span id="txt-buffer-detail">0 / 0 bytes</span>
-          </div>
-          <div class="h-2 rounded-full bg-muted overflow-hidden">
-            <div id="bar-buffer" class="h-full rounded-full bg-primary transition-all duration-500" style="width:0%"></div>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <h3 class="text-xs font-semibold text-muted-fg mb-1">Sources</h3>
-            <div id="list-sources" class="text-sm font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">\uC5C6\uC74C</span></div>
-          </div>
-          <div>
-            <h3 class="text-xs font-semibold text-muted-fg mb-1">Sinks</h3>
-            <div id="list-sinks" class="text-sm font-mono space-y-0.5"><span class="text-muted-fg italic" data-i18n="common.none">\uC5C6\uC74C</span></div>
-          </div>
-        </div>
-      </section>
 
-      <!-- \uCD5C\uADFC \uAC10\uC2DC \uD30C\uC77C -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-3">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">folder_open</span><span data-i18n="status.recentFiles">\uCD5C\uADFC \uAC10\uC2DC \uD30C\uC77C</span>
-        </h2>
-        <div id="watch-paths" class="text-xs text-muted-fg font-mono"></div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left text-xs text-muted-fg border-b border-border">
-                <th class="pb-2 pr-4" data-i18n="status.fileName">\uD30C\uC77C\uBA85</th>
-                <th class="pb-2 pr-4 hidden sm:table-cell" data-i18n="status.directory">\uB514\uB809\uD1A0\uB9AC</th>
-                <th class="pb-2 pr-4" data-i18n="status.modifiedAt">\uC218\uC815 \uC2DC\uAC04</th>
-                <th class="pb-2 text-right" data-i18n="status.size">\uD06C\uAE30</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-files">
-              <tr><td colspan="4" class="py-8 text-center text-muted-fg italic" data-i18n="status.loadingFiles">\uD30C\uC77C \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uB294 \uC911...</td></tr>
-            </tbody>
-          </table>
+        <!-- \uC6B0\uCE21 \uC0AC\uC774\uB4DC\uBC14: \uC124\uC815 + \uAD00\uB9AC -->
+        <div class="space-y-3">
+
+          <!-- \uC124\uBE44 \uC815\uBCF4 (\uC124\uC815) -->
+          <div id="tab-settings" class="tab-content space-y-3">
+            <div class="flex gap-1.5">
+              <button id="btn-mode-form" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-primary text-white">
+                <span class="material-symbols-outlined text-xs align-middle mr-0.5">edit_note</span><span data-i18n="settings.formMode">\uD3FC \uBAA8\uB4DC</span>
+              </button>
+              <button id="btn-mode-toml" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-secondary text-fg border border-border">
+                <span class="material-symbols-outlined text-xs align-middle mr-0.5">code</span><span data-i18n="settings.tomlMode">TOML</span>
+              </button>
+            </div>
+
+            <!-- \uD3FC \uBAA8\uB4DC -->
+            <section id="settings-form" class="bg-card rounded-lg border border-border p-3 space-y-2">
+              <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+                <span class="material-symbols-outlined text-primary text-base">badge</span><span data-i18n="settings.equipInfo">\uC124\uBE44 \uC815\uBCF4</span>
+              </h2>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.equipId">\uC124\uBE44 ID</label>
+                  <input id="inp-eq-id" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="AOI-01" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.equipType">\uC124\uBE44 \uD0C0\uC785</label>
+                  <input id="inp-eq-type" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="AOI" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.ipAddr">IP \uC8FC\uC18C</label>
+                  <input id="inp-ip" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="192.168.1.100" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.lineCode">\uB77C\uC778 \uCF54\uB4DC</label>
+                  <input id="inp-line" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="LINE-01" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.logType">\uB85C\uADF8 \uD0C0\uC785</label>
+                  <input id="inp-log-type" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="INSPECTION" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.logPath">\uB85C\uADF8 \uACBD\uB85C</label>
+                  <input id="inp-include" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="C:\\logs\\*.log" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.aggAddr">Aggregator IP</label>
+                  <input id="inp-sink-addr" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="20.10.30.112" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-muted-fg mb-0.5" data-i18n="settings.aggPort">\uD3EC\uD2B8</label>
+                  <input id="inp-sink-port" type="text" class="w-full px-2 py-1.5 rounded-md bg-secondary border border-border text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary/40" placeholder="9000" />
+                </div>
+              </div>
+              <button id="btn-save-setup"
+                class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-white bg-primary hover:bg-primary-hover transition-all">
+                <span class="material-symbols-outlined text-sm">save</span> <span data-i18n="settings.saveSetup">\uC800\uC7A5</span>
+              </button>
+            </section>
+
+            <!-- TOML \uD3B8\uC9D1 -->
+            <section id="settings-toml" class="bg-card rounded-lg border border-border p-3 space-y-2 hidden">
+              <div class="flex items-center justify-between gap-2">
+                <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+                  <span class="material-symbols-outlined text-primary text-base">settings</span><span data-i18n="settings.tomlConfig">TOML</span>
+                </h2>
+                <span id="txt-config-path" class="text-[10px] text-muted-fg font-mono truncate max-w-[180px]"></span>
+              </div>
+              <textarea id="editor-config"
+                class="w-full h-52 p-2 rounded-md bg-secondary border border-border font-mono text-[11px] leading-relaxed text-fg resize-y focus:outline-none focus:ring-1 focus:ring-primary/40"
+                spellcheck="false" data-i18n-placeholder="settings.loadingConfig"></textarea>
+              <div class="flex gap-1.5">
+                <button id="btn-save-config"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-white bg-primary hover:bg-primary-hover">
+                  <span class="material-symbols-outlined text-sm">save</span> <span data-i18n="common.save">\uC800\uC7A5</span>
+                </button>
+                <button id="btn-revert-config"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-fg bg-secondary border border-border hover:bg-card-hover">
+                  <span class="material-symbols-outlined text-sm">undo</span> <span data-i18n="settings.revert">\uB418\uB3CC\uB9AC\uAE30</span>
+                </button>
+              </div>
+              <p class="text-[10px] text-warning flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">info</span>
+                <span data-i18n="settings.restartNeeded">\uC800\uC7A5 \uD6C4 Vector \uC7AC\uC2DC\uC791 \uD544\uC694</span>
+              </p>
+            </section>
+          </div>
+
+          <!-- \uAD00\uB9AC \uC139\uC158 -->
+          <div id="tab-management" class="tab-content space-y-3">
+            <!-- Windows \uC11C\uBE44\uC2A4 -->
+            <div class="bg-card rounded-lg border border-border p-3 space-y-2">
+              <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+                <span class="material-symbols-outlined text-primary text-base">miscellaneous_services</span><span data-i18n="mgmt.winService">Windows \uC11C\uBE44\uC2A4</span>
+              </h2>
+              <div class="space-y-2">
+                <div class="bg-secondary rounded-md p-2.5 flex items-center justify-between">
+                  <div>
+                    <span class="text-xs font-semibold">VectorAgent</span>
+                    <span id="svc-vector-state" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted ml-1.5">-</span>
+                  </div>
+                  <div class="flex gap-1">
+                    <button onclick="installService('vector')" class="text-[10px] px-2 py-1 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">\uB4F1\uB85D</button>
+                    <button onclick="uninstallService('vector')" class="text-[10px] px-2 py-1 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">\uD574\uC81C</button>
+                  </div>
+                </div>
+                <div class="bg-secondary rounded-md p-2.5 flex items-center justify-between">
+                  <div>
+                    <span class="text-xs font-semibold">AgentManager</span>
+                    <span id="svc-manager-state" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted ml-1.5">-</span>
+                  </div>
+                  <div class="flex gap-1">
+                    <button onclick="installService('manager')" class="text-[10px] px-2 py-1 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">\uB4F1\uB85D</button>
+                    <button onclick="uninstallService('manager')" class="text-[10px] px-2 py-1 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">\uD574\uC81C</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- \uC124\uCE58 / \uC5C5\uB370\uC774\uD2B8 -->
+            <div class="bg-card rounded-lg border border-border p-3 space-y-2">
+              <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+                <span class="material-symbols-outlined text-primary text-base">cloud_download</span><span data-i18n="mgmt.installUpdate">\uC124\uCE58 / \uC5C5\uB370\uC774\uD2B8</span>
+              </h2>
+              <!-- \uC124\uCE58 \uC0C1\uD0DC -->
+              <div class="bg-secondary rounded-md p-2.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold" data-i18n="mgmt.installStatus">\uC124\uCE58 \uC0C1\uD0DC</span>
+                  <span id="txt-install-status" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted" data-i18n="status.checking">\uD655\uC778 \uC911...</span>
+                </div>
+                <div class="text-[10px] text-muted-fg font-mono">
+                  <div><span data-i18n="mgmt.binary">\uBC14\uC774\uB108\uB9AC</span>: <span id="txt-bin-path">-</span></div>
+                  <div><span data-i18n="mgmt.configFile">\uC124\uC815\uD30C\uC77C</span>: <span id="txt-cfg-path">-</span></div>
+                </div>
+                <div class="flex gap-1.5">
+                  <label class="flex-1 cursor-pointer">
+                    <input type="radio" name="vector-edition" value="default" checked class="sr-only peer">
+                    <div class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md border-2 text-[10px] font-bold transition-all
+                      border-border peer-checked:border-info peer-checked:bg-info/10 peer-checked:text-info">
+                      <span>Win 10+</span>
+                      <span class="text-[9px] font-normal opacity-70">v0.45</span>
+                    </div>
+                  </label>
+                  <label class="flex-1 cursor-pointer">
+                    <input type="radio" name="vector-edition" value="win7" class="sr-only peer">
+                    <div class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md border-2 text-[10px] font-bold transition-all
+                      border-border peer-checked:border-warning peer-checked:bg-warning/10 peer-checked:text-warning">
+                      <span>Win 7</span>
+                      <span class="text-[9px] font-normal opacity-70">v0.38</span>
+                    </div>
+                  </label>
+                </div>
+                <p id="win7-notice" class="text-[10px] text-warning font-medium hidden" data-i18n="mgmt.win7Notice">Windows 7 \uC804\uC6A9 (v0.38)</p>
+                <button id="btn-install"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-white bg-info hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none w-full justify-center">
+                  <span class="material-symbols-outlined text-sm">download</span> <span data-i18n="mgmt.installVector">Vector \uC124\uCE58</span>
+                </button>
+              </div>
+              <!-- \uC5C5\uB370\uC774\uD2B8 -->
+              <div class="bg-secondary rounded-md p-2.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold" data-i18n="mgmt.vectorUpdate">\uC5C5\uB370\uC774\uD2B8</span>
+                  <button id="btn-check-update" onclick="checkUpdate()"
+                    class="text-[10px] px-2 py-1 rounded bg-secondary border border-border font-semibold hover:bg-card-hover" data-i18n="mgmt.checkVersion">\uBC84\uC804 \uD655\uC778</button>
+                </div>
+                <div class="text-[10px] text-muted-fg font-mono">
+                  <div><span data-i18n="mgmt.localVer">\uB85C\uCEEC</span>: <span id="txt-local-ver">-</span></div>
+                  <div><span data-i18n="mgmt.serverVer">\uC11C\uBC84</span>: <span id="txt-server-ver">-</span></div>
+                </div>
+                <button id="btn-update"
+                  class="flex items-center gap-1 px-3 py-1.5 rounded-md font-bold text-xs text-white bg-warning hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none hidden w-full justify-center">
+                  <span class="material-symbols-outlined text-sm">system_update</span> <span data-i18n="mgmt.execUpdate">\uC5C5\uB370\uC774\uD2B8</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
 
-    <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 \uC124\uC815 \uD0ED \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-    <div id="tab-settings" class="tab-content space-y-6">
-
-      <!-- \uBAA8\uB4DC \uC804\uD658 -->
-      <div class="flex gap-2">
-        <button id="btn-mode-form" class="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white">
-          <span class="material-symbols-outlined text-base align-middle mr-1">edit_note</span><span data-i18n="settings.formMode">\uD3FC \uBAA8\uB4DC</span>
+    <!-- \uBAA8\uBC14\uC77C\uC6A9 \uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4 (sm \uC774\uD558\uC5D0\uC11C\uB9CC \uD45C\uC2DC) -->
+    <div class="sm:hidden mt-3 bg-card rounded-lg border border-border p-3">
+      <div class="flex flex-wrap gap-1.5">
+        <button onclick="document.getElementById('btn-start').click()"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-success">
+          <span class="material-symbols-outlined text-sm">play_arrow</span> <span data-i18n="mgmt.start">\uC2DC\uC791</span>
         </button>
-        <button id="btn-mode-toml" class="px-4 py-2 rounded-lg text-sm font-semibold bg-secondary text-fg border border-border">
-          <span class="material-symbols-outlined text-base align-middle mr-1">code</span><span data-i18n="settings.tomlMode">TOML \uD3B8\uC9D1</span>
+        <button onclick="document.getElementById('btn-stop').click()"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-error">
+          <span class="material-symbols-outlined text-sm">stop</span> <span data-i18n="mgmt.stop">\uC911\uC9C0</span>
+        </button>
+        <button onclick="document.getElementById('btn-restart').click()"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-md font-bold text-xs text-white bg-warning">
+          <span class="material-symbols-outlined text-sm">restart_alt</span> <span data-i18n="mgmt.restart">\uC7AC\uC2DC\uC791</span>
         </button>
       </div>
-
-      <!-- \uD3FC \uBAA8\uB4DC -->
-      <section id="settings-form" class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">badge</span><span data-i18n="settings.equipInfo">\uC124\uBE44 \uC815\uBCF4</span>
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.equipId">\uC124\uBE44 ID (equipment_id)</label>
-            <input id="inp-eq-id" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="AOI-01" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.equipType">\uC124\uBE44 \uD0C0\uC785 (equipment_type)</label>
-            <input id="inp-eq-type" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="AOI" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.ipAddr">IP \uC8FC\uC18C</label>
-            <input id="inp-ip" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="192.168.1.100" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.lineCode">\uB77C\uC778 \uCF54\uB4DC (line_code)</label>
-            <input id="inp-line" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="LINE-01" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.logType">\uB85C\uADF8 \uD0C0\uC785 (log_type)</label>
-            <input id="inp-log-type" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="INSPECTION" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.logPath">\uB85C\uADF8 \uACBD\uB85C (include)</label>
-            <input id="inp-include" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="C:\\logs\\*.log" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.aggAddr">Aggregator \uC8FC\uC18C</label>
-            <input id="inp-sink-addr" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="20.10.30.112" />
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-muted-fg mb-1" data-i18n="settings.aggPort">Aggregator \uD3EC\uD2B8</label>
-            <input id="inp-sink-port" type="text" class="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40" placeholder="9000" />
-          </div>
-        </div>
-        <button id="btn-save-setup"
-          class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-primary hover:bg-primary-hover transition-all duration-200 hover:-translate-y-0.5">
-          <span class="material-symbols-outlined text-lg">save</span> <span data-i18n="settings.saveSetup">\uC124\uBE44 \uC815\uBCF4 \uC800\uC7A5</span>
-        </button>
-      </section>
-
-      <!-- TOML \uD3B8\uC9D1 \uBAA8\uB4DC -->
-      <section id="settings-toml" class="bg-card rounded-xl border border-border p-5 space-y-3 hidden">
-        <div class="flex items-center justify-between flex-wrap gap-2">
-          <h2 class="flex items-center gap-2 text-lg font-semibold">
-            <span class="material-symbols-outlined text-primary">settings</span><span data-i18n="settings.tomlConfig">TOML \uC124\uC815</span>
-          </h2>
-          <span id="txt-config-path" class="text-xs text-muted-fg font-mono truncate max-w-xs"></span>
-        </div>
-        <textarea id="editor-config"
-          class="w-full h-80 p-4 rounded-lg bg-secondary border border-border font-mono text-sm leading-relaxed text-fg resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
-          spellcheck="false" data-i18n-placeholder="settings.loadingConfig"></textarea>
-        <div class="flex gap-2">
-          <button id="btn-save-config"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-primary hover:bg-primary-hover transition-all duration-200 hover:-translate-y-0.5">
-            <span class="material-symbols-outlined text-lg">save</span> <span data-i18n="common.save">\uC800\uC7A5</span>
-          </button>
-          <button id="btn-revert-config"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-fg bg-secondary border border-border hover:bg-card-hover transition-all duration-200 hover:-translate-y-0.5">
-            <span class="material-symbols-outlined text-lg">undo</span> <span data-i18n="settings.revert">\uB418\uB3CC\uB9AC\uAE30</span>
-          </button>
-        </div>
-        <p class="text-xs text-warning flex items-center gap-1">
-          <span class="material-symbols-outlined text-base">info</span>
-          <span data-i18n="settings.restartNeeded">\uC800\uC7A5 \uD6C4 Vector \uC7AC\uC2DC\uC791\uC774 \uD544\uC694\uD569\uB2C8\uB2E4 (\uAD00\uB9AC \uD0ED\uC5D0\uC11C \uC7AC\uC2DC\uC791)</span>
-        </p>
-      </section>
-    </div>
-
-    <!-- \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 \uAD00\uB9AC \uD0ED \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 -->
-    <div id="tab-management" class="tab-content space-y-6">
-
-      <!-- \uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4 -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">play_circle</span><span data-i18n="mgmt.processCtrl">\uD504\uB85C\uC138\uC2A4 \uC81C\uC5B4</span>
-        </h2>
-        <div class="flex flex-wrap gap-3">
-          <button id="btn-start"
-            class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-success hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">play_arrow</span> <span data-i18n="mgmt.start">\uC2DC\uC791</span>
-          </button>
-          <button id="btn-stop"
-            class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-error hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">stop</span> <span data-i18n="mgmt.stop">\uC911\uC9C0</span>
-          </button>
-          <button id="btn-restart"
-            class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-white bg-warning hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">restart_alt</span> <span data-i18n="mgmt.restart">\uC7AC\uC2DC\uC791</span>
-          </button>
-          <button id="btn-test-conn"
-            class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg font-bold text-fg bg-secondary border border-border hover:bg-card-hover transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">lan</span> <span data-i18n="mgmt.testConn">\uC5F0\uACB0 \uD14C\uC2A4\uD2B8</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- Windows \uC11C\uBE44\uC2A4 -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">miscellaneous_services</span><span data-i18n="mgmt.winService">Windows \uC11C\uBE44\uC2A4</span>
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="bg-secondary rounded-lg p-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-semibold">VectorAgent</span>
-              <span id="svc-vector-state" class="text-xs font-mono px-2 py-0.5 rounded bg-muted">-</span>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="installService('vector')" class="text-xs px-3 py-1.5 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">\uB4F1\uB85D</button>
-              <button onclick="uninstallService('vector')" class="text-xs px-3 py-1.5 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">\uD574\uC81C</button>
-            </div>
-          </div>
-          <div class="bg-secondary rounded-lg p-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-sm font-semibold">VectorAgentManager</span>
-              <span id="svc-manager-state" class="text-xs font-mono px-2 py-0.5 rounded bg-muted">-</span>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="installService('manager')" class="text-xs px-3 py-1.5 rounded bg-primary text-white font-semibold hover:bg-primary-hover" data-i18n="mgmt.register">\uB4F1\uB85D</button>
-              <button onclick="uninstallService('manager')" class="text-xs px-3 py-1.5 rounded bg-error text-white font-semibold hover:brightness-110" data-i18n="mgmt.unregister">\uD574\uC81C</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- \uC124\uCE58 / \uC5C5\uB370\uC774\uD2B8 -->
-      <section class="bg-card rounded-xl border border-border p-5 space-y-4">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
-          <span class="material-symbols-outlined text-primary">cloud_download</span><span data-i18n="mgmt.installUpdate">\uC124\uCE58 / \uC5C5\uB370\uC774\uD2B8</span>
-        </h2>
-
-        <!-- \uC124\uCE58 \uC0C1\uD0DC -->
-        <div class="bg-secondary rounded-lg p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold" data-i18n="mgmt.installStatus">Vector \uC124\uCE58 \uC0C1\uD0DC</span>
-            <span id="txt-install-status" class="text-xs font-mono px-2 py-0.5 rounded bg-muted" data-i18n="status.checking">\uD655\uC778 \uC911...</span>
-          </div>
-          <div class="text-xs text-muted-fg font-mono">
-            <div><span data-i18n="mgmt.binary">\uBC14\uC774\uB108\uB9AC</span>: <span id="txt-bin-path">-</span></div>
-            <div><span data-i18n="mgmt.configFile">\uC124\uC815\uD30C\uC77C</span>: <span id="txt-cfg-path">-</span></div>
-          </div>
-
-          <!-- OS \uBC84\uC804 \uC120\uD0DD -->
-          <div class="flex gap-2">
-            <label class="flex-1 cursor-pointer">
-              <input type="radio" name="vector-edition" value="default" checked class="sr-only peer">
-              <div class="flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-xs font-bold transition-all
-                border-border peer-checked:border-info peer-checked:bg-info/10 peer-checked:text-info">
-                <span class="material-symbols-outlined text-base">desktop_windows</span>
-                <span>Windows 10+</span>
-                <span class="text-[10px] font-normal opacity-70">v0.45</span>
-              </div>
-            </label>
-            <label class="flex-1 cursor-pointer">
-              <input type="radio" name="vector-edition" value="win7" class="sr-only peer">
-              <div class="flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg border-2 text-xs font-bold transition-all
-                border-border peer-checked:border-warning peer-checked:bg-warning/10 peer-checked:text-warning">
-                <span class="material-symbols-outlined text-base">history</span>
-                <span>Windows 7</span>
-                <span class="text-[10px] font-normal opacity-70">v0.38</span>
-              </div>
-            </label>
-          </div>
-          <p id="win7-notice" class="text-[11px] text-warning font-medium hidden" data-i18n="mgmt.win7Notice">Windows 7 \uC804\uC6A9 \uBC84\uC804 (v0.38)\uC785\uB2C8\uB2E4. \uCD5C\uC2E0 \uAE30\uB2A5\uC774 \uC77C\uBD80 \uC81C\uD55C\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.</p>
-
-          <button id="btn-install"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-info hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none">
-            <span class="material-symbols-outlined text-lg">download</span> <span data-i18n="mgmt.installVector">Vector \uC124\uCE58</span>
-          </button>
-        </div>
-
-        <!-- \uC5C5\uB370\uC774\uD2B8 -->
-        <div class="bg-secondary rounded-lg p-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold" data-i18n="mgmt.vectorUpdate">Vector \uC5C5\uB370\uC774\uD2B8</span>
-            <button id="btn-check-update" onclick="checkUpdate()"
-              class="text-xs px-3 py-1.5 rounded bg-secondary border border-border font-semibold hover:bg-card-hover" data-i18n="mgmt.checkVersion">\uBC84\uC804 \uD655\uC778</button>
-          </div>
-          <div class="text-xs text-muted-fg font-mono">
-            <div><span data-i18n="mgmt.localVer">\uB85C\uCEEC \uBC84\uC804</span>: <span id="txt-local-ver">-</span></div>
-            <div><span data-i18n="mgmt.serverVer">\uC11C\uBC84 \uBC84\uC804</span>: <span id="txt-server-ver">-</span></div>
-          </div>
-          <button id="btn-update"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-lg font-bold text-white bg-warning hover:brightness-110 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none hidden">
-            <span class="material-symbols-outlined text-lg">system_update</span> <span data-i18n="mgmt.execUpdate">\uC5C5\uB370\uC774\uD2B8 \uC2E4\uD589</span>
-          </button>
-        </div>
-      </section>
     </div>
 
   </main>
 
-  <!-- \uD478\uD130 -->
-  <footer class="text-center text-xs text-muted-fg py-6">
+  <footer class="text-center text-[10px] text-muted-fg py-3">
     <span data-i18n="footer">Vector Agent Manager &middot; \uC124\uBE44 PC \uC885\uD569 \uAD00\uB9AC</span>
   </footer>
 
