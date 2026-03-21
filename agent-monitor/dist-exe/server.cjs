@@ -88,13 +88,13 @@ var require_reusify = __commonJS({
         current.next = null;
         return current;
       }
-      function release3(obj) {
+      function release4(obj) {
         tail.next = obj;
         tail = obj;
       }
       return {
         get,
-        release: release3
+        release: release4
       };
     }
     module2.exports = reusify;
@@ -137,7 +137,7 @@ var require_queue = __commonJS({
           if (self.paused) return;
           for (; queueHead && _running < _concurrency; ) {
             _running++;
-            release3();
+            release4();
           }
         },
         running,
@@ -182,12 +182,12 @@ var require_queue = __commonJS({
         self.paused = false;
         if (queueHead === null) {
           _running++;
-          release3();
+          release4();
           return;
         }
         for (; queueHead && _running < _concurrency; ) {
           _running++;
-          release3();
+          release4();
         }
       }
       function idle() {
@@ -196,7 +196,7 @@ var require_queue = __commonJS({
       function push(value, done) {
         var current = cache.get();
         current.context = context;
-        current.release = release3;
+        current.release = release4;
         current.value = value;
         current.callback = done || noop;
         current.errorHandler = errorHandler;
@@ -217,7 +217,7 @@ var require_queue = __commonJS({
       function unshift(value, done) {
         var current = cache.get();
         current.context = context;
-        current.release = release3;
+        current.release = release4;
         current.value = value;
         current.callback = done || noop;
         current.errorHandler = errorHandler;
@@ -235,7 +235,7 @@ var require_queue = __commonJS({
           worker.call(context, current.value, current.worked);
         }
       }
-      function release3(holder) {
+      function release4(holder) {
         if (holder) {
           cache.release(holder);
         }
@@ -5224,36 +5224,36 @@ var require_sonic_boom = __commonJS({
       actualClose(this);
     };
     function actualWrite() {
-      const release3 = this.release;
+      const release4 = this.release;
       this._writing = true;
       this._writingBuf = this._writingBuf.length ? this._writingBuf : this._bufs.shift() || "";
       if (this.sync) {
         try {
           const written = Buffer.isBuffer(this._writingBuf) ? fs.writeSync(this.fd, this._writingBuf) : fs.writeSync(this.fd, this._writingBuf, "utf8");
-          release3(null, written);
+          release4(null, written);
         } catch (err) {
-          release3(err);
+          release4(err);
         }
       } else {
-        fs.write(this.fd, this._writingBuf, release3);
+        fs.write(this.fd, this._writingBuf, release4);
       }
     }
     function actualWriteBuffer() {
-      const release3 = this.release;
+      const release4 = this.release;
       this._writing = true;
       this._writingBuf = this._writingBuf.length ? this._writingBuf : mergeBuf(this._bufs.shift(), this._lens.shift());
       if (this.sync) {
         try {
           const written = fs.writeSync(this.fd, this._writingBuf);
-          release3(null, written);
+          release4(null, written);
         } catch (err) {
-          release3(err);
+          release4(err);
         }
       } else {
         if (kCopyBuffer) {
           this._writingBuf = Buffer.from(this._writingBuf);
         }
-        fs.write(this.fd, this._writingBuf, release3);
+        fs.write(this.fd, this._writingBuf, release4);
       }
     }
     function actualClose(sonic) {
@@ -24601,8 +24601,8 @@ var require_semver = __commonJS({
       }
       // preminor will bump the version up to the next minor release, and immediately
       // down to pre-release. premajor and prepatch work the same way.
-      inc(release3, identifier, identifierBase) {
-        if (release3.startsWith("pre")) {
+      inc(release4, identifier, identifierBase) {
+        if (release4.startsWith("pre")) {
           if (!identifier && identifierBase === false) {
             throw new Error("invalid increment argument: identifier is empty");
           }
@@ -24613,7 +24613,7 @@ var require_semver = __commonJS({
             }
           }
         }
-        switch (release3) {
+        switch (release4) {
           case "premajor":
             this.prerelease.length = 0;
             this.patch = 0;
@@ -24704,7 +24704,7 @@ var require_semver = __commonJS({
             break;
           }
           default:
-            throw new Error(`invalid increment argument: ${release3}`);
+            throw new Error(`invalid increment argument: ${release4}`);
         }
         this.raw = this.format();
         if (this.build.length) {
@@ -24770,7 +24770,7 @@ var require_inc = __commonJS({
   "node_modules/semver/functions/inc.js"(exports2, module2) {
     "use strict";
     var SemVer = require_semver();
-    var inc = (version, release3, options, identifier, identifierBase) => {
+    var inc = (version, release4, options, identifier, identifierBase) => {
       if (typeof options === "string") {
         identifierBase = identifier;
         identifier = options;
@@ -24780,7 +24780,7 @@ var require_inc = __commonJS({
         return new SemVer(
           version instanceof SemVer ? version.version : version,
           options
-        ).inc(release3, identifier, identifierBase).version;
+        ).inc(release4, identifier, identifierBase).version;
       } catch (er) {
         return null;
       }
@@ -46750,6 +46750,7 @@ var import_path4 = require("path");
 var import_url = require("url");
 var import_fs7 = require("fs");
 var import_os4 = require("os");
+var import_adm_zip3 = __toESM(require_adm_zip(), 1);
 
 // src/routes/status.ts
 var import_child_process = require("child_process");
@@ -48374,8 +48375,7 @@ async function main() {
       const tomlContent = await res.text();
       const installDir = (0, import_path4.dirname)(ENV.VECTOR_BIN_PATH);
       if (!(0, import_fs7.existsSync)(installDir)) (0, import_fs7.mkdirSync)(installDir, { recursive: true });
-      const { writeFileSync: writeFileSync3 } = await import("fs");
-      writeFileSync3((0, import_path4.join)(installDir, `${name}.toml`), tomlContent, "utf-8");
+      (0, import_fs7.writeFileSync)((0, import_path4.join)(installDir, `${name}.toml`), tomlContent, "utf-8");
       return reply.send({ success: true, message: `${name}.toml saved to ${installDir}` });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
@@ -48393,9 +48393,8 @@ async function main() {
   if (!(0, import_fs7.existsSync)(ENV.VECTOR_BIN_PATH)) {
     console.log("  [Auto-Install] Vector binary not found. Downloading...");
     try {
-      const { release: release3 } = await import("os");
       const isX863 = process.arch === "ia32";
-      const isWin73 = parseInt(release3().split(".")[0], 10) < 10;
+      const isWin73 = parseInt((0, import_os4.release)().split(".")[0], 10) < 10;
       const edition = isX863 ? "x86" : isWin73 ? "win7" : "";
       const param = edition ? `?edition=${edition}` : "";
       const res = await fetch(`${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${param}`);
@@ -48409,12 +48408,11 @@ async function main() {
           ws.on("finish", resolve);
           ws.on("error", reject);
         });
-        const AdmZip3 = (await Promise.resolve().then(() => __toESM(require_adm_zip(), 1))).default;
-        const zip = new AdmZip3(tmpZip);
+        const zip = new import_adm_zip3.default(tmpZip);
         for (const entry of zip.getEntries()) {
-          const name = entry.entryName.replace(/\\/g, "/");
+          const eName = entry.entryName.replace(/\\/g, "/");
           if (entry.isDirectory) continue;
-          if (name === "bin/vector.exe" || !name.includes("/") && name.endsWith(".bat")) {
+          if (eName === "bin/vector.exe" || !eName.includes("/") && eName.endsWith(".bat")) {
             zip.extractEntryTo(entry, installDir, false, true);
           }
         }

@@ -16,8 +16,9 @@ import fastifyCors from '@fastify/cors';
 import { config } from 'dotenv';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readdirSync, existsSync, mkdirSync, createWriteStream, unlinkSync } from 'fs';
-import { tmpdir } from 'os';
+import { readdirSync, existsSync, mkdirSync, createWriteStream, unlinkSync, writeFileSync } from 'fs';
+import { tmpdir, release } from 'os';
+import AdmZip from 'adm-zip';
 import statusRoutes from './routes/status.js';
 import configRoutes from './routes/config.js';
 import controlRoutes from './routes/control.js';
@@ -133,7 +134,6 @@ async function main() {
       const tomlContent = await res.text();
       const installDir = dirname(ENV.VECTOR_BIN_PATH);
       if (!existsSync(installDir)) mkdirSync(installDir, { recursive: true });
-      const { writeFileSync } = await import('fs');
       writeFileSync(join(installDir, `${name}.toml`), tomlContent, 'utf-8');
       return reply.send({ success: true, message: `${name}.toml saved to ${installDir}` });
     } catch (err) {
@@ -152,7 +152,6 @@ async function main() {
   if (!existsSync(ENV.VECTOR_BIN_PATH)) {
     console.log('  [Auto-Install] Vector binary not found. Downloading...');
     try {
-      const { release } = await import('os');
       const isX86 = process.arch === 'ia32';
       const isWin7 = parseInt(release().split('.')[0], 10) < 10;
       const edition = isX86 ? 'x86' : isWin7 ? 'win7' : '';
@@ -168,12 +167,11 @@ async function main() {
           ws.on('finish', resolve);
           ws.on('error', reject);
         });
-        const AdmZip = (await import('adm-zip')).default;
         const zip = new AdmZip(tmpZip);
         for (const entry of zip.getEntries()) {
-          const name = entry.entryName.replace(/\\/g, '/');
+          const eName = entry.entryName.replace(/\\/g, '/');
           if (entry.isDirectory) continue;
-          if (name === 'bin/vector.exe' || (!name.includes('/') && name.endsWith('.bat'))) {
+          if (eName === 'bin/vector.exe' || (!eName.includes('/') && eName.endsWith('.bat'))) {
             zip.extractEntryTo(entry, installDir, false, true);
           }
         }
