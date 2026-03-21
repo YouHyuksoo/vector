@@ -198,7 +198,7 @@ export default function DownloadPage() {
                       <span className="font-mono text-sm font-bold text-text dark:text-white">{name}</span>
                       <span className="text-xs text-muted-foreground">.toml</span>
                     </div>
-                    <a href={`/api/monitor/download/agent/${name}${!is64 ? '?edition=x86' : ''}`}
+                    <a href={`/api/monitor/download/agent/${name}`}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold
                         bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                       <Icon name="file_download" size="xs" />

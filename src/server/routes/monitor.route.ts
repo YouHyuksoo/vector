@@ -27,47 +27,7 @@ import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AG
  * Win7(Vector 0.38) 호환 TOML 변환
  * static_metrics (0.41+) → internal_metrics + remap transform 으로 교체
  */
-function convertTomlForWin7(toml: string): string {
-  // static_metrics 하트비트 섹션에서 태그 추출
-  const tagsMatch = toml.match(
-    /\[sources\.heartbeat\.metrics\.tags\]\s*\n([\s\S]*?)(?=\n\[|\n#\s*──|\s*$)/,
-  );
-  if (!tagsMatch) return toml;
-
-  // 태그 키=값 파싱
-  const tagLines = tagsMatch[1]
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l && !l.startsWith('#'));
-
-  // remap source 코드 생성 (태그 주입)
-  const tagAssignments = tagLines
-    .map(l => {
-      const [key, ...rest] = l.split('=');
-      return `.tags.${key.trim()} = ${rest.join('=').trim()}`;
-    })
-    .join('\n');
-
-  // static_metrics 전체 블록 제거 (heartbeat 소스 + metrics + tags)
-  const cleaned = toml
-    .replace(
-      /# ── \[하트비트\][\s\S]*?\[sources\.heartbeat\][\s\S]*?\[sources\.heartbeat\.metrics\.tags\]\s*\n[\s\S]*?(?=\n# ──|\n\[(?!sources\.heartbeat))/,
-      `# ── [하트비트] 주기적 상태 전송 (30초 간격) — Win7 호환 (internal_metrics) ──\n` +
-      `# Vector 0.38에서는 static_metrics를 지원하지 않으므로 internal_metrics를 사용합니다.\n\n` +
-      `[sources.heartbeat_src]\n` +
-      `type = "internal_metrics"\n` +
-      `scrape_interval_secs = 30\n\n` +
-      `[transforms.heartbeat]\n` +
-      `type = "remap"\n` +
-      `inputs = ["heartbeat_src"]\n` +
-      `source = '''\n` +
-      `${tagAssignments}\n` +
-      `.namespace = "agent"\n` +
-      `'''\n\n`,
-    );
-
-  return cleaned;
-}
+// convertTomlForWin7 — 제거됨: generator 타입으로 통일하여 변환 불필요
 import {
   readRegistry, setTableColumns, getRegisteredTableNames,
   setProcedure, getProcedure, deleteTarget, getRegisteredProcedureKeys,
@@ -379,9 +339,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
     try {
       let content = readFileSync(filePath, 'utf-8');
-      if (edition === 'win7' || edition === 'x86' || edition === 'legacy') {
-        content = convertTomlForWin7(content);
-      }
+      // TOML은 v0.38~v0.45 전 버전 호환 (generator 하트비트) — 변환 불필요
       return reply
         .header('Content-Type', 'application/octet-stream')
         .header('Content-Disposition', `attachment; filename="${name}.toml"`)
@@ -2478,24 +2436,23 @@ fingerprint.lines = 1
 ignore_older_secs = 86400
 
 # ── [하트비트] 주기적 상태 전송 (30초 간격) ──
-[sources.heartbeat]
-type = "static_metrics"
-interval_secs = 30
-namespace = "agent"
+# generator 타입은 v0.38~v0.45 전 버전 호환
+[sources.heartbeat_gen]
+type = "generator"
+format = "shuffle"
+interval = 30
+lines = ["heartbeat"]
 
-[[sources.heartbeat.metrics]]
-name = "heartbeat"
-kind = "absolute"
-
-[sources.heartbeat.metrics.value.gauge]
-value = 1
-
-[sources.heartbeat.metrics.tags]
-equipment_type = "${name}"
-equipment_id = "${name}-001"
-line_code = "LINE-01"
-log_type = "INSPECTION"
-ip = ""
+[transforms.heartbeat]
+type = "remap"
+inputs = ["heartbeat_gen"]
+source = '''
+.equipment_type = "${name}"
+.equipment_id = "${name}-001"
+.line_code = "LINE-01"
+.log_type = "INSPECTION"
+.ip = ""
+'''
 
 [transforms.add_metadata]
 type = "remap"
