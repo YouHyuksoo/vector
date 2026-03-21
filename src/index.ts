@@ -37,7 +37,28 @@ async function bootstrap() {
     const address = await app.listen({ port: env.PORT, host: env.HOST });
     logger.info({ address }, 'Server is running');
 
-    // 5. Vector aggregator 자동 시작
+    // 5. parse-fields.json 자동 동기화 (배포 시 덮어쓰기 방지)
+    try {
+      const { readFileSync } = await import('fs');
+      const { readParseFields, writeParseFields } = await import('./config/local-parse-fields.js');
+      const aggTomlPath = (await import('./services/vector-process.service.js')).VECTOR_CONFIG;
+      const { default: extractVrlFieldsFn } = await import('./server/routes/monitor.route.js').then(() => {
+        // extractVrlFields는 내부 함수라 직접 접근 불가 → API 호출로 대체
+        return { default: null };
+      });
+      // 서버 시작 후 자체 API 호출로 동기화
+      setTimeout(async () => {
+        try {
+          const res = await fetch(`http://127.0.0.1:${env.PORT}/api/monitor/parse-rules/sync`, { method: 'POST' });
+          if (res.ok) {
+            const data = await res.json() as { synced?: Record<string, number> };
+            logger.info({ synced: data.synced }, 'Parse-fields auto-synced from VRL on startup');
+          }
+        } catch { /* 무시 */ }
+      }, 2000);
+    } catch { /* 무시 */ }
+
+    // 6. Vector aggregator 자동 시작
     const vResult = await startVector();
     if (vResult.success) {
       logger.info({ detail: vResult.message }, 'Vector aggregator auto-started');
