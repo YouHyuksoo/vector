@@ -2,7 +2,7 @@
 #  Vector Agent (송신기) - COATING2 설비
 # =============================================================================
 
-data_dir = "C:\vector-data-coating2"
+data_dir = 'C:\vector-data-coating2'
 
 [api]
 enabled = true
@@ -11,9 +11,9 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\logs\coating2*.txt',
-  "C:\logs\coating2*.csv',
-  "C:\logs\coating2*.log',
+  'C:\logs\coating2\*.txt',
+  'C:\logs\coating2\*.csv',
+  'C:\logs\coating2\*.log',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

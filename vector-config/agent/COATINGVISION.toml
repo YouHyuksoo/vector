@@ -2,7 +2,7 @@
 #  Vector Agent (송신기) - COATINGVISION 설비
 # =============================================================================
 
-data_dir = "C:\vector-data-coatingvision"
+data_dir = 'C:\vector-data-coatingvision'
 
 [api]
 enabled = true
@@ -11,9 +11,9 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\logs\coatingvision*.txt',
-  "C:\logs\coatingvision*.csv',
-  "C:\logs\coatingvision*.log',
+  'C:\logs\coatingvision\*.txt',
+  'C:\logs\coatingvision\*.csv',
+  'C:\logs\coatingvision\*.log',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"
