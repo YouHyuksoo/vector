@@ -70,7 +70,9 @@ func findTomlConfig() string {
 // ─── Vector PID 찾기 ───
 
 func findVectorPID() string {
-	out, err := exec.Command("tasklist", "/FI", "IMAGENAME eq vector.exe", "/FO", "CSV", "/NH").Output()
+	cmd := exec.Command("tasklist", "/FI", "IMAGENAME eq vector.exe", "/FO", "CSV", "/NH")
+	cmd.SysProcAttr = windowsHideAttr()
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
@@ -314,12 +316,36 @@ func main() {
 
 func onTrayExit() {}
 
+// 로그 파일 경로
+var logFilePath string
+
+func setupLogFile() {
+	logDir := configDir
+	os.MkdirAll(logDir, 0755)
+	logFilePath = filepath.Join(logDir, "agent-manager.log")
+	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err == nil {
+		log.SetOutput(f)
+		// fmt도 로그 파일로
+		os.Stdout = f
+		os.Stderr = f
+	}
+}
+
 func onTrayReady() {
+	// 로그 파일 설정
+	setupLogFile()
+
 	// 트레이 아이콘 설정
+	iconData, _ := publicFS.ReadFile("public/icon.ico")
+	if len(iconData) > 0 {
+		systray.SetIcon(iconData)
+	}
 	systray.SetTitle("Agent Manager")
 	systray.SetTooltip("Vector Agent Manager - localhost:" + port)
 
 	mOpen := systray.AddMenuItem("열기 (브라우저)", "웹 브라우저에서 Agent Manager 열기")
+	mLog := systray.AddMenuItem("로그 보기", "로그 파일 열기")
 	systray.AddSeparator()
 	mStatus := systray.AddMenuItem("상태: 시작 중...", "")
 	mStatus.Disable()
@@ -332,6 +358,8 @@ func onTrayReady() {
 			select {
 			case <-mOpen.ClickedCh:
 				exec.Command("rundll32", "url.dll,FileProtocolHandler", "http://localhost:"+port).Start()
+			case <-mLog.ClickedCh:
+				exec.Command("notepad", logFilePath).Start()
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 				os.Exit(0)
@@ -595,7 +623,9 @@ func handleVectorStop(w http.ResponseWriter, r *http.Request) {
 		jsonResp(w, map[string]any{"success": true, "error": "Vector is not running"})
 		return
 	}
-	exec.Command("taskkill", "/F", "/PID", pid).Run()
+	_cmd := exec.Command("taskkill", "/F", "/PID", pid)
+	_cmd.SysProcAttr = windowsHideAttr()
+	_cmd.Run()
 	jsonResp(w, map[string]any{"success": true})
 }
 
@@ -604,7 +634,9 @@ func handleVectorRestart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if pid := findVectorPID(); pid != "" {
-		exec.Command("taskkill", "/F", "/PID", pid).Run()
+		_cmd := exec.Command("taskkill", "/F", "/PID", pid)
+		_cmd.SysProcAttr = windowsHideAttr()
+		_cmd.Run()
 		time.Sleep(1500 * time.Millisecond)
 	}
 	handleVectorStart(w, r)
@@ -679,7 +711,9 @@ func detectEdition() string {
 		return "x86"
 	}
 	// Win7 감지
-	out, err := exec.Command("cmd", "/c", "ver").Output()
+	_cmd := exec.Command("cmd", "/c", "ver")
+	_cmd.SysProcAttr = windowsHideAttr()
+	out, err := _cmd.Output()
 	if err == nil {
 		ver := string(out)
 		if strings.Contains(ver, "6.1") || strings.Contains(ver, "6.0") {
@@ -768,7 +802,9 @@ func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 
 	// 로컬 버전
 	if _, err := os.Stat(vectorBinPath); err == nil {
-		out, err := exec.Command(vectorBinPath, "--version").Output()
+		_cmd := exec.Command(vectorBinPath, "--version")
+		_cmd.SysProcAttr = windowsHideAttr()
+		out, err := _cmd.Output()
 		if err == nil {
 			localVer = strings.TrimSpace(string(out))
 		}
@@ -798,7 +834,9 @@ func handleUpdateExecute(w http.ResponseWriter, r *http.Request) {
 
 	// Vector 중지
 	if pid := findVectorPID(); pid != "" {
-		exec.Command("taskkill", "/F", "/PID", pid).Run()
+		_cmd := exec.Command("taskkill", "/F", "/PID", pid)
+		_cmd.SysProcAttr = windowsHideAttr()
+		_cmd.Run()
 		time.Sleep(2 * time.Second)
 	}
 
@@ -880,7 +918,9 @@ func handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 }
 
 func getServiceState(name string) string {
-	out, err := exec.Command("sc", "query", name).Output()
+	_cmd := exec.Command("sc", "query", name)
+	_cmd.SysProcAttr = windowsHideAttr()
+	out, err := _cmd.Output()
 	if err != nil {
 		return "NOT_INSTALLED"
 	}
@@ -895,7 +935,9 @@ func getServiceState(name string) string {
 }
 
 func installService(name, binPath string) map[string]any {
-	err := exec.Command("sc", "create", name, "binPath=", binPath, "start=", "auto").Run()
+	_cmd := exec.Command("sc", "create", name, "binPath=", binPath, "start=", "auto")
+	_cmd.SysProcAttr = windowsHideAttr()
+	err := _cmd.Run()
 	if err != nil {
 		return map[string]any{"success": false, "error": err.Error()}
 	}
@@ -903,8 +945,12 @@ func installService(name, binPath string) map[string]any {
 }
 
 func uninstallService(name string) map[string]any {
-	exec.Command("sc", "stop", name).Run()
-	err := exec.Command("sc", "delete", name).Run()
+	_cmd := exec.Command("sc", "stop", name)
+	_cmd.SysProcAttr = windowsHideAttr()
+	_cmd.Run()
+	_cmd = exec.Command("sc", "delete", name)
+	_cmd.SysProcAttr = windowsHideAttr()
+	err := _cmd.Run()
 	if err != nil {
 		return map[string]any{"success": false, "error": err.Error()}
 	}
