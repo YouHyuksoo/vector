@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Manager</title>
+  <link rel="stylesheet" href="fonts/fonts.css" />
+  <link rel="stylesheet" href="tailwind.css" />
+  <style>
+    :root {
+      --bg: #f5f7fa; --bg2: #ffffff; --card: #ffffff; --card2: #f0f2f5;
+      --border: #dde1e6; --border2: #c1c7cd;
+      --fg: #161b22; --fg2: #57606a; --fg3: #8b949e;
+      --green: #1a7f37; --red: #cf222e; --amber: #9a6700; --blue: #0969da; --cyan: #0e8a7e;
+      --pink: #bf3989;
+    }
+    .dark {
+      --bg: #0a0e14; --bg2: #0f1419; --card: #141a22; --card2: #1a2230;
+      --border: #1e2a3a; --border2: #2a3a4e;
+      --fg: #e6edf3; --fg2: #8b949e; --fg3: #484f58;
+      --green: #3fb950; --red: #f85149; --amber: #d29922; --blue: #58a6ff; --cyan: #39d2c0;
+      --pink: #f778ba;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--fg); min-height: 100vh; transition: background 0.2s, color 0.2s; font-size: 15px; }
+    .tab-content { display: block !important; }
+
+    /* Layout */
+    .page { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; min-height: calc(100vh - 44px); background: var(--border); }
+    .page > * { background: var(--bg); }
+    .col { display: flex; flex-direction: column; gap: 1px; background: var(--border); }
+    .col > * { background: var(--bg2); padding: 16px 20px; }
+
+    /* Header */
+    .hdr { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px;
+      background: var(--bg2); border-bottom: 1px solid var(--border); }
+    .hdr-left { display: flex; align-items: center; gap: 10px; }
+    .hdr-logo { font-size: 17px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      background: linear-gradient(135deg, var(--cyan), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hdr-right { display: flex; align-items: center; gap: 8px; }
+    .hdr select, .hdr button { background: var(--card); border: 1px solid var(--border); color: var(--fg2);
+      padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: inherit; }
+    .hdr button:hover { border-color: var(--border2); }
+
+    /* Status indicator */
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); }
+    .stat-row > * { background: var(--bg2); padding: 14px 16px; }
+    .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--fg3); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .stat-val { font-size: 26px; font-weight: 700; font-family: 'Fira Code', monospace; }
+    .stat-sub { font-size: 12px; color: var(--fg3); font-family: 'Fira Code', monospace; margin-top: 2px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot-g { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-r { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+    /* Transfer bar */
+    .xfer { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .xfer-item { display: flex; align-items: baseline; gap: 6px; }
+    .xfer-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--fg3); }
+    .xfer-val { font-size: 18px; font-weight: 700; font-family: 'Fira Code', monospace; }
+    .bar-track { height: 3px; background: var(--card2); border-radius: 2px; flex: 1; min-width: 100px; }
+    .bar-fill { height: 100%; background: var(--cyan); border-radius: 2px; transition: width 0.5s; }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 6px;
+      font-size: 14px; font-weight: 600; border: none; cursor: pointer; font-family: inherit;
+      transition: all 0.15s; }
+    .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.35; pointer-events: none; }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-amber { background: var(--amber); color: #fff; }
+    .btn-ghost { background: var(--card2); color: var(--fg2); border: 1px solid var(--border2); }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-sm { padding: 5px 12px; font-size: 13px; border-radius: 4px; }
+    .btn-pink { background: var(--pink); color: #fff; }
+
+    /* Section */
+    .sec-title { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--fg3);
+      margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .sec-title .material-symbols-outlined { font-size: 18px; color: var(--cyan); }
+    .sec-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Form */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--fg3); margin-bottom: 4px; }
+    .form-input { width: 100%; padding: 9px 12px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--fg); font-size: 14px; font-family: 'Fira Code', monospace;
+      outline: none; transition: border-color 0.2s; }
+    .form-input:focus { border-color: var(--cyan); }
+
+    /* Service row */
+    .svc-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0;
+      border-bottom: 1px solid var(--border); }
+    .svc-row:last-child { border-bottom: none; }
+    .svc-name { font-size: 14px; font-weight: 600; }
+    .svc-badge { font-size: 12px; font-family: 'Fira Code', monospace; padding: 3px 8px;
+      background: var(--card2); border-radius: 3px; color: var(--fg3); margin-left: 8px; }
+
+    /* Table */
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--fg3);
+      text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .tbl td { font-size: 14px; padding: 10px; border-bottom: 1px solid var(--border); font-family: 'Fira Code', monospace; }
+    .tbl td.empty { text-align: center; color: var(--fg3); font-style: italic; padding: 28px 10px; font-family: 'Outfit', sans-serif; font-size: 14px; }
+
+    /* Install section */
+    .edition-row { display: flex; gap: 8px; }
+    .edition-pick { flex: 1; cursor: pointer; }
+    .edition-pick input { display: none; }
+    .edition-card { text-align: center; padding: 12px; border: 2px solid var(--border); border-radius: 6px;
+      font-size: 14px; font-weight: 600; transition: all 0.2s; }
+    .edition-pick input:checked + .edition-card { border-color: var(--blue); background: rgba(88,166,255,0.08); color: var(--blue); }
+    .edition-ver { font-size: 12px; font-weight: 400; opacity: 0.6; margin-top: 2px; }
+
+    /* TOML editor */
+    .toml-editor { width: 100%; min-height: 180px; padding: 12px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--fg); font-size: 13px; font-family: 'Fira Code', monospace;
+      line-height: 1.6; outline: none; resize: vertical; }
+    .toml-editor:focus { border-color: var(--cyan); }
+
+    /* Mode toggle */
+    .mode-row { display: flex; gap: 2px; background: var(--card); border-radius: 6px; padding: 2px; border: 1px solid var(--border); }
+    .mode-btn { padding: 7px 16px; border-radius: 4px; font-size: 13px; font-weight: 600; border: none;
+      cursor: pointer; font-family: inherit; background: transparent; color: var(--fg3); transition: all 0.15s; }
+    .mode-btn.active, .mode-btn-active { background: var(--cyan); color: #fff; }
+
+    /* Source/Sink */
+    .io-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+    .io-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--fg3); margin-bottom: 4px; }
+    .io-val { font-size: 13px; font-family: 'Fira Code', monospace; color: var(--fg2); }
+
+    /* Toast */
+    @keyframes toast-in { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(-12px); } }
+    .toast-enter { animation: toast-in 0.25s ease-out; }
+    .toast-exit { animation: toast-out 0.3s ease-in forwards; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .dot-pulse { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+    /* Warn text */
+    .warn-text { font-size: 13px; color: var(--amber); display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+  <div id="toast-container" style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;align-items:center;gap:8px;"></div>
+
+  <!-- Header -->
+  <header class="hdr">
+    <div class="hdr-left">
+      <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
+      <span class="hdr-logo">Agent Manager</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">BUILD_TIMESTAMP</span>
+      <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
+    </div>
+    <div class="hdr-right">
+      <select id="sel-lang">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="vi">Tiếng Việt</option>
+      </select>
+      <button id="btn-dark-toggle"><span class="material-symbols-outlined" style="font-size:16px" id="icon-theme">light_mode</span></button>
+    </div>
+  </header>
+
+  <!-- Hidden tabs for app.js compat -->
+  <nav style="display:none">
+    <button class="tab-btn active" data-tab="status"></button>
+    <button class="tab-btn" data-tab="settings"></button>
+    <button class="tab-btn" data-tab="management"></button>
+  </nav>
+
+  <!-- Main -->
+  <div id="tab-status" class="tab-content active">
+    <div class="page">
+      <!-- LEFT COLUMN: Status -->
+      <div class="col">
+        <!-- Status cards -->
+        <div>
+          <div class="stat-row">
+            <div>
+              <div class="stat-label"><span class="material-symbols-outlined" style="font-size:14px" id="icon-status">error</span> <span data-i18n="status.runState">실행 상태</span></div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="dot-status" class="dot dot-r"></span>
+                <span id="txt-status" class="stat-val" data-i18n="status.checking">확인 중...</span>
+              </div>
+              <div class="stat-sub">PID: <span id="txt-pid">-</span></div>
+            </div>
+            <div>
+              <div class="stat-label"><span class="material-symbols-outlined" style="font-size:14px">schedule</span> <span data-i18n="status.uptime">가동 시간</span></div>
+              <div id="txt-uptime" class="stat-val">-</div>
+            </div>
+            <div>
+              <div class="stat-label"><span class="material-symbols-outlined" style="font-size:14px">info</span> <span data-i18n="status.version">버전</span></div>
+              <div id="txt-version" class="stat-val">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transfer + Controls -->
+        <div>
+          <div class="xfer">
+            <span style="font-size:12px;font-weight:600;color:var(--cyan);display:flex;align-items:center;gap:4px">
+              <span class="material-symbols-outlined" style="font-size:16px">swap_vert</span>
+              <span data-i18n="status.transfer">전송 현황</span>
+            </span>
+            <div class="xfer-item"><span class="xfer-label">In</span><span id="txt-events-in" class="xfer-val" style="color:var(--blue)">0</span></div>
+            <div class="xfer-item"><span class="xfer-label">Out</span><span id="txt-events-out" class="xfer-val" style="color:var(--green)">0</span></div>
+            <div class="xfer-item"><span class="xfer-label">Err</span><span id="txt-errors" class="xfer-val" style="color:var(--red)">0</span></div>
+            <div class="xfer-item"><span class="xfer-label">Buf</span><span id="txt-buffer-pct" class="xfer-val">0%</span></div>
+            <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace"><span id="txt-buffer-detail">0 / 0 bytes</span></span>
+          </div>
+          <div class="bar-track" style="margin-top:10px"><div id="bar-buffer" class="bar-fill" style="width:0%"></div></div>
+          <div class="io-row">
+            <div><div class="io-label">Sources</div><div id="list-sources" class="io-val"><span style="font-style:italic" data-i18n="common.none">없음</span></div></div>
+            <div><div class="io-label">Sinks</div><div id="list-sinks" class="io-val"><span style="font-style:italic" data-i18n="common.none">없음</span></div></div>
+          </div>
+          <div class="btn-row" style="margin-top:14px">
+            <button id="btn-start" class="btn btn-green"><span class="material-symbols-outlined" style="font-size:18px">play_arrow</span><span data-i18n="mgmt.start">시작</span></button>
+            <button id="btn-stop" class="btn btn-red"><span class="material-symbols-outlined" style="font-size:18px">stop</span><span data-i18n="mgmt.stop">중지</span></button>
+            <button id="btn-restart" class="btn btn-amber"><span class="material-symbols-outlined" style="font-size:18px">restart_alt</span><span data-i18n="mgmt.restart">재시작</span></button>
+            <button id="btn-test-conn" class="btn btn-ghost"><span class="material-symbols-outlined" style="font-size:18px">lan</span><span data-i18n="mgmt.testConn">연결 테스트</span></button>
+          </div>
+        </div>
+
+        <!-- Recent files -->
+        <div style="flex:1">
+          <div class="sec-title"><span class="material-symbols-outlined">folder_open</span><span data-i18n="status.recentFiles">최근 감시 파일</span></div>
+          <div id="watch-paths" style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-bottom:8px"></div>
+          <table class="tbl">
+            <thead><tr>
+              <th data-i18n="status.fileName">파일명</th>
+              <th data-i18n="status.directory">디렉토리</th>
+              <th data-i18n="status.modifiedAt">수정 시간</th>
+              <th style="text-align:right" data-i18n="status.size">크기</th>
+            </tr></thead>
+            <tbody id="tbody-files">
+              <tr><td colspan="4" class="empty" data-i18n="status.loadingFiles">파일 정보를 불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Settings + Management -->
+      <div class="col">
+        <!-- TOML 다운로드 (서버에서 설비 설정 가져오기) -->
+        <div>
+          <div class="sec-title"><span class="material-symbols-outlined">description</span>설비 TOML 다운로드</div>
+          <div id="toml-list-area" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            <span style="font-size:13px;color:var(--fg3)">서버에서 목록을 불러오는 중...</span>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div id="tab-settings" class="tab-content">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="sec-title" style="margin-bottom:0"><span class="material-symbols-outlined">tune</span><span data-i18n="settings.equipInfo">설비 설정</span></div>
+            <div class="mode-row">
+              <button id="btn-mode-form" class="mode-btn active" data-i18n="settings.formMode">폼 모드</button>
+              <button id="btn-mode-toml" class="mode-btn" data-i18n="settings.tomlMode">TOML</button>
+            </div>
+          </div>
+
+          <!-- Form mode -->
+          <section id="settings-form">
+            <div class="form-grid">
+              <div><div class="form-label" data-i18n="settings.equipId">설비 ID</div><input id="inp-eq-id" type="text" class="form-input" placeholder="AOI-01" /></div>
+              <div><div class="form-label" data-i18n="settings.equipType">설비 타입</div><input id="inp-eq-type" type="text" class="form-input" placeholder="AOI" /></div>
+              <div><div class="form-label" data-i18n="settings.ipAddr">IP 주소</div><input id="inp-ip" type="text" class="form-input" placeholder="192.168.1.100" /></div>
+              <div><div class="form-label" data-i18n="settings.lineCode">라인 코드</div><input id="inp-line" type="text" class="form-input" placeholder="LINE-01" /></div>
+              <div><div class="form-label" data-i18n="settings.logType">로그 타입</div><input id="inp-log-type" type="text" class="form-input" placeholder="INSPECTION" /></div>
+              <div><div class="form-label" data-i18n="settings.logPath">로그 경로</div><input id="inp-include" type="text" class="form-input" placeholder="C:\logs\*.log" /></div>
+              <div><div class="form-label" data-i18n="settings.aggAddr">Aggregator IP</div><input id="inp-sink-addr" type="text" class="form-input" placeholder="20.10.30.112" /></div>
+              <div><div class="form-label" data-i18n="settings.aggPort">포트</div><input id="inp-sink-port" type="text" class="form-input" placeholder="9000" /></div>
+            </div>
+            <div style="margin-top:12px">
+              <button id="btn-save-setup" class="btn btn-blue"><span class="material-symbols-outlined" style="font-size:16px">save</span><span data-i18n="settings.saveSetup">설비 정보 저장</span></button>
+            </div>
+          </section>
+
+          <!-- TOML mode -->
+          <section id="settings-toml" class="hidden" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:600" data-i18n="settings.tomlConfig">TOML 설정</span>
+              <span id="txt-config-path" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace"></span>
+            </div>
+            <textarea id="editor-config" class="toml-editor" spellcheck="false" data-i18n-placeholder="settings.loadingConfig"></textarea>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button id="btn-save-config" class="btn btn-blue"><span class="material-symbols-outlined" style="font-size:16px">save</span><span data-i18n="common.save">저장</span></button>
+              <button id="btn-revert-config" class="btn btn-ghost"><span class="material-symbols-outlined" style="font-size:16px">undo</span><span data-i18n="settings.revert">되돌리기</span></button>
+            </div>
+            <div class="warn-text"><span class="material-symbols-outlined" style="font-size:14px">info</span><span data-i18n="settings.restartNeeded">저장 후 Vector 재시작 필요</span></div>
+          </section>
+        </div>
+
+        <!-- Windows Service -->
+        <div id="tab-management" class="tab-content">
+          <div class="sec-title"><span class="material-symbols-outlined">build</span><span data-i18n="mgmt.winService">Windows 서비스</span></div>
+          <div class="svc-row">
+            <div style="display:flex;align-items:center"><span class="svc-name">VectorAgent</span><span id="svc-vector-state" class="svc-badge">-</span></div>
+            <div style="display:flex;gap:6px">
+              <button onclick="installService('vector')" class="btn btn-sm btn-blue" data-i18n="mgmt.register">등록</button>
+              <button onclick="uninstallService('vector')" class="btn btn-sm btn-red" data-i18n="mgmt.unregister">해제</button>
+            </div>
+          </div>
+          <div class="svc-row">
+            <div style="display:flex;align-items:center"><span class="svc-name">AgentManager</span><span id="svc-manager-state" class="svc-badge">-</span></div>
+            <div style="display:flex;gap:6px">
+              <button onclick="installService('manager')" class="btn btn-sm btn-blue" data-i18n="mgmt.register">등록</button>
+              <button onclick="uninstallService('manager')" class="btn btn-sm btn-red" data-i18n="mgmt.unregister">해제</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Install / Update -->
+        <div>
+          <div class="sec-title"><span class="material-symbols-outlined">cloud_download</span><span data-i18n="mgmt.installUpdate">설치 / 업데이트</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:600" data-i18n="mgmt.installStatus">Vector 설치 상태</span>
+            <span id="txt-install-status" class="svc-badge" data-i18n="status.checking">확인 중...</span>
+          </div>
+          <div style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-bottom:10px">
+            <div><span data-i18n="mgmt.binary">바이너리</span>: <span id="txt-bin-path">-</span></div>
+            <div><span data-i18n="mgmt.configFile">설정파일</span>: <span id="txt-cfg-path">-</span></div>
+          </div>
+          <div class="edition-row">
+            <label class="edition-pick">
+              <input type="radio" name="vector-edition" value="default" checked>
+              <div class="edition-card">Win 10+<div class="edition-ver">v0.45</div></div>
+            </label>
+            <label class="edition-pick">
+              <input type="radio" name="vector-edition" value="win7">
+              <div class="edition-card">Win 7<div class="edition-ver">v0.38</div></div>
+            </label>
+          </div>
+          <p id="win7-notice" style="display:none;font-size:11px;color:var(--amber);margin-top:6px" data-i18n="mgmt.win7Notice">Windows 7 전용 (v0.38)</p>
+          <button id="btn-install" class="btn btn-blue" style="width:100%;justify-content:center;margin-top:10px">
+            <span class="material-symbols-outlined" style="font-size:18px">download</span><span data-i18n="mgmt.installVector">Vector 설치</span>
+          </button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+            <span style="font-size:13px;font-weight:600" data-i18n="mgmt.vectorUpdate">업데이트</span>
+            <button id="btn-check-update" onclick="checkUpdate()" class="btn btn-sm btn-ghost" data-i18n="mgmt.checkVersion">버전 확인</button>
+          </div>
+          <div style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-top:6px">
+            <div><span data-i18n="mgmt.localVer">로컬</span>: <span id="txt-local-ver">-</span></div>
+            <div><span data-i18n="mgmt.serverVer">서버</span>: <span id="txt-server-ver">-</span></div>
+          </div>
+          <button id="btn-update" class="btn btn-amber hidden" style="display:none;width:100%;justify-content:center;margin-top:8px">
+            <span class="material-symbols-outlined" style="font-size:18px">system_update</span><span data-i18n="mgmt.execUpdate">업데이트</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

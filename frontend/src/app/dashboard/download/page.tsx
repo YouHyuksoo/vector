@@ -20,7 +20,6 @@ type ConfigType = 'vector' | 'fluent';
 export default function DownloadPage() {
   const [agents, setAgents] = useState<string[]>([]);
   const [fluentAgents, setFluentAgents] = useState<string[]>([]);
-  const [os, setOs] = useState<'win10' | 'win7'>('win10');
   const [arch, setArch] = useState<'x64' | 'x86'>('x64');
   const [configType, setConfigType] = useState<ConfigType>('vector');
   const { t } = useI18n();
@@ -33,21 +32,18 @@ export default function DownloadPage() {
   }, []);
 
   const is64 = arch === 'x64';
-  const isWin7 = os === 'win7';
   /* Vector zip URL 결정 */
-  const vectorZipUrl = !is64
-    ? '/api/monitor/download/vector-zip?edition=x86'
-    : isWin7
-      ? '/api/monitor/download/vector-zip?edition=win7'
-      : '/api/monitor/download/vector-zip';
+  const vectorZipUrl = is64
+    ? '/api/monitor/download/vector-zip'
+    : '/api/monitor/download/vector-zip?edition=x86';
 
-  /* Agent Manager URL 결정 (4가지 조합) */
-  const agentManagerUrl = isWin7
-    ? (is64 ? '/api/monitor/download/agent-manager?edition=win7' : '/api/monitor/download/agent-manager?edition=win7-x86')
-    : (is64 ? '/api/monitor/download/agent-manager' : '/api/monitor/download/agent-manager?arch=x86');
+  /* Agent Manager URL 결정 (Go 단일 exe — 2종만) */
+  const agentManagerUrl = is64
+    ? '/api/monitor/download/agent-manager'
+    : '/api/monitor/download/agent-manager?arch=x86';
 
   /* Vector 버전 표시 */
-  const vectorVersion = is64 && !isWin7 ? 'v0.45' : 'v0.38';
+  const vectorVersion = is64 ? 'v0.45' : 'v0.38';
 
   return (
     <>
@@ -65,30 +61,8 @@ export default function DownloadPage() {
 
       <QuickGuide />
 
-      {/* OS + 아키텍처 선택 */}
+      {/* 아키텍처 선택 */}
       <div className="flex flex-wrap gap-6 items-center">
-        <div className="flex gap-3 items-center">
-          <span className="text-sm font-bold text-muted-foreground">OS</span>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setOs('win10')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border-2
-                ${!isWin7
-                  ? 'border-success bg-success/10 text-success shadow-sm'
-                  : 'border-border dark:border-border-dark text-muted-foreground hover:border-success/40'}`}>
-              <Icon name="desktop_windows" size="sm" />
-              Windows 10+
-            </button>
-            <button type="button" onClick={() => setOs('win7')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border-2
-                ${isWin7
-                  ? 'border-warning bg-warning/10 text-warning shadow-sm'
-                  : 'border-border dark:border-border-dark text-muted-foreground hover:border-warning/40'}`}>
-              <Icon name="history" size="sm" />
-              Windows 7
-            </button>
-          </div>
-        </div>
-
         <div className="flex gap-3 items-center">
           <span className="text-sm font-bold text-muted-foreground">{t('download.archLabel')}</span>
           <div className="flex gap-2">
@@ -123,7 +97,7 @@ export default function DownloadPage() {
             <p className="text-sm text-muted-foreground mt-1">{t('download.vectorExeDesc')}</p>
           </div>
           <p className="text-xs font-mono font-bold text-muted-foreground">
-            {vectorVersion} / {is64 ? '64-bit' : '32-bit'} / {isWin7 ? 'Win7' : 'Win10+'}
+            {vectorVersion} / {is64 ? '64-bit' : '32-bit'}
           </p>
           <a href={vectorZipUrl}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5
@@ -162,18 +136,14 @@ export default function DownloadPage() {
             <p className="text-base font-bold text-text dark:text-white">{t('download.agentManager')}</p>
             <p className="text-sm text-muted-foreground mt-1">{t('download.agentManagerDesc')}</p>
           </div>
-          {!is64 && (
-            <p className="text-[11px] text-orange-500 font-medium px-3 text-center">{t('download.archX86Notice')}</p>
-          )}
+          <p className="text-[11px] text-muted-foreground font-medium px-3 text-center">
+            Go 단일 exe — Win7~Win11 호환 ({is64 ? '64-bit' : '32-bit'}, ~9MB)
+          </p>
           <a href={agentManagerUrl}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5
-              ${is64
-                ? 'bg-primary hover:bg-primary/90 shadow-primary/20'
-                : 'bg-orange-500 hover:bg-orange-500/90 shadow-orange-500/20'}`}>
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5
+              bg-primary hover:bg-primary/90 shadow-primary/20">
             <Icon name="file_download" className="text-white" />
-            {isWin7
-              ? (is64 ? t('download.agentManagerBtnWin7') : t('download.agentManagerBtnWin7X86'))
-              : (is64 ? t('download.agentManagerBtn') : t('download.agentManagerBtnX86'))}
+            agent-manager-{is64 ? 'x64' : 'x86'}.exe {t('download.downloadBtn')}
           </a>
           <p className="text-xs text-muted-foreground font-mono">{t('download.agentManagerSize')}</p>
         </Card>
@@ -228,7 +198,7 @@ export default function DownloadPage() {
                       <span className="font-mono text-sm font-bold text-text dark:text-white">{name}</span>
                       <span className="text-xs text-muted-foreground">.toml</span>
                     </div>
-                    <a href={`/api/monitor/download/agent/${name}${isWin7 || !is64 ? '?edition=win7' : ''}`}
+                    <a href={`/api/monitor/download/agent/${name}`}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold
                         bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                       <Icon name="file_download" size="xs" />

@@ -346,17 +346,11 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** Agent Manager 다운로드 — ?arch=x86|?edition=win7 지원 */
+  /** Agent Manager 다운로드 — Go 단일 exe (x64/x86) */
   app.get('/api/monitor/download/agent-manager', async (request, reply) => {
-    const { arch, edition } = request.query as { arch?: string; edition?: string };
-    const fileName = edition === 'win7-x86'
-      ? 'agent-manager-win7-x86.zip'
-      : arch === 'x86'
-        ? 'agent-manager-x86.zip'
-        : edition === 'win7'
-          ? 'agent-manager-win7.zip'
-          : 'agent-manager-x64.exe';
-    const contentType = fileName.endsWith('.zip') ? 'application/zip' : 'application/octet-stream';
+    const { arch } = request.query as { arch?: string };
+    const fileName = arch === 'x86' ? 'agent-manager-x86.exe' : 'agent-manager-x64.exe';
+    const contentType = 'application/octet-stream';
     const filePath = join(process.cwd(), 'vector-bin', fileName);
     if (!existsSync(filePath)) {
       return reply.status(404).send({ error: `${fileName} not found` });

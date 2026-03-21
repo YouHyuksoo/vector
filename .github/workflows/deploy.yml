@@ -99,9 +99,7 @@ jobs:
           if (Test-Path "$vbSrc\vector-win7.zip") { Copy-Item "$vbSrc\vector-win7.zip" "$vbDst\vector-win7.zip" -Force }
           if (Test-Path "$vbSrc\vector-x86.zip") { Copy-Item "$vbSrc\vector-x86.zip" "$vbDst\vector-x86.zip" -Force }
           if (Test-Path "$vbSrc\agent-manager-x64.exe") { Copy-Item "$vbSrc\agent-manager-x64.exe" "$vbDst\agent-manager-x64.exe" -Force }
-          if (Test-Path "$vbSrc\agent-manager-win7.zip") { Copy-Item "$vbSrc\agent-manager-win7.zip" "$vbDst\agent-manager-win7.zip" -Force }
-          if (Test-Path "$vbSrc\agent-manager-x86.zip") { Copy-Item "$vbSrc\agent-manager-x86.zip" "$vbDst\agent-manager-x86.zip" -Force }
-          if (Test-Path "$vbSrc\agent-manager-win7-x86.zip") { Copy-Item "$vbSrc\agent-manager-win7-x86.zip" "$vbDst\agent-manager-win7-x86.zip" -Force }
+          if (Test-Path "$vbSrc\agent-manager-x86.exe") { Copy-Item "$vbSrc\agent-manager-x86.exe" "$vbDst\agent-manager-x86.exe" -Force }
           if (Test-Path "$vbSrc\version.json") { Copy-Item "$vbSrc\version.json" "$vbDst\version.json" -Force }
 
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
