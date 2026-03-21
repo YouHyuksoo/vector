@@ -659,7 +659,7 @@ func downloadAndExtractVector(url string) error {
 		return err
 	}
 
-	// zip 압축 해제 — bin/vector.exe → configDir/vector.exe
+	// zip 압축 해제 → configDir에 vector.exe + bat 배치
 	os.MkdirAll(configDir, 0755)
 	zr, err := zip.OpenReader(tmpPath)
 	if err != nil {
@@ -672,11 +672,11 @@ func downloadAndExtractVector(url string) error {
 		if f.FileInfo().IsDir() {
 			continue
 		}
-		// bin/vector.exe → vector.exe
-		if name == "bin/vector.exe" {
+		// vector.exe (루트 또는 bin/ 안) → configDir/vector.exe
+		if name == "vector.exe" || name == "bin/vector.exe" {
 			extractFile(f, filepath.Join(configDir, "vector.exe"))
 		}
-		// *.bat → root
+		// *.bat → configDir
 		if !strings.Contains(name, "/") && strings.HasSuffix(name, ".bat") {
 			extractFile(f, filepath.Join(configDir, filepath.Base(name)))
 		}

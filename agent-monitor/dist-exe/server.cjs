@@ -47437,7 +47437,7 @@ async function installRoutes(app) {
       for (const entry of zip.getEntries()) {
         const name = entry.entryName.replace(/\\/g, "/");
         if (entry.isDirectory) continue;
-        if (name === "bin/vector.exe") {
+        if (name === "vector.exe" || name === "bin/vector.exe") {
           zip.extractEntryTo(entry, installDir, false, true);
         } else if (name.endsWith(".bat") && !name.includes("/")) {
           zip.extractEntryTo(entry, installDir, false, true);
@@ -47560,10 +47560,10 @@ async function updateRoutes(app) {
         const buf = Buffer.from(await res.arrayBuffer());
         (0, import_fs6.writeFileSync)(tmpZip, buf);
         const zip = new import_adm_zip2.default(tmpZip);
-        const binEntry = zip.getEntry("bin/vector.exe");
+        const binEntry = zip.getEntry("vector.exe") || zip.getEntry("bin/vector.exe");
         if (!binEntry) {
           if ((0, import_fs6.existsSync)(backupPath)) (0, import_fs6.renameSync)(backupPath, ENV.VECTOR_BIN_PATH);
-          return reply.status(500).send({ success: false, error: "zip\uC5D0\uC11C bin/vector.exe\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4." });
+          return reply.status(500).send({ success: false, error: "zip\uC5D0\uC11C vector.exe\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4." });
         }
         zip.extractEntryTo(binEntry, (0, import_path3.dirname)(ENV.VECTOR_BIN_PATH), false, true);
       } finally {
@@ -47869,7 +47869,7 @@ async function main() {
     <div class="hdr-left">
       <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
       <span class="hdr-logo">Agent Manager</span>
-      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 07:02</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 07:46</span>
       <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
     </div>
     <div class="hdr-right">
@@ -48235,7 +48235,7 @@ async function main() {
     <div class="hdr-left">
       <span class="material-symbols-outlined" style="font-size:22px;color:var(--cyan)">settings_suggest</span>
       <span class="hdr-logo">Agent Manager</span>
-      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 07:02</span>
+      <span style="font-size:11px;color:var(--fg3);font-family:'Fira Code',monospace;margin-left:8px">2026. 03. 22. \uC624\uC804 07:46</span>
       <span id="header-version" style="font-size:10px;color:var(--fg3);font-family:'Fira Code',monospace;"></span>
     </div>
     <div class="hdr-right">

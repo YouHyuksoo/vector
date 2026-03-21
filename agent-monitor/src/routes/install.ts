@@ -70,13 +70,13 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
       const installDir = dirname(ENV.VECTOR_BIN_PATH);
       if (!existsSync(installDir)) mkdirSync(installDir, { recursive: true });
 
-      /* 3. zip 압축 해제 → bin/vector.exe를 C:\vector\vector.exe로 플랫 배치 */
+      /* 3. zip 압축 해제 → vector.exe + bat를 C:\vector\에 배치 */
       const zip = new AdmZip(tmpZip);
       for (const entry of zip.getEntries()) {
         const name = entry.entryName.replace(/\\/g, '/');
         if (entry.isDirectory) continue;
-        /* bin/vector.exe → vector.exe (루트로 이동) */
-        if (name === 'bin/vector.exe') {
+        /* vector.exe (루트 또는 bin/) → installDir에 배치 */
+        if (name === 'vector.exe' || name === 'bin/vector.exe') {
           zip.extractEntryTo(entry, installDir, false, true);
         }
         /* *.bat 파일 → 루트에 배치 */

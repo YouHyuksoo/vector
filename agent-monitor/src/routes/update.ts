@@ -128,10 +128,10 @@ export default async function updateRoutes(app: FastifyInstance): Promise<void> 
         const buf = Buffer.from(await res.arrayBuffer());
         writeFileSync(tmpZip, buf);
         const zip = new AdmZip(tmpZip);
-        const binEntry = zip.getEntry('bin/vector.exe');
+        const binEntry = zip.getEntry('vector.exe') || zip.getEntry('bin/vector.exe');
         if (!binEntry) {
           if (existsSync(backupPath)) renameSync(backupPath, ENV.VECTOR_BIN_PATH);
-          return reply.status(500).send({ success: false, error: 'zip에서 bin/vector.exe를 찾을 수 없습니다.' });
+          return reply.status(500).send({ success: false, error: 'zip에서 vector.exe를 찾을 수 없습니다.' });
         }
         zip.extractEntryTo(binEntry, dirname(ENV.VECTOR_BIN_PATH), false, true);
       } finally {
