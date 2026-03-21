@@ -379,7 +379,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
     try {
       let content = readFileSync(filePath, 'utf-8');
-      if (edition === 'win7') {
+      if (edition === 'win7' || edition === 'x86' || edition === 'legacy') {
         content = convertTomlForWin7(content);
       }
       return reply
