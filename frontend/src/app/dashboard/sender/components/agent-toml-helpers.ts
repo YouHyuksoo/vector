@@ -117,18 +117,18 @@ export const syncHeartbeatTags = (c: string, key: string, value: string): string
 
 /* ── include 경로 헬퍼 ────────────────────────── */
 
-/** include 배열 추출 (TOML \\ → 단일 \) */
+/** include 배열 추출 (TOML → 단일 \) */
 export const getInclude = (c: string) => {
   const m = c.match(/include\s*=\s*\[([\s\S]*?)\]/);
   if (!m) return '';
-  return m[1].split('\n').map(l => l.replace(/[",]/g, '').trim())
+  return m[1].split('\n').map(l => l.replace(/["',]/g, '').trim())
     .filter(Boolean).map(p => p.replace(/\\\\/g, '\\')).join('\n');
 };
 
-/** include 배열 교체 (단일 \ → TOML \\) */
+/** include 배열 교체 — TOML 리터럴 문자열 '...' 사용 (백슬래시 이스케이프 불필요) */
 export const setInclude = (c: string, paths: string) => {
   const lines = paths.split('\n').filter(Boolean)
-    .map(p => `  "${p.trim().replace(/\\/g, '\\\\')}",`).join('\n');
+    .map(p => `  '${p.trim()}',`).join('\n');
   return c.replace(/include\s*=\s*\[[\s\S]*?\]/, `include = [\n${lines}\n]`);
 };
 
