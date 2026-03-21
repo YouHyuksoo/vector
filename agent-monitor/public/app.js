@@ -768,11 +768,51 @@ function bindEvents() {
    앱 초기화
    ═══════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════
+   TOML 목록 (서버에서 가져오기)
+   ═══════════════════════════════════════════ */
+
+async function loadTomlList() {
+  const area = document.getElementById('toml-list-area');
+  if (!area) return;
+  try {
+    const data = await fetchJSON('/api/toml-list');
+    if (!data.names || data.names.length === 0) {
+      area.innerHTML = '<span style="font-size:13px;color:var(--fg3)">등록된 설비 설정이 없습니다</span>';
+      return;
+    }
+    area.innerHTML = data.names.map(function(name) {
+      return '<button onclick="downloadToml(\'' + name + '\')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:4px;font-size:13px;font-weight:600;border:1px solid var(--border2);background:var(--card2);color:var(--fg);cursor:pointer;font-family:inherit;transition:all 0.15s"'
+        + ' onmouseover="this.style.borderColor=\'var(--cyan)\'" onmouseout="this.style.borderColor=\'var(--border2)\'">'
+        + '<span class="material-symbols-outlined" style="font-size:16px;color:var(--cyan)">description</span>'
+        + name + '</button>';
+    }).join('');
+  } catch {
+    area.innerHTML = '<span style="font-size:13px;color:var(--red)">서버 연결 실패</span>';
+  }
+}
+
+async function downloadToml(name) {
+  showToast(name + '.toml 다운로드 중...', 'info');
+  try {
+    const data = await fetchJSON('/api/toml-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name }),
+    });
+    showToast(data.message || name + '.toml 저장 완료', 'success');
+    /* 설정 새로고침 */
+    setTimeout(function() { loadSetupForm(); loadConfig(); }, 500);
+  } catch (err) {
+    showToast('TOML 다운로드 실패: ' + err.message, 'error');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   initLang();
   initDarkMode();
   bindEvents();
-  await Promise.all([poll(), loadRecentLogs()]);
+  await Promise.all([poll(), loadRecentLogs(), loadTomlList()]);
   pollTimer = setInterval(poll, POLL_INTERVAL);
   setInterval(loadRecentLogs, 30000);
 });

@@ -16,7 +16,8 @@ import fastifyCors from '@fastify/cors';
 import { config } from 'dotenv';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readdirSync, existsSync } from 'fs';
+import { readdirSync, existsSync, mkdirSync, createWriteStream, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
 import statusRoutes from './routes/status.js';
 import configRoutes from './routes/config.js';
 import controlRoutes from './routes/control.js';
@@ -106,12 +107,85 @@ async function main() {
   await app.register(updateRoutes);
   await app.register(serviceRoutes);
 
+  /** TOML 목록 조회 — 마스터 서버의 가용 설비 TOML 목록 */
+  app.get('/api/toml-list', async (_req, reply) => {
+    try {
+      const res = await fetch(`${ENV.MASTER_SERVER_URL}/api/monitor/agent/configs`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return reply.status(502).send({ error: 'Master server error' });
+      const data = await res.json() as { names: string[] };
+      return reply.send(data);
+    } catch {
+      return reply.status(502).send({ error: 'Cannot reach master server', names: [] });
+    }
+  });
+
+  /** TOML 다운로드 — 마스터 서버에서 설비 TOML 가져와서 C:\vector\에 저장 */
+  app.post<{ Body: { name: string } }>('/api/toml-download', async (req, reply) => {
+    const { name } = req.body || {};
+    if (!name) return reply.status(400).send({ error: 'name is required' });
+    try {
+      const res = await fetch(`${ENV.MASTER_SERVER_URL}/api/monitor/download/agent/${name}`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) return reply.status(502).send({ error: `Download failed: ${res.status}` });
+      const tomlContent = await res.text();
+      const installDir = dirname(ENV.VECTOR_BIN_PATH);
+      if (!existsSync(installDir)) mkdirSync(installDir, { recursive: true });
+      const { writeFileSync } = await import('fs');
+      writeFileSync(join(installDir, `${name}.toml`), tomlContent, 'utf-8');
+      return reply.send({ success: true, message: `${name}.toml saved to ${installDir}` });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
   await app.listen({ port: ENV.PORT, host: '0.0.0.0' });
   console.log(`\n  Agent Manager running at http://localhost:${ENV.PORT}\n`);
   console.log(`  Vector API:    ${ENV.VECTOR_API_URL}`);
   console.log(`  Config path:   ${ENV.VECTOR_CONFIG_PATH}`);
   console.log(`  Vector binary: ${ENV.VECTOR_BIN_PATH}`);
   console.log(`  Master server: ${ENV.MASTER_SERVER_URL}\n`);
+
+  /* ─── Vector 자동 설치: 바이너리가 없으면 서버에서 다운로드 ─── */
+  if (!existsSync(ENV.VECTOR_BIN_PATH)) {
+    console.log('  [Auto-Install] Vector binary not found. Downloading...');
+    try {
+      const { release } = await import('os');
+      const isX86 = process.arch === 'ia32';
+      const isWin7 = parseInt(release().split('.')[0], 10) < 10;
+      const edition = isX86 ? 'x86' : isWin7 ? 'win7' : '';
+      const param = edition ? `?edition=${edition}` : '';
+      const res = await fetch(`${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${param}`);
+      if (res.ok && res.body) {
+        const tmpZip = join(tmpdir(), `vector-auto-${Date.now()}.zip`);
+        const installDir = dirname(ENV.VECTOR_BIN_PATH);
+        if (!existsSync(installDir)) mkdirSync(installDir, { recursive: true });
+        const ws = createWriteStream(tmpZip);
+        await new Promise<void>((resolve, reject) => {
+          (res.body as any).pipe(ws);
+          ws.on('finish', resolve);
+          ws.on('error', reject);
+        });
+        const AdmZip = (await import('adm-zip')).default;
+        const zip = new AdmZip(tmpZip);
+        for (const entry of zip.getEntries()) {
+          const name = entry.entryName.replace(/\\/g, '/');
+          if (entry.isDirectory) continue;
+          if (name === 'bin/vector.exe' || (!name.includes('/') && name.endsWith('.bat'))) {
+            zip.extractEntryTo(entry, installDir, false, true);
+          }
+        }
+        try { unlinkSync(tmpZip); } catch { /* ignore */ }
+        const dataDir = join(installDir, 'data');
+        if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
+        console.log(`  [Auto-Install] Vector installed to ${installDir}`);
+      }
+    } catch (err) {
+      console.error('  [Auto-Install] Failed:', err);
+    }
+  }
 }
 
 main().catch(err => {
