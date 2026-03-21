@@ -46,6 +46,8 @@ const SYSTEM_COLUMNS = [
 ];
 
 const SYSTEM_TAIL_COLUMNS = [
+  { columnName: 'IS_LAST', dataType: "VARCHAR2(1) DEFAULT 'N'", nullable: true, sourceField: '', comment: '최종 데이터 여부 (Y/N)' },
+  { columnName: 'IS_SAMPLE', dataType: "VARCHAR2(1) DEFAULT 'N'", nullable: true, sourceField: '', comment: '샘플 데이터 여부 (Y/N)' },
   { columnName: 'CREATED_AT', dataType: 'TIMESTAMP DEFAULT SYSTIMESTAMP', nullable: true, sourceField: '', comment: '레코드 생성 시각' },
 ];
 
