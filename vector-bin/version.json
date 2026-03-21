@@ -5,7 +5,7 @@
   "editions": {
     "default": {
       "version": "0.45.0",
-      "file": "vector-x64.zip",
+      "file": "vector.zip",
       "arch": "x64",
       "minOS": "Windows 10 / Server 2016"
     },
