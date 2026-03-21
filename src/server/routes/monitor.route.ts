@@ -330,7 +330,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   app.get('/api/monitor/download/vector-zip', async (_request, reply) => {
     const edition = (_request.query as { edition?: string }).edition;
     const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip' };
-    const zipFile = zipMap[edition ?? ''] ?? 'vector-x64.zip';
+    const zipFile = zipMap[edition ?? ''] ?? 'vector.zip';
     const zipPath = join(process.cwd(), 'vector-bin', zipFile);
     if (!existsSync(zipPath)) {
       return reply.status(404).send({ error: `${zipFile} not found` });

@@ -39,7 +39,7 @@ Haga clic en **Descargar agent-manager.exe** para descargar la herramienta de ge
 Lista los archivos TOML de todos los equipos registrados en la página de Configuración del Transmisor.
 
 - Haga clic en **Descargar** junto a cada equipo para descargas individuales
-- Guarde los archivos TOML descargados en la carpeta `C:\vector\config\`
+- Guarde los archivos TOML descargados en la carpeta `C:\vector\`
 - Agent Manager detecta automáticamente archivos .toml en la carpeta config (cualquier nombre)
 
 ## Pasos de Instalación para PC de Equipo
@@ -50,7 +50,7 @@ Lista los archivos TOML de todos los equipos registrados en la página de Config
 1. Descargar agent-manager.exe → ejecutar en el PC del equipo
 2. Abrir http://localhost:9090
 3. Pestaña Gestión → Clic en "Instalar Vector" (descarga + extracción a C:\vector\)
-4. Descargar TOML del equipo desde esta página → guardar en C:\vector\config\
+4. Descargar TOML del equipo desde esta página → guardar en C:\vector\
 5. Pestaña Config → verificar/editar info del equipo (ruta de log, IP) → guardar
 6. Pestaña Gestión → Clic en "Iniciar"
 7. (Opcional) Pestaña Gestión → Registrar servicio Windows para inicio automático
@@ -60,7 +60,7 @@ Lista los archivos TOML de todos los equipos registrados en la página de Config
 
 ```
 1. Descargar vector.zip → extraer en C:\vector\
-2. Descargar TOML del equipo → guardar en C:\vector\config\
+2. Descargar TOML del equipo → guardar en C:\vector\
 3. Editar archivo TOML:
    - include = ["C:\\ruta\\real\\de\\log\\*.csv"]
    - address = "ip-real-del-servidor:6000"

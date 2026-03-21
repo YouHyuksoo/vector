@@ -39,7 +39,7 @@
 **송신기 설정** 페이지에서 등록한 모든 설비의 TOML 파일 목록이 표시됩니다.
 
 - 각 설비 옆의 **다운로드** 버튼으로 개별 다운로드
-- 다운로드한 TOML 파일을 `C:\vector\config\` 폴더에 저장합니다
+- 다운로드한 TOML 파일을 `C:\vector\` 폴더에 저장합니다
 - Agent Manager가 config 폴더에서 .toml 파일을 자동으로 찾습니다 (파일명 무관)
 
 ## 설비 PC 설치 순서
@@ -50,7 +50,7 @@
 1. agent-manager.exe 다운로드 → 설비 PC에서 실행
 2. http://localhost:9090 접속
 3. 관리 탭 → "Vector 설치" 클릭 (vector.zip 자동 다운로드 + C:\vector\에 압축 해제)
-4. 이 페이지에서 설비 TOML 다운로드 → C:\vector\config\ 에 저장
+4. 이 페이지에서 설비 TOML 다운로드 → C:\vector\ 에 저장
 5. 설정 탭 → 설비 정보 확인/수정 (로그 경로, IP 등) → 저장
 6. 관리 탭 → "시작" 클릭
 7. (선택) 관리 탭 → Windows 서비스 등록 (PC 재부팅 시 자동 시작)
@@ -60,7 +60,7 @@
 
 ```
 1. vector.zip 다운로드 → C:\vector\ 에 압축 해제
-2. 설비 TOML 다운로드 → C:\vector\config\ 에 저장
+2. 설비 TOML 다운로드 → C:\vector\ 에 저장
 3. TOML 파일 편집:
    - include = ["C:\\실제\\로그\\경로\\*.csv"]
    - address = "실제서버IP:6000"

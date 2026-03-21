@@ -34,10 +34,10 @@ declare const EMBEDDED_APP_JS: string;
 const isPkg = !!(process as any).pkg || typeof EMBEDDED_INDEX_HTML !== 'undefined';
 
 /**
- * C:\vector\config\ 에서 .toml 파일을 동적 탐색합니다
+ * C:\vector\ 에서 .toml 파일을 동적 탐색합니다
  * PC마다 고유 이름의 TOML을 사용하므로 매 접근 시 재탐색
  */
-const CONFIG_DIR = process.env.VECTOR_CONFIG_DIR || 'C:\\vector\\config';
+const CONFIG_DIR = process.env.VECTOR_CONFIG_DIR || 'C:\\vector';
 
 function findTomlConfig(): string | null {
   try {
@@ -56,7 +56,7 @@ export const ENV = {
   get VECTOR_CONFIG_PATH(): string {
     return process.env.VECTOR_CONFIG_PATH || findTomlConfig() || join(CONFIG_DIR, 'vector.toml');
   },
-  VECTOR_BIN_PATH: process.env.VECTOR_BIN_PATH || 'C:\\vector\\bin\\vector.exe',
+  VECTOR_BIN_PATH: process.env.VECTOR_BIN_PATH || 'C:\\vector\\vector.exe',
   MASTER_SERVER_URL: process.env.MASTER_SERVER_URL || 'http://20.10.30.112:3100',
 };
 

@@ -33,7 +33,7 @@ export const agentDownloadRoute: FastifyPluginAsync = async (app) => {
   app.get('/api/monitor/agent-download/vector', async (_req, reply) => {
     const edition = (_req.query as { edition?: string }).edition;
     const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip' };
-    const zipFile = zipMap[edition ?? ''] ?? 'vector-x64.zip';
+    const zipFile = zipMap[edition ?? ''] ?? 'vector.zip';
     const zipPath = join(VECTOR_BIN_DIR, zipFile);
     if (!existsSync(zipPath)) {
       return reply.status(404).send({ error: `${zipFile} not found in vector-bin/` });
