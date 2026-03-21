@@ -131,7 +131,128 @@
     }
   ],
   "REFLOW": [],
-  "ICT": [],
+  "ICT": [
+    {
+      "fieldName": "data.BARCODE",
+      "fieldLabel": "data.BARCODE",
+      "fieldOrder": 1
+    },
+    {
+      "fieldName": "data.PCB_NO",
+      "fieldLabel": "data.PCB_NO",
+      "fieldOrder": 2
+    },
+    {
+      "fieldName": "data.RESULT",
+      "fieldLabel": "data.RESULT",
+      "fieldOrder": 3
+    },
+    {
+      "fieldName": "data.MODEL",
+      "fieldLabel": "data.MODEL",
+      "fieldOrder": 4
+    },
+    {
+      "fieldName": "data.DAY",
+      "fieldLabel": "data.DAY",
+      "fieldOrder": 5
+    },
+    {
+      "fieldName": "data.TIME",
+      "fieldLabel": "data.TIME",
+      "fieldOrder": 6
+    },
+    {
+      "fieldName": "data.SW_VER",
+      "fieldLabel": "data.SW_VER",
+      "fieldOrder": 7
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_1",
+      "fieldLabel": "data.MCU_HEX_CRC_1",
+      "fieldOrder": 8
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_2",
+      "fieldLabel": "data.MCU_HEX_CRC_2",
+      "fieldOrder": 9
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_3",
+      "fieldLabel": "data.MCU_HEX_CRC_3",
+      "fieldOrder": 10
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_4",
+      "fieldLabel": "data.MCU_HEX_CRC_4",
+      "fieldOrder": 11
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_5",
+      "fieldLabel": "data.MCU_HEX_CRC_5",
+      "fieldOrder": 12
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_6",
+      "fieldLabel": "data.MCU_HEX_CRC_6",
+      "fieldOrder": 13
+    },
+    {
+      "fieldName": "data.MCU_HEX_CRC_7",
+      "fieldLabel": "data.MCU_HEX_CRC_7",
+      "fieldOrder": 14
+    },
+    {
+      "fieldName": "data.ROM_CRC",
+      "fieldLabel": "data.ROM_CRC",
+      "fieldOrder": 15
+    },
+    {
+      "fieldName": "data.NAME",
+      "fieldLabel": "data.NAME",
+      "fieldOrder": 16
+    },
+    {
+      "fieldName": "data.MCU_CHKSUM",
+      "fieldLabel": "data.MCU_CHKSUM",
+      "fieldOrder": 17
+    },
+    {
+      "fieldName": "data.ROM_CHKSUM",
+      "fieldLabel": "data.ROM_CHKSUM",
+      "fieldOrder": 18
+    },
+    {
+      "fieldName": "data.MCU_READ_CHKSUM",
+      "fieldLabel": "data.MCU_READ_CHKSUM",
+      "fieldOrder": 19
+    },
+    {
+      "fieldName": "data.ROM_READ_CHKSUM",
+      "fieldLabel": "data.ROM_READ_CHKSUM",
+      "fieldOrder": 20
+    },
+    {
+      "fieldName": "data.MCU_RESULT",
+      "fieldLabel": "data.MCU_RESULT",
+      "fieldOrder": 21
+    },
+    {
+      "fieldName": "data.ROM_RESULT",
+      "fieldLabel": "data.ROM_RESULT",
+      "fieldOrder": 22
+    },
+    {
+      "fieldName": "data.DRV_IC_RESULT",
+      "fieldLabel": "data.DRV_IC_RESULT",
+      "fieldOrder": 23
+    },
+    {
+      "fieldName": "data.DETAILS",
+      "fieldLabel": "data.DETAILS",
+      "fieldOrder": 24
+    }
+  ],
   "FCT": [
     {
       "fieldName": "data.BARCODE",
