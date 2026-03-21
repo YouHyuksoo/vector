@@ -640,6 +640,31 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
+  /** 설비 TOML 검증 — vector validate 실행 */
+  app.post('/api/monitor/agent/config/:name/validate', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    if (!isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
+    const filePath = agentPath(name);
+    if (!existsSync(filePath)) return reply.status(404).send({ error: 'Not found' });
+
+    try {
+      const result = execSync(
+        `"${VECTOR_BIN}" validate --no-environment "${filePath}"`,
+        { encoding: 'utf-8', timeout: 10000, windowsHide: true },
+      );
+      return reply.send({
+        valid: true,
+        message: result.trim() || 'Validation passed',
+      });
+    } catch (err: any) {
+      const output = (err.stdout || '') + (err.stderr || '');
+      return reply.send({
+        valid: false,
+        message: output.trim() || err.message,
+      });
+    }
+  });
+
   /** 설비 TOML 파일 다운로드 */
   app.get('/api/monitor/agent/config/:name/download', async (request, reply) => {
     const { name } = request.params as { name: string };

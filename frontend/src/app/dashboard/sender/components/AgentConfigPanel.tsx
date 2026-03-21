@@ -55,6 +55,33 @@ export function AgentConfigPanel({ name, onDownload, description = '', encoding 
 
   useEffect(() => { load(); }, [load]);
 
+  const [validating, setValidating] = useState(false);
+  const [validResult, setValidResult] = useState<{ valid: boolean; message: string } | null>(null);
+
+  const handleValidate = async () => {
+    setValidating(true);
+    setValidResult(null);
+    try {
+      // 저장 안 된 변경이 있으면 먼저 저장
+      if (hasChanges) {
+        await apiFetch(`/api/monitor/agent/config/${name}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+        setOriginal(content);
+      }
+      const res = await apiFetch<{ valid: boolean; message: string }>(
+        `/api/monitor/agent/config/${name}/validate`,
+        { method: 'POST' },
+      );
+      setValidResult(res);
+    } catch (err) {
+      setValidResult({ valid: false, message: err instanceof Error ? err.message : 'Validation failed' });
+    }
+    setValidating(false);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setResult(null);
@@ -106,8 +133,27 @@ export function AgentConfigPanel({ name, onDownload, description = '', encoding 
             disabled={saving || !hasChanges} className="!px-2 !py-1 !text-xs">
             {saving ? t('aggregator.saving') : t('aggregator.save')}
           </Button>
+          <Button variant="ghost" leftIcon="verified" onClick={handleValidate}
+            disabled={validating} className="!px-2 !py-1 !text-xs">
+            {validating ? '검증 중...' : 'TOML 검증'}
+          </Button>
         </div>
       </div>
+
+      {/* 검증 결과 */}
+      {validResult && (
+        <div className={`text-xs px-3 py-2 rounded-lg border ${
+          validResult.valid
+            ? 'bg-success/10 border-success/30 text-success'
+            : 'bg-error/10 border-error/30 text-error'
+        }`}>
+          <div className="flex items-center gap-1.5 font-bold mb-0.5">
+            <Icon name={validResult.valid ? 'check_circle' : 'error'} size="xs" />
+            {validResult.valid ? 'TOML 검증 통과' : 'TOML 검증 실패'}
+          </div>
+          <pre className="whitespace-pre-wrap font-mono text-[11px] opacity-80">{validResult.message}</pre>
+        </div>
+      )}
 
       {/* 폼 입력 필드 — 전체 너비 */}
       <AgentConfigForm content={content} onChange={setContent}
