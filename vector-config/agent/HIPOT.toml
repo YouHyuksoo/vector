@@ -16,7 +16,7 @@
 #
 # =============================================================================
 
-data_dir = "C:\\vector-data-hipot"
+data_dir = 'C:\vector-data-hipot'
 
 [api]
 enabled = true
@@ -27,8 +27,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\hipot\\*.txt",
-  "C:\\logs\\hipot\\*.csv",
+  'C:\logs\hipot\*.txt',
+  'C:\logs\hipot\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

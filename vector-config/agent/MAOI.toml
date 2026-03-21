@@ -16,7 +16,7 @@
 #
 # =============================================================================
 
-data_dir = "C:\\vector-data-maoi"
+data_dir = 'C:\vector-data-maoi'
 
 [api]
 enabled = true
@@ -27,8 +27,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\maoi\\*.txt",
-  "C:\\logs\\maoi\\*.csv",
+  'C:\logs\maoi\*.txt',
+  'C:\logs\maoi\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

@@ -16,7 +16,7 @@
 #
 # =============================================================================
 
-data_dir = "C:\\vector-data-eol"
+data_dir = 'C:\vector-data-eol'
 
 [api]
 enabled = true
@@ -27,8 +27,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\eol\\*.txt",
-  "C:\\logs\\eol\\*.csv",
+  'C:\logs\eol\*.txt',
+  'C:\logs\eol\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

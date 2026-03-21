@@ -2465,7 +2465,7 @@ function getDefaultAgentToml(name: string): string {
 #  Vector Agent (송신기) - ${name} 설비
 # =============================================================================
 
-data_dir = "C:\\\\vector-data-${name.toLowerCase()}"
+data_dir = 'C:\\vector-data-${name.toLowerCase()}'
 
 [api]
 enabled = true
@@ -2474,9 +2474,9 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\\\logs\\\\${name.toLowerCase()}\\\\*.txt",
-  "C:\\\\logs\\\\${name.toLowerCase()}\\\\*.csv",
-  "C:\\\\logs\\\\${name.toLowerCase()}\\\\*.log",
+  'C:\\logs\\${name.toLowerCase()}\\*.txt',
+  'C:\\logs\\${name.toLowerCase()}\\*.csv',
+  'C:\\logs\\${name.toLowerCase()}\\*.log',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

@@ -16,7 +16,7 @@
 #
 # =============================================================================
 
-data_dir = "C:\\vector-data-metalmask"
+data_dir = 'C:\vector-data-metalmask'
 
 [api]
 enabled = true
@@ -27,8 +27,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\metalmask\\*.txt",
-  "C:\\logs\\metalmask\\*.csv",
+  'C:\logs\metalmask\*.txt',
+  'C:\logs\metalmask\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

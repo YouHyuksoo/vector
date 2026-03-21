@@ -16,7 +16,7 @@
 #
 # =============================================================================
 
-data_dir = "C:\\vector-data-reflow"
+data_dir = 'C:\vector-data-reflow'
 
 [api]
 enabled = true
@@ -27,8 +27,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\reflow\\*.txt",
-  "C:\\logs\\reflow\\*.csv",
+  'C:\logs\reflow\*.txt',
+  'C:\logs\reflow\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

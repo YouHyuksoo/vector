@@ -2,7 +2,7 @@
 #  Vector Agent (송신기) - DOWNLOAD 설비
 # =============================================================================
 
-data_dir = "C:\\vector-data-download"
+data_dir = 'C:\vector-data-download'
 
 [api]
 enabled = true
@@ -11,8 +11,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\download\\*.txt",
-  "C:\\logs\\download\\*.csv",
+  'C:\logs\download\*.txt',
+  'C:\logs\download\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

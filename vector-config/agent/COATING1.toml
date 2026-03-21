@@ -11,9 +11,9 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\logs\coating1\*.txt",
-  "C:\logs\coating1\*.csv",
-  "C:\logs\coating1\*.log",
+  "C:\logs\coating1*.txt',
+  "C:\logs\coating1*.csv',
+  "C:\logs\coating1*.log',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

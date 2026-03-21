@@ -9,7 +9,7 @@
 #
 # =============================================================================
 
-data_dir = "C:\\vector-data-vision_legacy"
+data_dir = 'C:\vector-data-vision_legacy'
 
 [api]
 enabled = true
@@ -20,8 +20,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\vision_legacy\\*.txt",
-  "C:\\logs\\vision_legacy\\*.csv",
+  'C:\logs\vision_legacy\*.txt',
+  'C:\logs\vision_legacy\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

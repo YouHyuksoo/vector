@@ -2,7 +2,7 @@
 #  Vector Agent (송신기) - VISION_NATIVE 설비
 # =============================================================================
 
-data_dir = "C:\\vector-data-vision_native"
+data_dir = 'C:\vector-data-vision_native'
 
 [api]
 enabled = true
@@ -11,10 +11,10 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\vision_native\\*.txt",
-  "C:\\logs\\vision_native\\*.csv",
+  'C:\logs\vision_native\*.txt',
+  'C:\logs\vision_native\*.csv',
 ]
-read_from = "end"
+read_from = "beginning"
 fingerprint.strategy = "checksum"
 fingerprint.lines = 1
 ignore_older_secs = 86400

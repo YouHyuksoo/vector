@@ -2,7 +2,7 @@
 #  Vector Agent (송신기) - LOWCURRENT 설비
 # =============================================================================
 
-data_dir = "C:\\vector-data-lowcurrent"
+data_dir = 'C:\vector-data-lowcurrent'
 
 [api]
 enabled = true
@@ -11,8 +11,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\lowcurrent\\*.txt",
-  "C:\\logs\\lowcurrent\\*.csv",
+  'C:\logs\lowcurrent\*.txt',
+  'C:\logs\lowcurrent\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

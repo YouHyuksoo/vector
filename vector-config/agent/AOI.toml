@@ -16,7 +16,7 @@
 #
 # =============================================================================
 
-data_dir = "C:\\vector-data-aoi"
+data_dir = 'C:\vector-data-aoi'
 
 [api]
 enabled = true
@@ -27,8 +27,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\aoi\\*.txt",
-  "C:\\logs\\aoi\\*.csv",
+  'C:\logs\aoi\*.txt',
+  'C:\logs\aoi\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

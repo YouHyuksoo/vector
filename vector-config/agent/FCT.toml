@@ -16,7 +16,7 @@
 #
 # =============================================================================
 
-data_dir = "C:\\vector-data-fct"
+data_dir = 'C:\vector-data-fct'
 
 [api]
 enabled = true
@@ -27,8 +27,8 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  "C:\\logs\\fct\\*.txt",
-  "C:\\logs\\fct\\*.csv",
+  'C:\logs\fct\*.txt',
+  'C:\logs\fct\*.csv',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"

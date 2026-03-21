@@ -25,7 +25,7 @@
 # - 디스크 버퍼, 체크포인트 등을 저장합니다
 # - 이 폴더가 없으면 Vector가 자동 생성합니다
 # -----------------------------------------------------------------------------
-data_dir = "C:\\Project\\vector\\vector-data"
+data_dir = 'C:\Project\vector\vector-data'
 
 
 # -----------------------------------------------------------------------------
@@ -995,7 +995,7 @@ Content-Type = "application/json"
 [sinks.raw_file]
 type = "file"
 inputs = ["tag_filename"]         # 파싱 전 원본 + 파일명 태그
-path = "C:\\data\\raw-logs\\{{ equipment_type }}\\{{ equipment_id }}\\%Y-%m-%d\\{{ filename }}"
+path = 'C:\data\raw-logs\{{ equipment_type }}\{{ equipment_id }}\%Y-%m-%d\{{ filename }}'
 
 [sinks.raw_file.encoding]
 codec = "text"
