@@ -76,23 +76,21 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
       const ws = createWriteStream(tmpZip);
       await pipelineAsync(res.body as any, ws);
 
-      /* 2. 압축 해제 대상 디렉토리 (C:\vector\) — zip 안에 bin\ 폴더가 포함됨 */
-      const installDir = dirname(dirname(ENV.VECTOR_BIN_PATH));
+      /* 2. 압축 해제 대상 디렉토리 (C:\vector\) */
+      const installDir = dirname(ENV.VECTOR_BIN_PATH);
       if (!existsSync(installDir)) mkdirSync(installDir, { recursive: true });
 
       /* 3. zip 압축 해제 */
       const zip = new AdmZip(tmpZip);
       zip.extractAllTo(installDir, true);
 
-      /* 4. data, config 디렉토리 생성 */
+      /* 4. data 디렉토리 생성 */
       const dataDir = join(installDir, 'data');
-      const configDir = join(installDir, 'config');
       if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
-      if (!existsSync(configDir)) mkdirSync(configDir, { recursive: true });
 
       return reply.send({
         success: true,
-        message: `Vector 바이너리가 설치되었습니다. 마스터 서버 다운로드 페이지에서 설비 TOML을 다운받아 ${configDir} 폴더에 넣어주세요.`,
+        message: `Vector 바이너리가 설치되었습니다. 마스터 서버 다운로드 페이지에서 설비 TOML을 다운받아 ${installDir} 폴더에 넣어주세요.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

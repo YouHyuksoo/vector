@@ -51,7 +51,7 @@ const PHASES: Phase[] = [
       { labelKey: 'download.guide.downloadToml', textKey: 'download.guide.downloadTomlDesc' },
       { labelKey: 'download.guide.editSettings', textKey: 'download.guide.editSettingsDesc' },
     ],
-    code: 'C:\\vector\\\n  ├── bin\\vector.exe   ← auto installed\n  ├── config\\\n  │   └── AOI.toml     ← downloaded from server\n  ├── data\\            ← auto created\n  └── ...',
+    code: 'C:\\vector\\\n  ├── vector.exe      ← auto installed\n  ├── AOI.toml         ← downloaded from server\n  ├── data\\            ← auto created\n  └── start-vector.bat',
     pill: 'bg-accent/10 text-accent',
     card: 'border-accent/20',
     iconBox: 'bg-accent/10',

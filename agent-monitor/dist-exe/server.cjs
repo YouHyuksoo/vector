@@ -47308,17 +47308,15 @@ async function installRoutes(app) {
       }
       const ws = (0, import_fs5.createWriteStream)(tmpZip);
       await pipelineAsync(res.body, ws);
-      const installDir = (0, import_path2.dirname)((0, import_path2.dirname)(ENV.VECTOR_BIN_PATH));
+      const installDir = (0, import_path2.dirname)(ENV.VECTOR_BIN_PATH);
       if (!(0, import_fs5.existsSync)(installDir)) (0, import_fs5.mkdirSync)(installDir, { recursive: true });
       const zip = new import_adm_zip.default(tmpZip);
       zip.extractAllTo(installDir, true);
       const dataDir = (0, import_path2.join)(installDir, "data");
-      const configDir = (0, import_path2.join)(installDir, "config");
       if (!(0, import_fs5.existsSync)(dataDir)) (0, import_fs5.mkdirSync)(dataDir, { recursive: true });
-      if (!(0, import_fs5.existsSync)(configDir)) (0, import_fs5.mkdirSync)(configDir, { recursive: true });
       return reply.send({
         success: true,
-        message: `Vector \uBC14\uC774\uB108\uB9AC\uAC00 \uC124\uCE58\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB9C8\uC2A4\uD130 \uC11C\uBC84 \uB2E4\uC6B4\uB85C\uB4DC \uD398\uC774\uC9C0\uC5D0\uC11C \uC124\uBE44 TOML\uC744 \uB2E4\uC6B4\uBC1B\uC544 ${configDir} \uD3F4\uB354\uC5D0 \uB123\uC5B4\uC8FC\uC138\uC694.`
+        message: `Vector \uBC14\uC774\uB108\uB9AC\uAC00 \uC124\uCE58\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB9C8\uC2A4\uD130 \uC11C\uBC84 \uB2E4\uC6B4\uB85C\uB4DC \uD398\uC774\uC9C0\uC5D0\uC11C \uC124\uBE44 TOML\uC744 \uB2E4\uC6B4\uBC1B\uC544 ${installDir} \uD3F4\uB354\uC5D0 \uB123\uC5B4\uC8FC\uC138\uC694.`
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
