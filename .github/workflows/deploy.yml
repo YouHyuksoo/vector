@@ -82,13 +82,14 @@ jobs:
           if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force }
 
           robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
-            /XF ".env" "ai-config.json" "ai-system-prompt.txt" `
-            /XD ".git" "vector-config\agent" "vector-config\agent-fluent" "vector-config\aggregator\backups" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
+            /XF ".env" "ai-config.json" "ai-system-prompt.txt" "parse-fields.json" `
+            /XD ".git" "vector-config" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
 
           # vector-bin에서 다운로드용 파일만 동기화
           $vbSrc = "$src\vector-bin"
           $vbDst = "$dst\vector-bin"
           if (!(Test-Path $vbDst)) { New-Item -ItemType Directory -Path $vbDst -Force }
+          if (Test-Path "$vbSrc\vector.zip") { Copy-Item "$vbSrc\vector.zip" "$vbDst\vector.zip" -Force }
           if (Test-Path "$vbSrc\vector-x64.zip") { Copy-Item "$vbSrc\vector-x64.zip" "$vbDst\vector-x64.zip" -Force }
           if (Test-Path "$vbSrc\vector-win7.zip") { Copy-Item "$vbSrc\vector-win7.zip" "$vbDst\vector-win7.zip" -Force }
           if (Test-Path "$vbSrc\vector-x86.zip") { Copy-Item "$vbSrc\vector-x86.zip" "$vbDst\vector-x86.zip" -Force }
