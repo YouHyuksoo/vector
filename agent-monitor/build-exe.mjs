@@ -159,7 +159,7 @@ try {
   } else {
     console.log('  → node-win7.exe already cached');
   }
-  const win7Bat = ['@echo off', 'cd /d "%~dp0"', 'node-win7.exe server.cjs %*'].join('\r\n');
+  const win7Bat = ['@echo off', 'cd /d "%~dp0"', 'echo Starting Agent Manager...', 'node-win7.exe server.cjs %*', 'if errorlevel 1 (', '  echo.', '  echo [ERROR] Agent Manager failed to start.', '  pause', ')'].join('\r\n');
   writeFileSync(join(DIST, 'agent-manager-win7.bat'), win7Bat);
   execSync(
     `zip -j ${join(DIST, 'agent-manager-win7.zip')} ${nodeWin7Path} ${join(DIST, 'server.cjs')} ${join(DIST, 'agent-manager-win7.bat')} ${join(DIST, '.env')}`,
@@ -215,7 +215,13 @@ try {
   const launcherBat = [
     '@echo off',
     'cd /d "%~dp0"',
+    'echo Starting Agent Manager...',
     'node-x86.exe server.cjs %*',
+    'if errorlevel 1 (',
+    '  echo.',
+    '  echo [ERROR] Agent Manager failed to start.',
+    '  pause',
+    ')',
   ].join('\r\n');
   writeFileSync(join(DIST, 'agent-manager.bat'), launcherBat);
 
