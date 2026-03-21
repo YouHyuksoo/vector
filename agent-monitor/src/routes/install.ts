@@ -80,9 +80,20 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
       const installDir = dirname(ENV.VECTOR_BIN_PATH);
       if (!existsSync(installDir)) mkdirSync(installDir, { recursive: true });
 
-      /* 3. zip 압축 해제 */
+      /* 3. zip 압축 해제 → bin/vector.exe를 C:\vector\vector.exe로 플랫 배치 */
       const zip = new AdmZip(tmpZip);
-      zip.extractAllTo(installDir, true);
+      for (const entry of zip.getEntries()) {
+        const name = entry.entryName.replace(/\\/g, '/');
+        if (entry.isDirectory) continue;
+        /* bin/vector.exe → vector.exe (루트로 이동) */
+        if (name === 'bin/vector.exe') {
+          zip.extractEntryTo(entry, installDir, false, true);
+        }
+        /* *.bat 파일 → 루트에 배치 */
+        else if (name.endsWith('.bat') && !name.includes('/')) {
+          zip.extractEntryTo(entry, installDir, false, true);
+        }
+      }
 
       /* 4. data 디렉토리 생성 */
       const dataDir = join(installDir, 'data');
@@ -90,7 +101,7 @@ export default async function installRoutes(app: FastifyInstance): Promise<void>
 
       return reply.send({
         success: true,
-        message: `Vector 바이너리가 설치되었습니다. 마스터 서버 다운로드 페이지에서 설비 TOML을 다운받아 ${installDir} 폴더에 넣어주세요.`,
+        message: `Vector가 ${installDir}에 설치되었습니다. 다운로드 페이지에서 설비 TOML을 받아 같은 폴더에 넣어주세요.`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

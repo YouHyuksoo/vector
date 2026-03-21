@@ -12,6 +12,9 @@
 import { FastifyInstance } from 'fastify';
 import { execSync } from 'child_process';
 import { existsSync, renameSync, unlinkSync, createWriteStream } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import AdmZip from 'adm-zip';
 
 /** stream pipeline을 Promise로 래핑 (Node 14 호환) */
 function pipelineAsync(src: NodeJS.ReadableStream, dst: NodeJS.WritableStream): Promise<void> {
@@ -119,11 +122,10 @@ export default async function updateRoutes(app: FastifyInstance): Promise<void> 
         renameSync(ENV.VECTOR_BIN_PATH, backupPath);
       }
 
-      /* 3. 새 바이너리 다운로드 */
+      /* 3. 새 zip 다운로드 → bin/vector.exe 추출 */
       const downloadUrl = `${ENV.MASTER_SERVER_URL}/api/monitor/agent-download/vector${editionParam}`;
       const res = await fetch(downloadUrl);
       if (!res.ok || !res.body) {
-        /* 다운로드 실패 시 백업 복원 */
         if (existsSync(backupPath)) renameSync(backupPath, ENV.VECTOR_BIN_PATH);
         return reply.status(502).send({
           success: false,
@@ -131,8 +133,20 @@ export default async function updateRoutes(app: FastifyInstance): Promise<void> 
         });
       }
 
-      const ws = createWriteStream(ENV.VECTOR_BIN_PATH);
-      await pipelineAsync(res.body as any, ws);
+      const tmpZip = join(tmpdir(), `vector-update-${Date.now()}.zip`);
+      try {
+        const ws = createWriteStream(tmpZip);
+        await pipelineAsync(res.body as any, ws);
+        const zip = new AdmZip(tmpZip);
+        const binEntry = zip.getEntry('bin/vector.exe');
+        if (!binEntry) {
+          if (existsSync(backupPath)) renameSync(backupPath, ENV.VECTOR_BIN_PATH);
+          return reply.status(500).send({ success: false, error: 'zip에서 bin/vector.exe를 찾을 수 없습니다.' });
+        }
+        zip.extractEntryTo(binEntry, require('path').dirname(ENV.VECTOR_BIN_PATH), false, true);
+      } finally {
+        try { if (existsSync(tmpZip)) unlinkSync(tmpZip); } catch { /* ignore */ }
+      }
 
       /* 4. 새 버전 확인 */
       const newVersion = getLocalVersion();
