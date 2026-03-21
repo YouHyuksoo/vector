@@ -20,6 +20,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/getlantern/systray"
 )
 
 //go:embed public/*
@@ -300,6 +302,54 @@ func tomlSetInclude(content, paths string) string {
 // ─── 메인 ───
 
 func main() {
+	// --no-tray 플래그면 콘솔 모드
+	for _, arg := range os.Args[1:] {
+		if arg == "--no-tray" || arg == "--console" {
+			startServer()
+			return
+		}
+	}
+	systray.Run(onTrayReady, onTrayExit)
+}
+
+func onTrayExit() {}
+
+func onTrayReady() {
+	// 트레이 아이콘 설정
+	systray.SetTitle("Agent Manager")
+	systray.SetTooltip("Vector Agent Manager - localhost:" + port)
+
+	mOpen := systray.AddMenuItem("열기 (브라우저)", "웹 브라우저에서 Agent Manager 열기")
+	systray.AddSeparator()
+	mStatus := systray.AddMenuItem("상태: 시작 중...", "")
+	mStatus.Disable()
+	systray.AddSeparator()
+	mQuit := systray.AddMenuItem("끝내기", "Agent Manager 종료")
+
+	// 메뉴 이벤트 처리
+	go func() {
+		for {
+			select {
+			case <-mOpen.ClickedCh:
+				exec.Command("rundll32", "url.dll,FileProtocolHandler", "http://localhost:"+port).Start()
+			case <-mQuit.ClickedCh:
+				systray.Quit()
+				os.Exit(0)
+			}
+		}
+	}()
+
+	// 서버 시작 (별도 고루틴)
+	go startServer()
+
+	// 상태 업데이트
+	go func() {
+		time.Sleep(2 * time.Second)
+		mStatus.SetTitle("상태: 실행 중 (:" + port + ")")
+	}()
+}
+
+func startServer() {
 	mux := http.NewServeMux()
 
 	// Health
