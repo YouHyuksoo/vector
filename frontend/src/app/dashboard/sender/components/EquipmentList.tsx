@@ -56,107 +56,115 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
     if (e.key === 'Escape') setEditing(null);
   };
 
+  const isEquipComplete = (name: string) => {
+    if (fluentMode) return false;
+    const p = pipelineStatus[name];
+    return (p?.doneCount ?? 0) === 5;
+  };
+
+  const incomplete = names.filter(n => !isEquipComplete(n));
+  const complete = names.filter(n => isEquipComplete(n));
+
+  const renderChip = (name: string) => {
+    const desc = descriptions[name];
+    const isSel = selected === name;
+    const isEd = editing === name;
+    const pipeline = fluentMode ? undefined : pipelineStatus[name];
+    const done = isEquipComplete(name);
+
+    return (
+      <button
+        key={name}
+        onClick={() => onSelect(name)}
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-left transition-all duration-150 group text-xs
+          ${isSel
+            ? fluentMode
+              ? 'bg-info/10 text-info border border-info/30 font-bold'
+              : 'bg-accent/10 text-accent border border-accent/30 font-bold'
+            : done
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border border-emerald-400/60 dark:border-emerald-500/40'
+              : 'bg-surface dark:bg-surface-dark hover:bg-accent/5 dark:hover:bg-accent/5 text-text dark:text-white border border-transparent'
+          }`}
+      >
+        <span className="font-bold truncate max-w-[120px]">{name}</span>
+        {fluentMode ? (
+          <span className="px-1 py-px rounded text-[8px] font-bold uppercase leading-none bg-info/10 text-info">CONF</span>
+        ) : pipeline?.targetType ? (
+          <span className={`px-1 py-px rounded text-[8px] font-bold uppercase leading-none
+            ${pipeline.targetType === 'PROCEDURE'
+              ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300'
+              : 'bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300'
+            }`}>
+            {pipeline.targetType === 'PROCEDURE' ? 'PROC' : 'TBL'}
+          </span>
+        ) : null}
+        {desc && !isEd && (
+          <span className="text-[10px] text-muted-foreground truncate max-w-[80px]" onClick={e => startEdit(name, e)}>{desc}</span>
+        )}
+        {isEd && (
+          <input
+            ref={inputRef}
+            value={editValue}
+            onChange={e => setEditValue(e.target.value)}
+            onBlur={saveEdit}
+            onKeyDown={handleKeyDown}
+            onClick={e => e.stopPropagation()}
+            placeholder={t('sender.descPlaceholder')}
+            className="text-[10px] bg-white dark:bg-slate-800 border border-primary/40 rounded px-1 py-0.5 w-20
+              text-text dark:text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+          />
+        )}
+      </button>
+    );
+  };
+
   return (
-    <div className="flex flex-col gap-3">
+    <Card className="p-3 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-text dark:text-white flex items-center gap-1.5">
-          <Icon name={fluentMode ? 'air' : 'devices'} className={fluentMode ? 'text-info' : 'text-accent'} size="sm" />
+        <p className="text-sm font-bold text-text dark:text-white">
           {t('sender.equipmentList')}
-          <span className="text-muted-foreground font-normal">({names.length})</span>
+          <span className="text-muted-foreground font-normal ml-1">({names.length})</span>
         </p>
         <div className="flex gap-2">
-          <Button variant="ghost" leftIcon="add" onClick={onAdd} className="!text-xs !py-1.5">
+          <Button variant="ghost" leftIcon="add" onClick={onAdd} className="!text-xs !py-1">
             {t('sender.add')}
           </Button>
           {selected && (
-            <Button variant="ghost" leftIcon="delete" onClick={onDelete} className="!text-xs !py-1.5 !text-error hover:!bg-error/10">
+            <Button variant="ghost" leftIcon="delete" onClick={onDelete} className="!text-xs !py-1 !text-error hover:!bg-error/10">
               {t('sender.delete')}
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5">
-        {names.map(name => {
-          const desc = descriptions[name];
-          const isSel = selected === name;
-          const isEditing = editing === name;
-          const pipeline = fluentMode ? undefined : pipelineStatus[name];
-          const doneCount = pipeline?.doneCount ?? 0;
-          const isComplete = !fluentMode && doneCount === 5;
+      {names.length === 0 && (
+        <div className="flex items-center justify-center py-6 text-muted-foreground">
+          <p className="text-xs">{t('sender.empty')}</p>
+        </div>
+      )}
 
-          return (
-            <button
-              key={name}
-              onClick={() => onSelect(name)}
-              className={`flex flex-col gap-1 px-2.5 py-2 rounded-lg text-left transition-all duration-200 group
-                ${isSel
-                  ? fluentMode
-                    ? 'bg-info/10 text-info border border-info/30 font-bold'
-                    : 'bg-accent/10 text-accent border border-accent/30 font-bold'
-                  : isComplete
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border-2 border-emerald-400/60 dark:border-emerald-500/40 shadow-sm shadow-emerald-200/50 dark:shadow-emerald-900/30'
-                    : 'bg-surface dark:bg-surface-dark hover:bg-accent/5 dark:hover:bg-accent/5 text-text dark:text-white border border-transparent'
-                }`}
-            >
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Icon
-                  name={isSel ? 'radio_button_checked' : isComplete ? 'check_circle' : 'radio_button_unchecked'}
-                  size="xs"
-                  className={`shrink-0 ${isSel ? (fluentMode ? 'text-info' : 'text-accent') : isComplete ? 'text-success' : 'text-muted-foreground'}`}
-                />
-                <span className="text-xs font-bold truncate">{name}</span>
-                {fluentMode ? (
-                  <span className="shrink-0 px-1 py-px rounded text-[8px] font-bold uppercase leading-none
-                    bg-info/10 text-info">CONF</span>
-                ) : pipeline?.targetType ? (
-                  <span className={`shrink-0 px-1 py-px rounded text-[8px] font-bold uppercase leading-none
-                    ${pipeline.targetType === 'PROCEDURE'
-                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300'
-                      : 'bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300'
-                    }`}>
-                    {pipeline.targetType === 'PROCEDURE' ? 'PROC' : 'TBL'}
-                  </span>
-                ) : null}
-                {!isEditing && (
-                  <span
-                    onClick={e => startEdit(name, e)}
-                    className="opacity-0 group-hover:opacity-60 hover:!opacity-100 cursor-pointer transition-opacity shrink-0 ml-auto"
-                  >
-                    <Icon name="edit" size="xs" className="!text-[11px] text-muted-foreground" />
-                  </span>
-                )}
-              </div>
-              {isEditing ? (
-                <input
-                  ref={inputRef}
-                  value={editValue}
-                  onChange={e => setEditValue(e.target.value)}
-                  onBlur={saveEdit}
-                  onKeyDown={handleKeyDown}
-                  onClick={e => e.stopPropagation()}
-                  placeholder={t('sender.descPlaceholder')}
-                  className="w-full text-[10px] bg-white dark:bg-slate-800 border border-primary/40 rounded px-1.5 py-0.5
-                    text-text dark:text-white placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                />
-              ) : desc ? (
-                <p className="text-[10px] text-muted-foreground leading-tight truncate">{desc}</p>
-              ) : null}
-              {pipeline && (
-                <PipelineStepBar agents={pipelineStatus} agentName={name} compact />
-              )}
-            </button>
-          );
-        })}
+      {incomplete.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+            미완료 <span className="font-normal text-muted-foreground">({incomplete.length})</span>
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {incomplete.map(renderChip)}
+          </div>
+        </div>
+      )}
 
-        {names.length === 0 && (
-          <Card className="col-span-full flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
-            <Icon name="inventory_2" size="lg" />
-            <p className="text-xs">{t('sender.empty')}</p>
-          </Card>
-        )}
-      </div>
+      {complete.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+            완료 <span className="font-normal text-muted-foreground">({complete.length})</span>
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {complete.map(renderChip)}
+          </div>
+        </div>
+      )}
 
-    </div>
+    </Card>
   );
 }
