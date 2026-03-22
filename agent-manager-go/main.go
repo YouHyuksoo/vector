@@ -1083,7 +1083,12 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := httpGet(masterServer + "/api/monitor/download/agent/" + name)
+	edition := detectEdition()
+	editionParam := ""
+	if edition != "" {
+		editionParam = "?edition=" + edition
+	}
+	resp, err := httpGet(masterServer + "/api/monitor/download/agent/" + name + editionParam)
 	if err != nil {
 		jsonError(w, 502, "Download failed")
 		return

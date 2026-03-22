@@ -342,7 +342,10 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
     try {
       let content = readFileSync(filePath, 'utf-8');
-      // TOML은 v0.38~v0.45 전 버전 호환 (generator 하트비트) — 변환 불필요
+      // Win7(v0.38)은 static_metrics 미지원 → internal_metrics로 변환
+      if (edition === 'win7') {
+        content = content.replace(/type\s*=\s*"static_metrics"/g, 'type = "internal_metrics"');
+      }
       return reply
         .header('Content-Type', 'application/octet-stream')
         .header('Content-Disposition', `attachment; filename="${name}.toml"`)
