@@ -482,6 +482,9 @@ async function saveMasterServerBanner() {
     });
     showToast('서버 주소 저장 완료: ' + data.masterServer, 'success');
     document.getElementById('inp-master-server').value = data.masterServer;
+    // 변경된 서버에서 데이터 다시 로드
+    loadTomlList();
+    loadSetup();
   } catch (err) {
     showToast('서버 주소 변경 실패: ' + err.message, 'error');
   }
@@ -498,6 +501,8 @@ async function saveMasterServer() {
       body: JSON.stringify({ masterServer: url }),
     });
     showToast('서버 주소가 변경되었습니다: ' + data.masterServer, 'success');
+    loadTomlList();
+    loadSetup();
   } catch (err) {
     showToast('서버 주소 변경 실패: ' + err.message, 'error');
   }
