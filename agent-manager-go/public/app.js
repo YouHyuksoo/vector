@@ -454,11 +454,37 @@ async function checkInstall() {
     document.getElementById('btn-install').disabled = data.binaryExists;
     if (data.masterServer) {
       document.getElementById('inp-master-server').value = data.masterServer;
+      document.getElementById('inp-master-server-banner').value = data.masterServer;
+    }
+    // Vector 미설치 시 상단 배너 표시
+    const banner = document.getElementById('server-banner');
+    if (!data.binaryExists) {
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
     }
   } catch { /* 무시 */ }
 }
 
-/** 수집 서버 주소 저장 */
+/** 상단 배너에서 서버 주소 저장 */
+async function saveMasterServerBanner() {
+  const inp = document.getElementById('inp-master-server-banner');
+  const url = inp.value.trim();
+  if (!url) { showToast('서버 주소를 입력하세요', 'error'); return; }
+  try {
+    const data = await fetchJSON('/api/server-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ masterServer: url }),
+    });
+    showToast('서버 주소 저장 완료: ' + data.masterServer, 'success');
+    document.getElementById('inp-master-server').value = data.masterServer;
+  } catch (err) {
+    showToast('서버 주소 변경 실패: ' + err.message, 'error');
+  }
+}
+
+/** 수집 서버 주소 저장 (하단) */
 async function saveMasterServer() {
   const url = document.getElementById('inp-master-server').value.trim();
   if (!url) { showToast('서버 주소를 입력하세요', 'error'); return; }
