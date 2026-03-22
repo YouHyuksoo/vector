@@ -9,7 +9,7 @@
  */
 
 import { FastifyPluginAsync } from 'fastify';
-import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync, mkdirSync, statSync, copyFileSync, rmSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync, mkdirSync, statSync, copyFileSync, rmSync, createReadStream } from 'fs';
 import { join, dirname, basename } from 'path';
 import { tmpdir, platform, cpus, totalmem, freemem } from 'os';
 import { spawn, execSync } from 'child_process';
@@ -296,11 +296,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ error: `${zipFile} not found` });
     }
     try {
-      const buf = readFileSync(zipPath);
+      const stat = statSync(zipPath);
+      const stream = createReadStream(zipPath);
       return reply
         .header('Content-Type', 'application/zip')
         .header('Content-Disposition', `attachment; filename="${zipFile}"`)
-        .send(buf);
+        .header('Content-Length', stat.size)
+        .send(stream);
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -310,17 +312,18 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   app.get('/api/monitor/download/agent-manager', async (request, reply) => {
     const { arch } = request.query as { arch?: string };
     const fileName = arch === 'x86' ? 'agent-manager-x86.exe' : 'agent-manager-x64.exe';
-    const contentType = 'application/octet-stream';
     const filePath = join(process.cwd(), 'vector-bin', fileName);
     if (!existsSync(filePath)) {
       return reply.status(404).send({ error: `${fileName} not found` });
     }
     try {
-      const buf = readFileSync(filePath);
+      const stat = statSync(filePath);
+      const stream = createReadStream(filePath);
       return reply
-        .header('Content-Type', contentType)
+        .header('Content-Type', 'application/octet-stream')
         .header('Content-Disposition', `attachment; filename="${fileName}"`)
-        .send(buf);
+        .header('Content-Length', stat.size)
+        .send(stream);
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
@@ -356,11 +359,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ error: 'fluent-bit.zip not found' });
     }
     try {
-      const buf = readFileSync(zipPath);
+      const stat = statSync(zipPath);
+      const stream = createReadStream(zipPath);
       return reply
         .header('Content-Type', 'application/zip')
         .header('Content-Disposition', 'attachment; filename="fluent-bit.zip"')
-        .send(buf);
+        .header('Content-Length', stat.size)
+        .send(stream);
     } catch (err) {
       return reply.status(500).send({ error: String(err) });
     }
