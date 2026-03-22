@@ -367,13 +367,9 @@ async function loadConfig() {
     document.getElementById('editor-config').value = data.content;
     document.getElementById('txt-config-path').textContent = data.path;
   } catch (err) {
-    if (err.message.includes('404')) {
-      document.getElementById('editor-config').value = '';
-      document.getElementById('txt-config-path').textContent = '';
-      showToast(t('toast.configNoFile'), 'warning');
-    } else {
-      showToast(t('toast.configLoadFail') + err.message, 'error');
-    }
+    document.getElementById('editor-config').value = '';
+    document.getElementById('txt-config-path').textContent = '';
+    // 첫 실행(TOML 없음)이면 에러 토스트 표시 안 함 — 상단 배너가 안내
   }
 }
 
@@ -841,7 +837,7 @@ async function loadTomlList() {
         + name + '</button>';
     }).join('');
   } catch {
-    area.innerHTML = '<span style="font-size:13px;color:var(--red)">서버 연결 실패</span>';
+    area.innerHTML = '<span style="font-size:13px;color:var(--fg3)">서버 주소를 먼저 설정하세요</span>';
   }
 }
 
