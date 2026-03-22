@@ -3,8 +3,8 @@
  * @description Vector 송신기 다운로드 페이지 — 실행파일, 설정파일 다운로드
  *
  * 초보자 가이드:
- * 1. 아키텍처(64-bit / 32-bit) 선택
- * 2. 조합에 따라 Vector, Agent Manager, Fluent Bit, 설정 파일이 자동으로 맞춰짐
+ * 1. 64-bit / 32-bit 파일이 카드로 나열되어 바로 선택 가능
+ * 2. 설비별 TOML / Fluent Bit 설정 파일도 바로 다운로드
  */
 'use client';
 
@@ -19,7 +19,6 @@ type ConfigType = 'vector' | 'fluent';
 export default function DownloadPage() {
   const [agents, setAgents] = useState<string[]>([]);
   const [fluentAgents, setFluentAgents] = useState<string[]>([]);
-  const [arch, setArch] = useState<'x64' | 'x86'>('x64');
   const [configType, setConfigType] = useState<ConfigType>('vector');
   const { t } = useI18n();
 
@@ -30,39 +29,32 @@ export default function DownloadPage() {
       .then(d => setFluentAgents(d.names)).catch(() => {});
   }, []);
 
-  const is64 = arch === 'x64';
-  const vectorZipUrl = is64
-    ? '/api/monitor/download/vector-zip'
-    : '/api/monitor/download/vector-zip?edition=x86';
-  const agentManagerUrl = is64
-    ? '/api/monitor/download/agent-manager'
-    : '/api/monitor/download/agent-manager?arch=x86';
-  const vectorVersion = is64 ? 'v0.45' : 'v0.38';
-
   const downloads = [
     {
-      label: t('download.vectorExe'),
+      label: 'Vector',
+      icon: 'memory',
+      items: [
+        { bit: '64-bit', version: 'v0.45', file: 'vector.zip', href: '/api/monitor/download/vector-zip' },
+        { bit: '32-bit', version: 'v0.38', file: 'vector-x86.zip', href: '/api/monitor/download/vector-zip?edition=x86' },
+      ],
       desc: t('download.vectorExeDesc'),
-      meta: `${vectorVersion} / ${is64 ? '64-bit' : '32-bit'}`,
-      file: 'vector.zip',
-      href: vectorZipUrl,
-      size: t('download.vectorExeSize'),
     },
     {
-      label: t('download.fluentBit'),
-      desc: t('download.fluentBitDesc'),
-      meta: t('download.fluentBitNotice'),
-      file: t('download.fluentBitBtn'),
-      href: '/api/monitor/download/fluent-bit',
-      size: t('download.fluentBitSize'),
-    },
-    {
-      label: t('download.agentManager'),
+      label: 'Agent Manager',
+      icon: 'settings_suggest',
+      items: [
+        { bit: '64-bit', version: 'Go exe', file: 'agent-manager-x64.exe', href: '/api/monitor/download/agent-manager' },
+        { bit: '32-bit', version: 'Go exe', file: 'agent-manager-x86.exe', href: '/api/monitor/download/agent-manager?arch=x86' },
+      ],
       desc: t('download.agentManagerDesc'),
-      meta: `Go exe — Win7~Win11 (${is64 ? '64-bit' : '32-bit'}, ~9MB)`,
-      file: `agent-manager-${is64 ? 'x64' : 'x86'}.exe`,
-      href: agentManagerUrl,
-      size: t('download.agentManagerSize'),
+    },
+    {
+      label: 'Fluent Bit',
+      icon: 'air',
+      items: [
+        { bit: '32-bit', version: 'Windows', file: 'fluent-bit.zip', href: '/api/monitor/download/fluent-bit' },
+      ],
+      desc: t('download.fluentBitDesc'),
     },
   ];
 
@@ -80,57 +72,34 @@ export default function DownloadPage() {
 
       <QuickGuide />
 
-      {/* 아키텍처 선택 */}
-      <div className="flex gap-2 items-center">
-        <span className="text-xs font-bold text-muted-foreground">{t('download.archLabel')}</span>
-        {(['x64', 'x86'] as const).map(a => (
-          <button key={a} type="button" onClick={() => setArch(a)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border
-              ${arch === a
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border dark:border-border-dark text-muted-foreground hover:border-primary/40'}`}>
-            {a === 'x64' ? '64-bit' : '32-bit'}
-            <span className="text-[10px] font-normal ml-1 opacity-80">
-              {a === 'x64' ? t('download.archRecommended') : t('download.archLegacy')}
-            </span>
-          </button>
+      {/* 실행파일 다운로드 카드 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {downloads.map(group => (
+          <Card key={group.label} className="p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Icon name={group.icon} size="sm" className="text-primary" />
+              <p className="font-bold text-text dark:text-white">{group.label}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">{group.desc}</p>
+            <div className="flex flex-col gap-2 mt-auto">
+              {group.items.map(item => (
+                <a key={item.href} href={item.href}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg border border-border dark:border-border-dark
+                    hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
+                  <div>
+                    <span className="text-sm font-bold text-text dark:text-white">{item.bit}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{item.version}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-primary font-bold text-xs">
+                    <Icon name="file_download" size="sm" />
+                    {item.file}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </Card>
         ))}
       </div>
-
-      {/* 다운로드 카드 — 가로 테이블형 */}
-      <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border dark:border-border-dark bg-surface/50 dark:bg-surface-dark/50">
-              <th className="text-left px-4 py-2 text-xs font-bold text-muted-foreground">{t('download.vectorExe')}</th>
-              <th className="text-left px-4 py-2 text-xs font-bold text-muted-foreground hidden sm:table-cell">info</th>
-              <th className="text-right px-4 py-2 text-xs font-bold text-muted-foreground">{t('download.downloadBtn')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {downloads.map(d => (
-              <tr key={d.href} className="border-b last:border-b-0 border-border/50 dark:border-border-dark/50 hover:bg-surface/30 dark:hover:bg-surface-dark/30">
-                <td className="px-4 py-3">
-                  <p className="font-bold text-text dark:text-white text-sm">{d.label}</p>
-                  <p className="text-xs text-muted-foreground">{d.desc}</p>
-                </td>
-                <td className="px-4 py-3 hidden sm:table-cell">
-                  <p className="text-xs text-muted-foreground">{d.meta}</p>
-                  <p className="text-[11px] text-muted-foreground font-mono">{d.size}</p>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <a href={d.href}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold
-                      bg-primary text-primary-foreground hover:bg-primary-hover transition-colors">
-                    <Icon name="file_download" size="xs" />
-                    {d.file}
-                  </a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
 
       {/* 설비별 설정 파일 */}
       <Card className="p-4">
