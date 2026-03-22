@@ -341,11 +341,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ error: 'Not found' });
     }
     try {
-      let content = readFileSync(filePath, 'utf-8');
-      // Win7(v0.38)은 static_metrics 미지원 → internal_metrics로 변환
-      if (edition === 'win7') {
-        content = content.replace(/type\s*=\s*"static_metrics"/g, 'type = "internal_metrics"');
-      }
+      const content = readFileSync(filePath, 'utf-8');
       return reply
         .header('Content-Type', 'application/octet-stream')
         .header('Content-Disposition', `attachment; filename="${name}.toml"`)
