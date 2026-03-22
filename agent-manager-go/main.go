@@ -784,16 +784,6 @@ func detectEdition() string {
 	if runtime.GOARCH == "386" {
 		return "x86"
 	}
-	// Win7 감지
-	_cmd := exec.Command("cmd", "/c", "ver")
-	_cmd.SysProcAttr = windowsHideAttr()
-	out, err := _cmd.Output()
-	if err == nil {
-		ver := string(out)
-		if strings.Contains(ver, "6.1") || strings.Contains(ver, "6.0") {
-			return "win7"
-		}
-	}
 	return ""
 }
 

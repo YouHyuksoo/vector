@@ -22,17 +22,13 @@ export const agentDownloadRoute: FastifyPluginAsync = async (app) => {
       return reply.status(404).send({ error: 'version.json not found' });
     }
     const data = JSON.parse(readFileSync(versionPath, 'utf-8'));
-    const edition = (_req.query as { edition?: string }).edition;
-    if (edition === 'win7') {
-      return reply.send({ version: data.win7 ?? data.default });
-    }
     return reply.send(data);
   });
 
-  /** GET /api/monitor/agent-download/vector — vector zip 다운로드 (?edition=win7|x86 지원) */
+  /** GET /api/monitor/agent-download/vector — vector zip 다운로드 (?edition=x86 지원) */
   app.get('/api/monitor/agent-download/vector', async (_req, reply) => {
     const edition = (_req.query as { edition?: string }).edition;
-    const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip' };
+    const zipMap: Record<string, string> = { x86: 'vector-x86.zip' };
     const zipFile = zipMap[edition ?? ''] ?? 'vector.zip';
     const zipPath = join(VECTOR_BIN_DIR, zipFile);
     if (!existsSync(zipPath)) {

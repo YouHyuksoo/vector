@@ -286,10 +286,10 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   // ─── 다운로드 API ───
 
-  /** Vector 실행파일(zip) 다운로드 — ?edition=win7|x86 으로 버전 선택 */
+  /** Vector 실행파일(zip) 다운로드 — ?edition=x86 으로 32-bit 선택 */
   app.get('/api/monitor/download/vector-zip', async (_request, reply) => {
     const edition = (_request.query as { edition?: string }).edition;
-    const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip' };
+    const zipMap: Record<string, string> = { x86: 'vector-x86.zip' };
     const zipFile = zipMap[edition ?? ''] ?? 'vector.zip';
     const zipPath = join(process.cwd(), 'vector-bin', zipFile);
     if (!existsSync(zipPath)) {
@@ -329,7 +329,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** 설비별 Agent TOML 다운로드 — ?edition=win7 시 static_metrics → internal_metrics 자동 변환 */
+  /** 설비별 Agent TOML 다운로드 */
   app.get('/api/monitor/download/agent/:name', async (request, reply) => {
     const { name } = request.params as { name: string };
     const edition = (request.query as { edition?: string }).edition;
