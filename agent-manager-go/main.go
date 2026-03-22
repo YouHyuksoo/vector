@@ -463,8 +463,10 @@ func startServer() {
 	// 서버 시작
 	addr := "0.0.0.0:" + port
 
-	// 로그 파일 설정 (트레이 없이 실행될 때도 로그 남기기)
-	setupLogFile()
+	// --no-tray 모드일 때만 로그 설정 (트레이 모드는 onTrayReady에서 이미 호출)
+	if logFilePath == "" {
+		setupLogFile()
+	}
 
 	log.Printf("Agent Manager (Go) running at http://localhost:%s", port)
 	log.Printf("  Vector API:    %s", vectorAPI)
