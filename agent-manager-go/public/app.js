@@ -452,7 +452,26 @@ async function checkInstall() {
     document.getElementById('txt-bin-path').textContent = `${data.binaryPath} (${data.binaryExists ? 'O' : 'X'})`;
     document.getElementById('txt-cfg-path').textContent = `${data.configPath} (${data.configExists ? 'O' : 'X'})`;
     document.getElementById('btn-install').disabled = data.binaryExists;
+    if (data.masterServer) {
+      document.getElementById('inp-master-server').value = data.masterServer;
+    }
   } catch { /* 무시 */ }
+}
+
+/** 수집 서버 주소 저장 */
+async function saveMasterServer() {
+  const url = document.getElementById('inp-master-server').value.trim();
+  if (!url) { showToast('서버 주소를 입력하세요', 'error'); return; }
+  try {
+    const data = await fetchJSON('/api/server-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ masterServer: url }),
+    });
+    showToast('서버 주소가 변경되었습니다: ' + data.masterServer, 'success');
+  } catch (err) {
+    showToast('서버 주소 변경 실패: ' + err.message, 'error');
+  }
 }
 
 /** 선택된 Vector edition 반환 ('default' | 'win7') */

@@ -87,10 +87,10 @@ export default function DownloadPage() {
           <button key={a} type="button" onClick={() => setArch(a)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border
               ${arch === a
-                ? 'border-primary bg-primary/10 text-primary'
+                ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border dark:border-border-dark text-muted-foreground hover:border-primary/40'}`}>
             {a === 'x64' ? '64-bit' : '32-bit'}
-            <span className="text-[10px] font-normal ml-1 opacity-60">
+            <span className="text-[10px] font-normal ml-1 opacity-80">
               {a === 'x64' ? t('download.archRecommended') : t('download.archLegacy')}
             </span>
           </button>
@@ -116,12 +116,12 @@ export default function DownloadPage() {
                 </td>
                 <td className="px-4 py-3 hidden sm:table-cell">
                   <p className="text-xs text-muted-foreground">{d.meta}</p>
-                  <p className="text-[11px] text-muted-foreground/60 font-mono">{d.size}</p>
+                  <p className="text-[11px] text-muted-foreground font-mono">{d.size}</p>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <a href={d.href}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold
-                      bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                      bg-primary text-primary-foreground hover:bg-primary-hover transition-colors">
                     <Icon name="file_download" size="xs" />
                     {d.file}
                   </a>
@@ -141,7 +141,7 @@ export default function DownloadPage() {
               <button key={ct} type="button" onClick={() => setConfigType(ct)}
                 className={`px-3 py-1 rounded text-xs font-bold transition-all
                   ${configType === ct
-                    ? 'bg-primary/10 text-primary'
+                    ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-text dark:hover:text-white'}`}>
                 {ct === 'vector' ? 'Vector (.toml)' : 'Fluent Bit (.conf)'}
               </button>

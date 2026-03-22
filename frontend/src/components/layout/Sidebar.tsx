@@ -56,10 +56,10 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
               ${collapsed ? 'justify-center px-0' : ''}
               ${isActive(item.href)
-                ? 'bg-primary/10 text-primary border border-primary/20 font-bold'
+                ? 'bg-primary text-primary-foreground font-bold'
                 : 'text-text dark:text-white hover:bg-surface dark:hover:bg-surface-dark'}`}>
             <Icon name={item.icon} size="sm"
-              className={isActive(item.href) ? 'text-primary' : 'text-text-secondary'} />
+              className={isActive(item.href) ? 'text-primary-foreground' : 'text-text dark:text-white'} />
             {!collapsed && <span className="text-base">{t(item.labelKey)}</span>}
           </Link>
         ))}

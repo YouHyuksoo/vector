@@ -40,6 +40,7 @@ var (
 func init() {
 	configDir = envOr("VECTOR_CONFIG_DIR", `C:\vector`)
 	vectorBinPath = envOr("VECTOR_BIN_PATH", filepath.Join(configDir, "vector.exe"))
+	loadConfig() // config.json에서 masterServer 로드
 }
 
 func envOr(key, def string) string {
@@ -47,6 +48,37 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// ─── config.json 관리 ───
+
+type AppConfig struct {
+	MasterServer string `json:"masterServer"`
+}
+
+func configFilePath() string {
+	return filepath.Join(configDir, "config.json")
+}
+
+func loadConfig() {
+	os.MkdirAll(configDir, 0755)
+	data, err := os.ReadFile(configFilePath())
+	if err != nil {
+		// 첫 실행: 기본값으로 config.json 생성
+		saveConfig()
+		return
+	}
+	var cfg AppConfig
+	if json.Unmarshal(data, &cfg) == nil && cfg.MasterServer != "" {
+		masterServer = cfg.MasterServer
+	}
+}
+
+func saveConfig() {
+	cfg := AppConfig{MasterServer: masterServer}
+	data, _ := json.MarshalIndent(cfg, "", "  ")
+	os.MkdirAll(configDir, 0755)
+	os.WriteFile(configFilePath(), data, 0644)
 }
 
 // ─── TOML 탐색 ───
@@ -421,20 +453,30 @@ func startServer() {
 	// ─── Logs ───
 	mux.HandleFunc("/api/logs/recent", handleLogsRecent)
 
+	// ─── Server Config (서버 주소 조회/변경) ───
+	mux.HandleFunc("/api/server-config", handleServerConfig)
+
 	// 정적 파일 서빙 (임베딩 — 반드시 마지막에 등록)
 	staticFS, _ := fs.Sub(publicFS, "public")
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	// 서버 시작
 	addr := "0.0.0.0:" + port
-	fmt.Printf("\n  Agent Manager (Go) running at http://localhost:%s\n\n", port)
-	fmt.Printf("  Vector API:    %s\n", vectorAPI)
-	fmt.Printf("  Config path:   %s\n", findTomlConfig())
-	fmt.Printf("  Vector binary: %s\n", vectorBinPath)
-	fmt.Printf("  Master server: %s\n\n", masterServer)
 
-	// Vector 자동 설치
-	go autoInstallVector()
+	// 로그 파일 설정 (트레이 없이 실행될 때도 로그 남기기)
+	setupLogFile()
+
+	log.Printf("Agent Manager (Go) running at http://localhost:%s", port)
+	log.Printf("  Vector API:    %s", vectorAPI)
+	log.Printf("  Config path:   %s", findTomlConfig())
+	log.Printf("  Vector binary: %s", vectorBinPath)
+	log.Printf("  Master server: %s", masterServer)
+	log.Printf("  Edition:       %s (arch=%s)", detectEdition(), runtime.GOARCH)
+
+	// Vector 미설치 시 안내 (자동 설치 X → 웹 UI에서 수동 설치)
+	if _, err := os.Stat(vectorBinPath); err != nil {
+		log.Printf("[Init] Vector not found at %s — install via web UI", vectorBinPath)
+	}
 
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
@@ -673,16 +715,36 @@ func handleTestConnection(w http.ResponseWriter, r *http.Request) {
 
 // ─── Install ───
 
+func handleServerConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		jsonResp(w, map[string]string{"masterServer": masterServer})
+		return
+	}
+	if r.Method == "POST" || r.Method == "PUT" {
+		body := readBody(r)
+		if url, ok := body["masterServer"]; ok && url != "" {
+			masterServer = strings.TrimRight(url, "/")
+			saveConfig()
+			log.Printf("[Config] Master server changed to: %s", masterServer)
+			jsonResp(w, map[string]any{"success": true, "masterServer": masterServer})
+			return
+		}
+		jsonError(w, 400, "masterServer is required")
+		return
+	}
+}
+
 func handleInstallStatus(w http.ResponseWriter, r *http.Request) {
 	cfgPath := findTomlConfig()
 	_, binErr := os.Stat(vectorBinPath)
 	_, cfgErr := os.Stat(cfgPath)
 	jsonResp(w, map[string]any{
-		"installed":    binErr == nil && cfgErr == nil,
-		"binaryExists": binErr == nil,
-		"configExists": cfgErr == nil,
-		"binaryPath":   vectorBinPath,
-		"configPath":   cfgPath,
+		"installed":     binErr == nil && cfgErr == nil,
+		"binaryExists":  binErr == nil,
+		"configExists":  cfgErr == nil,
+		"binaryPath":    vectorBinPath,
+		"configPath":    cfgPath,
+		"masterServer":  masterServer,
 	})
 }
 
@@ -724,36 +786,41 @@ func detectEdition() string {
 }
 
 func downloadAndExtractVector(url string) error {
+	log.Printf("[Download] GET %s", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("download failed: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("download failed: HTTP %d — %s", resp.StatusCode, string(body))
 	}
+	log.Printf("[Download] Response OK, Content-Length: %s", resp.Header.Get("Content-Length"))
 
 	// temp 파일에 저장
 	tmpFile, err := os.CreateTemp("", "vector-*.zip")
 	if err != nil {
-		return err
+		return fmt.Errorf("temp file create failed: %v", err)
 	}
 	tmpPath := tmpFile.Name()
 	defer os.Remove(tmpPath)
-	_, err = io.Copy(tmpFile, resp.Body)
+	written, err := io.Copy(tmpFile, resp.Body)
 	tmpFile.Close()
 	if err != nil {
-		return err
+		return fmt.Errorf("download write failed: %v", err)
 	}
+	log.Printf("[Download] Saved %d bytes to %s", written, tmpPath)
 
 	// zip 압축 해제 → configDir에 vector.exe + bat 배치
 	os.MkdirAll(configDir, 0755)
 	zr, err := zip.OpenReader(tmpPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("zip open failed: %v", err)
 	}
 	defer zr.Close()
 
+	extracted := 0
 	for _, f := range zr.File {
 		name := strings.ReplaceAll(f.Name, "\\", "/")
 		if f.FileInfo().IsDir() {
@@ -761,12 +828,34 @@ func downloadAndExtractVector(url string) error {
 		}
 		// vector.exe (루트 또는 bin/ 안) → configDir/vector.exe
 		if name == "vector.exe" || name == "bin/vector.exe" {
-			extractFile(f, filepath.Join(configDir, "vector.exe"))
+			dest := filepath.Join(configDir, "vector.exe")
+			if e := extractFile(f, dest); e != nil {
+				log.Printf("[Download] Extract error %s: %v", name, e)
+			} else {
+				log.Printf("[Download] Extracted %s → %s (%d bytes)", name, dest, f.UncompressedSize64)
+				extracted++
+			}
 		}
 		// *.bat → configDir
 		if !strings.Contains(name, "/") && strings.HasSuffix(name, ".bat") {
-			extractFile(f, filepath.Join(configDir, filepath.Base(name)))
+			dest := filepath.Join(configDir, filepath.Base(name))
+			if e := extractFile(f, dest); e != nil {
+				log.Printf("[Download] Extract error %s: %v", name, e)
+			} else {
+				log.Printf("[Download] Extracted %s → %s", name, dest)
+				extracted++
+			}
 		}
+	}
+	log.Printf("[Download] Extraction complete: %d files to %s", extracted, configDir)
+
+	if extracted == 0 {
+		// zip 내용물 디버깅
+		var names []string
+		for _, f := range zr.File {
+			names = append(names, f.Name)
+		}
+		log.Printf("[Download] WARNING: No files extracted! Zip contents: %v", names)
 	}
 
 	// data 디렉토리 생성
@@ -1002,26 +1091,6 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 
 func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, map[string]any{"files": []any{}})
-}
-
-// ─── 자동 설치 ───
-
-func autoInstallVector() {
-	if _, err := os.Stat(vectorBinPath); err == nil {
-		return // 이미 설치됨
-	}
-	fmt.Println("  [Auto-Install] Vector binary not found. Downloading...")
-	edition := detectEdition()
-	param := ""
-	if edition != "" {
-		param = "?edition=" + edition
-	}
-	err := downloadAndExtractVector(masterServer + "/api/monitor/agent-download/vector" + param)
-	if err != nil {
-		fmt.Printf("  [Auto-Install] Failed: %v\n", err)
-		return
-	}
-	fmt.Printf("  [Auto-Install] Vector installed to %s\n", configDir)
 }
 
 // ─── HTTP 유틸 ───
