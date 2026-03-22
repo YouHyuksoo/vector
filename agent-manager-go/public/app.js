@@ -318,8 +318,19 @@ async function loadSetup() {
     document.getElementById('inp-line').value = data.line_code || '';
     document.getElementById('inp-log-type').value = data.log_type || '';
     document.getElementById('inp-include').value = data.include_paths || '';
-    document.getElementById('inp-sink-addr').value = data.sink_address || '';
-    document.getElementById('inp-sink-port').value = data.sink_port || '';
+    // Aggregator 주소가 비어있으면 masterServer IP에서 자동 추출
+    let sinkAddr = data.sink_address || '';
+    if (!sinkAddr) {
+      try {
+        const cfg = await fetchJSON('/api/server-config');
+        if (cfg.masterServer) {
+          const m = cfg.masterServer.match(/\/\/([^:/]+)/);
+          if (m) sinkAddr = m[1];
+        }
+      } catch {}
+    }
+    document.getElementById('inp-sink-addr').value = sinkAddr;
+    document.getElementById('inp-sink-port').value = data.sink_port || '9000';
   } catch (err) {
     if (err.message.includes('404')) {
       showToast(t('toast.noConfig'), 'warning');
