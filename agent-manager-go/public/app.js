@@ -704,13 +704,19 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = 'toast-enter';
   toast.style.cssText = `display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;color:#fff;background:${TOAST_BG[type] || TOAST_BG.info};box-shadow:0 4px 16px rgba(0,0,0,0.25)`;
-  toast.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px">${TOAST_ICONS[type] || TOAST_ICONS.info}</span><span>${esc(message)}</span>`;
+  const closeBtn = type === 'error'
+    ? `<span class="material-symbols-outlined" style="font-size:16px;cursor:pointer;margin-left:8px;opacity:0.8" onclick="this.parentElement.remove()">close</span>`
+    : '';
+  toast.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px">${TOAST_ICONS[type] || TOAST_ICONS.info}</span><span>${esc(message)}</span>${closeBtn}`;
   container.appendChild(toast);
-  setTimeout(() => {
-    toast.classList.remove('toast-enter');
-    toast.classList.add('toast-exit');
-    toast.addEventListener('animationend', () => toast.remove());
-  }, 3000);
+  // 에러는 자동으로 안 사라짐 — X 버튼으로 닫기
+  if (type !== 'error') {
+    setTimeout(() => {
+      toast.classList.remove('toast-enter');
+      toast.classList.add('toast-exit');
+      toast.addEventListener('animationend', () => toast.remove());
+    }, 3000);
+  }
 }
 
 /* ═══════════════════════════════════════════
