@@ -43,22 +43,13 @@ mode = "halt_before"
 timeout_ms = 1000
 
 # ── [설비 설정] ──
-
-
 # ── [하트비트] 주기적 상태 전송 (30초 간격) ──
 [sources.heartbeat]
 type = "internal_metrics"
-interval_secs = 30
+scrape_interval_secs = 30
 namespace = "agent"
 
-[[sources.heartbeat.metrics]]
-name = "heartbeat"
-kind = "absolute"
-
-[sources.heartbeat.metrics.value.gauge]
-value = 1
-
-[sources.heartbeat.metrics.tags]
+[sources.heartbeat.tags]
 equipment_type = "BURNIN"
 equipment_id = "BURNIN-001"
 line_code = "LINE-01"
