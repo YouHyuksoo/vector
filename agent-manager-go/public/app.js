@@ -663,13 +663,14 @@ function updateUI() {
    ═══════════════════════════════════════════ */
 
 const TOAST_ICONS = { success: 'check_circle', error: 'error', warning: 'warning', info: 'info' };
-const TOAST_COLORS = { success: 'bg-success', error: 'bg-error', warning: 'bg-warning', info: 'bg-info' };
+const TOAST_BG = { success: 'var(--green)', error: 'var(--red)', warning: 'var(--amber)', info: 'var(--blue)' };
 
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
-  toast.className = `toast-enter flex items-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-lg ${TOAST_COLORS[type] || TOAST_COLORS.info}`;
-  toast.innerHTML = `<span class="material-symbols-outlined text-lg">${TOAST_ICONS[type] || TOAST_ICONS.info}</span><span>${esc(message)}</span>`;
+  toast.className = 'toast-enter';
+  toast.style.cssText = `display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;color:#fff;background:${TOAST_BG[type] || TOAST_BG.info};box-shadow:0 4px 16px rgba(0,0,0,0.25)`;
+  toast.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px">${TOAST_ICONS[type] || TOAST_ICONS.info}</span><span>${esc(message)}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.classList.remove('toast-enter');
