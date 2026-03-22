@@ -332,11 +332,7 @@ async function loadSetup() {
     document.getElementById('inp-sink-addr').value = sinkAddr;
     document.getElementById('inp-sink-port').value = data.sink_port || '9000';
   } catch (err) {
-    if (err.message.includes('404')) {
-      showToast(t('toast.noConfig'), 'warning');
-    } else {
-      showToast(t('toast.setupLoadFail') + err.message, 'error');
-    }
+    // 첫 실행(TOML 없음)이면 에러 토스트 표시 안 함 — 상단 배너가 안내
   }
 }
 

@@ -170,12 +170,31 @@
     </div>
   </header>
 
-  <!-- 서버 주소 설정 배너 -->
-  <div id="server-banner" style="display:none;margin:0;padding:12px 20px;background:var(--amber);color:#fff;font-size:14px;font-weight:600;align-items:center;gap:10px">
-    <span class="material-symbols-outlined" style="font-size:20px">warning</span>
-    <span>수집 서버 주소를 확인하세요</span>
-    <input id="inp-master-server-banner" type="text" style="flex:1;padding:6px 12px;border-radius:4px;border:none;font-size:13px;font-family:'Fira Code',monospace;color:var(--fg);background:#fff" placeholder="http://20.10.30.112:3100" />
-    <button onclick="saveMasterServerBanner()" style="padding:6px 16px;border-radius:4px;border:none;background:#fff;color:var(--amber);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">저장</button>
+  <!-- 초기 설정 배너 (Vector 미설치 시 표시) -->
+  <div id="server-banner" style="display:none;margin:0;padding:16px 20px;background:var(--card);border-bottom:2px solid var(--amber)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span class="material-symbols-outlined" style="font-size:22px;color:var(--amber)">rocket_launch</span>
+      <span style="font-size:15px;font-weight:700;color:var(--fg)">초기 설정이 필요합니다</span>
+    </div>
+    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+      <!-- Step 1 -->
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="width:24px;height:24px;border-radius:50%;background:var(--amber);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">1</span>
+        <span style="font-size:13px;font-weight:600;color:var(--fg)">서버 주소</span>
+        <input id="inp-master-server-banner" type="text" style="width:260px;padding:6px 10px;border-radius:4px;border:1px solid var(--border);font-size:13px;font-family:'Fira Code',monospace;color:var(--fg);background:var(--bg2)" placeholder="http://20.10.30.112:3100" />
+        <button onclick="saveMasterServerBanner()" style="padding:6px 14px;border-radius:4px;border:none;background:var(--amber);color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">저장</button>
+      </div>
+      <!-- Step 2 -->
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">2</span>
+        <span style="font-size:13px;color:var(--fg2)">우측 TOML 다운로드</span>
+      </div>
+      <!-- Step 3 -->
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">3</span>
+        <span style="font-size:13px;color:var(--fg2)">Vector 설치 (하단)</span>
+      </div>
+    </div>
   </div>
 
   <!-- Hidden tabs for app.js compat -->
