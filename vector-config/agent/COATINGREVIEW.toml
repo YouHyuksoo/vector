@@ -29,7 +29,7 @@ timeout_ms = 1000
 
 # ── [하트비트] 주기적 상태 전송 (30초 간격) ──
 [sources.heartbeat]
-type = "static_metrics"
+type = "internal_metrics"
 interval_secs = 30
 namespace = "agent"
 

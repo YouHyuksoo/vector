@@ -49,7 +49,7 @@ timeout_ms = 1000
 # TTL 내 하트비트가 없으면 오프라인으로 판정됩니다.
 
 [sources.heartbeat]
-type = "static_metrics"
+type = "internal_metrics"
 interval_secs = 30
 namespace = "agent"
 
