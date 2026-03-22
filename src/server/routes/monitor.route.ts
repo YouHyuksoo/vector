@@ -2465,23 +2465,16 @@ fingerprint.lines = 1
 ignore_older_secs = 86400
 
 # ── [하트비트] 주기적 상태 전송 (30초 간격) ──
-# generator 타입은 v0.38~v0.45 전 버전 호환
-[sources.heartbeat_gen]
-type = "generator"
-format = "shuffle"
-interval = 30
-lines = ["heartbeat"]
+[sources.heartbeat]
+type = "internal_metrics"
+scrape_interval_secs = 30
+namespace = "agent"
 
-[transforms.heartbeat]
-type = "remap"
-inputs = ["heartbeat_gen"]
-source = '''
-.equipment_type = "${name}"
-.equipment_id = "${name}-001"
-.line_code = "LINE-01"
-.log_type = "INSPECTION"
-.ip = ""
-'''
+[sources.heartbeat.tags]
+equipment_type = "${name}"
+equipment_id = "${name}-001"
+line_code = "LINE-01"
+log_type = "INSPECTION"
 
 [transforms.add_metadata]
 type = "remap"
