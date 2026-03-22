@@ -2468,13 +2468,16 @@ ignore_older_secs = 86400
 [sources.heartbeat]
 type = "internal_metrics"
 scrape_interval_secs = 30
-namespace = "agent"
 
-[sources.heartbeat.tags]
-equipment_type = "${name}"
-equipment_id = "${name}-001"
-line_code = "LINE-01"
-log_type = "INSPECTION"
+[transforms.heartbeat_meta]
+type = "remap"
+inputs = ["heartbeat"]
+source = '''
+.tags.equipment_type = "${name}"
+.tags.equipment_id = "${name}-001"
+.tags.line_code = "LINE-01"
+.tags.log_type = "INSPECTION"
+'''
 
 [transforms.add_metadata]
 type = "remap"
@@ -2488,7 +2491,7 @@ source = '''
 
 [sinks.to_aggregator]
 type = "vector"
-inputs = ["add_metadata", "heartbeat"]
+inputs = ["add_metadata", "heartbeat_meta"]
 address = "127.0.0.1:6000"
 
 [sinks.to_aggregator.buffer]
