@@ -351,14 +351,24 @@ func onTrayExit() {}
 // 로그 파일 경로
 var logFilePath string
 
+// crlfWriter는 \n을 \r\n으로 변환하여 Windows 메모장에서 줄바꿈이 보이게 함
+type crlfWriter struct {
+	f *os.File
+}
+
+func (w *crlfWriter) Write(p []byte) (int, error) {
+	out := strings.ReplaceAll(string(p), "\n", "\r\n")
+	return w.f.WriteString(out)
+}
+
 func setupLogFile() {
 	logDir := configDir
 	os.MkdirAll(logDir, 0755)
 	logFilePath = filepath.Join(logDir, "agent-manager.log")
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err == nil {
-		log.SetOutput(f)
-		// fmt도 로그 파일로
+		cw := &crlfWriter{f: f}
+		log.SetOutput(cw)
 		os.Stdout = f
 		os.Stderr = f
 	}
