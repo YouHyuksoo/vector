@@ -25,8 +25,11 @@ vector-data-agent/
 # Backup files
 *.bak
 
-# Large node binaries
-agent-monitor/dist-exe/node-win7.exe
+# dist-exe 대형 바이너리
+agent-monitor/dist-exe/*.exe
+
+# exe 백업 파일
+*.exe~
 
 # PM2 logs
 logs/
