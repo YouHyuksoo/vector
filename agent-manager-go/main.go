@@ -420,7 +420,7 @@ func onTrayReady() {
 				updateSvcMenu()
 			case <-mSvcManager.ClickedCh:
 				exePath, _ := os.Executable()
-				toggleService("VectorAgentManager", exePath)
+				toggleService("VectorAgentManager", exePath+" --no-tray")
 				updateSvcMenu()
 			case <-mQuit.ClickedCh:
 				systray.Quit()
@@ -1044,7 +1044,7 @@ func handleServiceInstall(w http.ResponseWriter, r *http.Request) {
 	}
 	if target == "manager" || target == "both" {
 		exePath, _ := os.Executable()
-		results["manager"] = installService("VectorAgentManager", exePath)
+		results["manager"] = installService("VectorAgentManager", exePath+" --no-tray")
 	}
 	jsonResp(w, results)
 }
