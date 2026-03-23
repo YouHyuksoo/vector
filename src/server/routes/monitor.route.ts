@@ -2460,8 +2460,7 @@ include = [
   'C:\\logs\\${name.toLowerCase()}\\*.log',
 ]
 read_from = "beginning"
-fingerprint.strategy = "checksum"
-fingerprint.lines = 1
+fingerprint.strategy = "device_and_inode"
 ignore_older_secs = 86400
 
 # ── [하트비트] 주기적 상태 전송 (30초 간격) ──

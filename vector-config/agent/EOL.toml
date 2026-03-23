@@ -31,8 +31,7 @@ include = [
   'C:\logs\eol\*.csv',
 ]
 read_from = "beginning"
-fingerprint.strategy = "checksum"
-fingerprint.lines = 1
+fingerprint.strategy = "device_and_inode"
 ignore_older_secs = 86400
 
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
