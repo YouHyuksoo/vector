@@ -75,23 +75,23 @@ export default function DownloadPage() {
       {/* 실행파일 다운로드 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {downloads.map(group => (
-          <Card key={group.label} className="p-4 flex flex-col gap-3">
+          <Card key={group.label} className="p-5 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <Icon name={group.icon} size="sm" className="text-primary" />
-              <p className="font-bold text-text dark:text-white">{group.label}</p>
+              <Icon name={group.icon} size="md" className="text-primary" />
+              <p className="text-base font-bold text-text dark:text-white">{group.label}</p>
             </div>
-            <p className="text-xs text-muted-foreground">{group.desc}</p>
+            <p className="text-sm text-muted-foreground">{group.desc}</p>
             <div className="flex flex-col gap-2 mt-auto">
               {group.items.map(item => (
                 <a key={item.href} href={item.href}
-                  className="flex items-center justify-between px-3 py-2 rounded-lg border border-border dark:border-border-dark
+                  className="flex items-center justify-between px-4 py-3 rounded-lg border border-border dark:border-border-dark
                     hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
                   <div>
-                    <span className="text-sm font-bold text-text dark:text-white">{item.bit}</span>
-                    <span className="text-xs text-muted-foreground ml-2">{item.version}</span>
+                    <span className="text-base font-bold text-text dark:text-white">{item.bit}</span>
+                    <span className="text-sm text-muted-foreground ml-2">{item.version}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-primary font-bold text-xs">
-                    <Icon name="file_download" size="sm" />
+                  <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                    <Icon name="file_download" size="md" />
                     {item.file}
                   </div>
                 </a>
@@ -102,13 +102,13 @@ export default function DownloadPage() {
       </div>
 
       {/* 설비별 설정 파일 */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-text dark:text-white">{t('download.agentConfig')}</p>
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-base font-bold text-text dark:text-white">{t('download.agentConfig')}</p>
           <div className="flex gap-1">
             {(['vector', 'fluent'] as const).map(ct => (
               <button key={ct} type="button" onClick={() => setConfigType(ct)}
-                className={`px-3 py-1 rounded text-xs font-bold transition-all
+                className={`px-4 py-1.5 rounded text-sm font-bold transition-all
                   ${configType === ct
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-text dark:hover:text-white'}`}>
@@ -119,20 +119,20 @@ export default function DownloadPage() {
         </div>
 
         {configType === 'fluent' && (
-          <p className="text-xs text-muted-foreground mb-2">{t('download.fluentNotice')}</p>
+          <p className="text-sm text-muted-foreground mb-3">{t('download.fluentNotice')}</p>
         )}
 
         {!configList.length ? (
-          <p className="text-xs text-muted-foreground text-center py-4">{noConfigMsg}</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{noConfigMsg}</p>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {configList.map(name => (
               <a key={name} href={`${configBase}/${name}`}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border border-border dark:border-border-dark
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm border border-border dark:border-border-dark
                   hover:bg-surface/50 dark:hover:bg-surface-dark/50 transition-colors">
                 <span className="font-mono font-bold text-text dark:text-white">{name}</span>
                 <span className="text-muted-foreground">{configExt}</span>
-                <Icon name="file_download" size="xs" className="text-primary" />
+                <Icon name="file_download" size="sm" className="text-primary" />
               </a>
             ))}
           </div>
