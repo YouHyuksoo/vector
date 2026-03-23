@@ -1111,7 +1111,53 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 // ─── Logs ───
 
 func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
-	jsonResp(w, map[string]any{"files": []any{}})
+	// TOML에서 include 경로 추출
+	var watchPaths []string
+	cfgPath := findTomlConfig()
+	content, err := os.ReadFile(cfgPath)
+	if err == nil {
+		raw := tomlGetInclude(string(content))
+		for _, p := range strings.Split(raw, "\n") {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				watchPaths = append(watchPaths, p)
+			}
+		}
+	}
+
+	// include 경로에서 최근 수정된 파일 목록
+	var files []map[string]any
+	for _, pattern := range watchPaths {
+		matches, _ := filepath.Glob(pattern)
+		for _, m := range matches {
+			info, err := os.Stat(m)
+			if err != nil || info.IsDir() {
+				continue
+			}
+			files = append(files, map[string]any{
+				"name":    info.Name(),
+				"dir":     filepath.Dir(m),
+				"modTime": info.ModTime().Format("2006-01-02 15:04:05"),
+				"size":    info.Size(),
+			})
+		}
+	}
+
+	// 최근 수정순 정렬 (최대 20개)
+	if len(files) > 1 {
+		for i := 0; i < len(files)-1; i++ {
+			for j := i + 1; j < len(files); j++ {
+				if files[j]["modTime"].(string) > files[i]["modTime"].(string) {
+					files[i], files[j] = files[j], files[i]
+				}
+			}
+		}
+	}
+	if len(files) > 20 {
+		files = files[:20]
+	}
+
+	jsonResp(w, map[string]any{"files": files, "watchPaths": watchPaths})
 }
 
 // ─── HTTP 유틸 ───
