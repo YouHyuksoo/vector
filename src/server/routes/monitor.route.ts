@@ -289,7 +289,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   /** Vector 실행파일(zip) 다운로드 — ?edition=x86 으로 32-bit 선택 */
   app.get('/api/monitor/download/vector-zip', async (_request, reply) => {
     const edition = (_request.query as { edition?: string }).edition;
-    const zipMap: Record<string, string> = { x86: 'vector-x86.zip' };
+    const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip', 'win7-x86': 'vector-x86.zip' };
     const zipFile = zipMap[edition ?? ''] ?? 'vector.zip';
     const zipPath = join(process.cwd(), 'vector-bin', zipFile);
     if (!existsSync(zipPath)) {

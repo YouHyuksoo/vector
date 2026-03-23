@@ -781,8 +781,26 @@ func handleInstall(w http.ResponseWriter, r *http.Request) {
 }
 
 func detectEdition() string {
+	// Win7/Vista 감지
+	isWin7 := false
+	cmd := exec.Command("cmd", "/c", "ver")
+	cmd.SysProcAttr = windowsHideAttr()
+	out, err := cmd.Output()
+	if err == nil {
+		ver := string(out)
+		if strings.Contains(ver, "6.1") || strings.Contains(ver, "6.0") {
+			isWin7 = true
+		}
+	}
+
+	if runtime.GOARCH == "386" && isWin7 {
+		return "win7-x86"
+	}
 	if runtime.GOARCH == "386" {
 		return "x86"
+	}
+	if isWin7 {
+		return "win7"
 	}
 	return ""
 }

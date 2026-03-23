@@ -28,7 +28,7 @@ export const agentDownloadRoute: FastifyPluginAsync = async (app) => {
   /** GET /api/monitor/agent-download/vector — vector zip 다운로드 (?edition=x86 지원) */
   app.get('/api/monitor/agent-download/vector', async (_req, reply) => {
     const edition = (_req.query as { edition?: string }).edition;
-    const zipMap: Record<string, string> = { x86: 'vector-x86.zip' };
+    const zipMap: Record<string, string> = { win7: 'vector-win7.zip', x86: 'vector-x86.zip', 'win7-x86': 'vector-x86.zip' };
     const zipFile = zipMap[edition ?? ''] ?? 'vector.zip';
     const zipPath = join(VECTOR_BIN_DIR, zipFile);
     if (!existsSync(zipPath)) {
