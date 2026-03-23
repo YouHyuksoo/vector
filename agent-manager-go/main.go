@@ -621,69 +621,74 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Vector GraphQL API로 메트릭 조회
-	query := `{"query":"{ sources { edges { node { metrics { receivedEventsTotal { receivedEventsTotal } } } } } sinks { edges { node { metrics { sentEventsTotal { sentEventsTotal } sentBytesTotal { sentBytesTotal } } } } } }"}`
-	resp, err := http.Post(vectorAPI+"/graphql", "application/json", strings.NewReader(query))
-	if err != nil {
-		jsonResp(w, result)
-		return
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	// Vector GraphQL API로 메트릭 조회 (v0.45 edges.node 패턴 먼저, 실패 시 v0.38 flat 패턴)
+	query45 := `{"query":"{ sources { edges { node { metrics { receivedEventsTotal { receivedEventsTotal } } } } } sinks { edges { node { metrics { sentEventsTotal { sentEventsTotal } sentBytesTotal { sentBytesTotal } } } } } }"}`
+	query38 := `{"query":"{ sources { metrics { receivedEventsTotal { receivedEventsTotal } } } sinks { metrics { sentEventsTotal { sentEventsTotal } sentBytesTotal { sentBytesTotal } } } }"}`
 
-	var gql map[string]any
-	if json.Unmarshal(body, &gql) != nil {
-		jsonResp(w, result)
-		return
-	}
+	for _, query := range []string{query45, query38} {
+		resp, err := http.Post(vectorAPI+"/graphql", "application/json", strings.NewReader(query))
+		if err != nil {
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
 
-	// sources → events_in (edges.node 패턴)
-	if data, ok := gql["data"].(map[string]any); ok {
+		var gql map[string]any
+		if json.Unmarshal(body, &gql) != nil {
+			continue
+		}
+		data, ok := gql["data"].(map[string]any)
+		if !ok || data == nil {
+			continue
+		}
+
+		// 메트릭 노드 목록 추출 (v0.45: edges.node / v0.38: flat array)
+		getNodes := func(section map[string]any) []map[string]any {
+			var nodes []map[string]any
+			if edges, ok := section["edges"].([]any); ok {
+				for _, e := range edges {
+					if em, ok := e.(map[string]any); ok {
+						if n, ok := em["node"].(map[string]any); ok {
+							nodes = append(nodes, n)
+						}
+					}
+				}
+			} else if arr, ok := section["metrics"].(map[string]any); ok {
+				nodes = append(nodes, map[string]any{"metrics": arr})
+			}
+			return nodes
+		}
+
+		getFloat := func(m map[string]any, key string) float64 {
+			if sub, ok := m[key].(map[string]any); ok {
+				if v, ok := sub[key].(float64); ok {
+					return v
+				}
+			}
+			return 0
+		}
+
 		if sources, ok := data["sources"].(map[string]any); ok {
-			if edges, ok := sources["edges"].([]any); ok {
-				var totalIn float64
-				for _, e := range edges {
-					if edge, ok := e.(map[string]any); ok {
-						if node, ok := edge["node"].(map[string]any); ok {
-							if metrics, ok := node["metrics"].(map[string]any); ok {
-								if rev, ok := metrics["receivedEventsTotal"].(map[string]any); ok {
-									if v, ok := rev["receivedEventsTotal"].(float64); ok {
-										totalIn += v
-									}
-								}
-							}
-						}
-					}
+			var totalIn float64
+			for _, n := range getNodes(sources) {
+				if m, ok := n["metrics"].(map[string]any); ok {
+					totalIn += getFloat(m, "receivedEventsTotal")
 				}
-				result["events_in"] = int(totalIn)
 			}
+			result["events_in"] = int(totalIn)
 		}
-		// sinks → events_out
 		if sinks, ok := data["sinks"].(map[string]any); ok {
-			if edges, ok := sinks["edges"].([]any); ok {
-				var totalOut, totalBytes float64
-				for _, e := range edges {
-					if edge, ok := e.(map[string]any); ok {
-						if node, ok := edge["node"].(map[string]any); ok {
-							if metrics, ok := node["metrics"].(map[string]any); ok {
-								if sev, ok := metrics["sentEventsTotal"].(map[string]any); ok {
-									if v, ok := sev["sentEventsTotal"].(float64); ok {
-										totalOut += v
-									}
-								}
-								if sb, ok := metrics["sentBytesTotal"].(map[string]any); ok {
-									if v, ok := sb["sentBytesTotal"].(float64); ok {
-										totalBytes += v
-									}
-								}
-							}
-						}
-					}
+			var totalOut, totalBytes float64
+			for _, n := range getNodes(sinks) {
+				if m, ok := n["metrics"].(map[string]any); ok {
+					totalOut += getFloat(m, "sentEventsTotal")
+					totalBytes += getFloat(m, "sentBytesTotal")
 				}
-				result["events_out"] = int(totalOut)
-				result["buffer_used"] = int(totalBytes)
 			}
+			result["events_out"] = int(totalOut)
+			result["buffer_used"] = int(totalBytes)
 		}
+		break // 성공하면 루프 종료
 	}
 
 	jsonResp(w, result)
