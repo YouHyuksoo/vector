@@ -1111,8 +1111,13 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 // ─── Logs ───
 
 func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
-	// TOML에서 include 경로 추출
-	var watchPaths []string
+	// TOML에서 include 경로 추출 + 폴더 존재 여부 체크
+	type watchInfo struct {
+		Path   string `json:"path"`
+		Exists bool   `json:"exists"`
+	}
+	var watchPaths []watchInfo
+	var globPatterns []string
 	cfgPath := findTomlConfig()
 	content, err := os.ReadFile(cfgPath)
 	if err == nil {
@@ -1120,14 +1125,17 @@ func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
 		for _, p := range strings.Split(raw, "\n") {
 			p = strings.TrimSpace(p)
 			if p != "" {
-				watchPaths = append(watchPaths, p)
+				dir := filepath.Dir(p)
+				_, dirErr := os.Stat(dir)
+				watchPaths = append(watchPaths, watchInfo{Path: p, Exists: dirErr == nil})
+				globPatterns = append(globPatterns, p)
 			}
 		}
 	}
 
 	// include 경로에서 최근 수정된 파일 목록
 	var files []map[string]any
-	for _, pattern := range watchPaths {
+	for _, pattern := range globPatterns {
 		matches, _ := filepath.Glob(pattern)
 		for _, m := range matches {
 			info, err := os.Stat(m)

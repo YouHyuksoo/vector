@@ -667,7 +667,18 @@ function updateMetrics() {
 
 function updateRecentFiles(watchPaths) {
   const pathEl = document.getElementById('watch-paths');
-  pathEl.textContent = watchPaths.length ? '감시 경로: ' + watchPaths.join(', ') : '';
+  if (watchPaths.length) {
+    pathEl.innerHTML = '감시 설정: ' + watchPaths.map(function(w) {
+      if (typeof w === 'object') {
+        return w.exists
+          ? '<span style="color:var(--green)">' + esc(w.path) + ' ✓</span>'
+          : '<span style="color:var(--red)">' + esc(w.path) + ' ✗ (폴더 없음)</span>';
+      }
+      return esc(w);
+    }).join(', ');
+  } else {
+    pathEl.textContent = '';
+  }
   const tbody = document.getElementById('tbody-files');
   if (!state.files.length) {
     tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-muted-fg italic">${esc(t('status.noFiles'))}</td></tr>`;
