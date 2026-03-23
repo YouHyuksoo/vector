@@ -396,31 +396,31 @@ func onTrayReady() {
 	systray.SetTitle("Agent Manager")
 	systray.SetTooltip("Vector Agent Manager - localhost:" + port)
 
-	mOpen := systray.AddMenuItem("열기 (브라우저)", "웹 브라우저에서 Agent Manager 열기")
-	mLog := systray.AddMenuItem("Agent 로그", "Agent Manager 로그 파일 열기")
-	mVectorLog := systray.AddMenuItem("Vector 로그", "Vector 실행 로그 파일 열기")
+	mOpen := systray.AddMenuItem("Open Browser", "Open Agent Manager in browser")
+	mLog := systray.AddMenuItem("Agent Log", "Open Agent Manager log file")
+	mVectorLog := systray.AddMenuItem("Vector Log", "Open Vector log file")
 	systray.AddSeparator()
-	mSvcVector := systray.AddMenuItem("서비스: VectorAgent — 확인 중...", "")
-	mSvcManager := systray.AddMenuItem("서비스: AgentManager — 확인 중...", "")
+	mSvcVector := systray.AddMenuItem("Service: VectorAgent — checking...", "")
+	mSvcManager := systray.AddMenuItem("Service: AgentManager — checking...", "")
 	systray.AddSeparator()
-	mStatus := systray.AddMenuItem("상태: 시작 중...", "")
+	mStatus := systray.AddMenuItem("Status: Starting...", "")
 	mStatus.Disable()
 	systray.AddSeparator()
-	mQuit := systray.AddMenuItem("끝내기", "Agent Manager 종료")
+	mQuit := systray.AddMenuItem("Quit", "Close Agent Manager tray")
 
 	// 서비스가 이미 떠있으면 HTTP 서버 안 띄움 (트레이만)
 	serviceRunning := isPortInUse()
 	if serviceRunning {
-		mStatus.SetTitle("상태: 서비스 실행 중 (트레이만)")
-		log.Println("[Tray] 서비스가 이미 실행 중 — 트레이만 표시")
+		mStatus.SetTitle("Status: Service running (tray only)")
+		log.Println("[Tray] Service already running — tray only mode")
 	} else {
 		go startServer()
 	}
 
 	// 서비스 상태 초기 조회
 	updateSvcMenu := func() {
-		mSvcVector.SetTitle("서비스: VectorAgent — " + svcStateKo(getServiceState("VectorAgent")))
-		mSvcManager.SetTitle("서비스: AgentManager — " + svcStateKo(getServiceState("VectorAgentManager")))
+		mSvcVector.SetTitle("Service: VectorAgent — " + svcStateLabel(getServiceState("VectorAgent")))
+		mSvcManager.SetTitle("Service: AgentManager — " + svcStateLabel(getServiceState("VectorAgentManager")))
 	}
 	go updateSvcMenu()
 
@@ -452,7 +452,7 @@ func onTrayReady() {
 	go func() {
 		time.Sleep(2 * time.Second)
 		if !serviceRunning {
-			mStatus.SetTitle("상태: 실행 중 (:" + port + ")")
+			mStatus.SetTitle("Status: Running (:" + port + ")")
 		}
 	}()
 }
@@ -1087,14 +1087,14 @@ func handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, results)
 }
 
-func svcStateKo(state string) string {
+func svcStateLabel(state string) string {
 	switch state {
 	case "RUNNING":
-		return "실행 중 ✓"
+		return "Running ✓"
 	case "STOPPED":
-		return "중지됨"
+		return "Stopped"
 	case "NOT_INSTALLED":
-		return "미등록 (클릭하여 등록)"
+		return "Not registered (click to register)"
 	default:
 		return state
 	}
@@ -1104,10 +1104,10 @@ func toggleService(name, binPath string) {
 	state := getServiceState(name)
 	if state == "NOT_INSTALLED" {
 		installService(name, binPath)
-		log.Printf("[Service] %s 등록 완료", name)
+		log.Printf("[Service] %s registered", name)
 	} else {
 		uninstallService(name)
-		log.Printf("[Service] %s 해제 완료", name)
+		log.Printf("[Service] %s unregistered", name)
 	}
 }
 
