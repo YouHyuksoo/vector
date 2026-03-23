@@ -125,10 +125,10 @@ type = "route"
 inputs = ["from_agents", "normalize_fluent"]
 
 [transforms.route_events.route]
-heartbeat = '.name == "heartbeat"'
+heartbeat = 'exists(.tags.equipment_type) || .name == "heartbeat"'
 
 # ── 하트비트 메트릭 → Node.js POST /api/heartbeat ──
-# static_metrics 원본을 그대로 전송, Node.js에서 tags 추출 처리
+# internal_metrics + remap 태그 또는 legacy heartbeat 모두 매칭
 [sinks.to_heartbeat_api]
 type = "http"
 inputs = ["route_events.heartbeat"]
