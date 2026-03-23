@@ -604,19 +604,80 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 
 func handleMetrics(w http.ResponseWriter, r *http.Request) {
 	result := map[string]any{
-		"events_in":  0,
-		"events_out": 0,
-		"errors":     0,
-		"buffer_pct": 0,
+		"events_in":   0,
+		"events_out":  0,
+		"errors":      0,
+		"buffer_pct":  0,
 		"buffer_used": 0,
 		"buffer_max":  0,
 	}
 
 	pid := findVectorPID()
-	if pid != "" {
-		resp, err := httpGet(vectorAPI + "/api/v1/status/health")
-		if err == nil {
-			resp.Body.Close()
+	if pid == "" {
+		jsonResp(w, result)
+		return
+	}
+
+	// Vector GraphQL API로 메트릭 조회
+	query := `{"query":"{ sources { metrics { receivedEventsTotal { receivedEventsTotal } } } sinks { metrics { sentEventsTotal { sentEventsTotal } sentBytesTotal { sentBytesTotal } errors { errorsTotal } } } }"}`
+	resp, err := http.Post(vectorAPI+"/graphql", "application/json", strings.NewReader(query))
+	if err != nil {
+		jsonResp(w, result)
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var gql map[string]any
+	if json.Unmarshal(body, &gql) != nil {
+		jsonResp(w, result)
+		return
+	}
+
+	// sources → events_in
+	if data, ok := gql["data"].(map[string]any); ok {
+		if sources, ok := data["sources"].([]any); ok {
+			var totalIn float64
+			for _, s := range sources {
+				if sm, ok := s.(map[string]any); ok {
+					if metrics, ok := sm["metrics"].(map[string]any); ok {
+						if rev, ok := metrics["receivedEventsTotal"].(map[string]any); ok {
+							if v, ok := rev["receivedEventsTotal"].(float64); ok {
+								totalIn += v
+							}
+						}
+					}
+				}
+			}
+			result["events_in"] = int(totalIn)
+		}
+		// sinks → events_out, errors
+		if sinks, ok := data["sinks"].([]any); ok {
+			var totalOut, totalErr, totalBytes float64
+			for _, s := range sinks {
+				if sm, ok := s.(map[string]any); ok {
+					if metrics, ok := sm["metrics"].(map[string]any); ok {
+						if sev, ok := metrics["sentEventsTotal"].(map[string]any); ok {
+							if v, ok := sev["sentEventsTotal"].(float64); ok {
+								totalOut += v
+							}
+						}
+						if sb, ok := metrics["sentBytesTotal"].(map[string]any); ok {
+							if v, ok := sb["sentBytesTotal"].(float64); ok {
+								totalBytes += v
+							}
+						}
+						if errs, ok := metrics["errors"].(map[string]any); ok {
+							if v, ok := errs["errorsTotal"].(float64); ok {
+								totalErr += v
+							}
+						}
+					}
+				}
+			}
+			result["events_out"] = int(totalOut)
+			result["errors"] = int(totalErr)
+			result["buffer_used"] = int(totalBytes)
 		}
 	}
 
