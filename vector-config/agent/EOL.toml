@@ -32,7 +32,7 @@ include = [
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"
-fingerprint.bytes = 64
+fingerprint.bytes = 16
 ignore_older_secs = 86400
 
 # ── 파일 전체를 하나의 이벤트로 묶기 ──

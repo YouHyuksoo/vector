@@ -2461,7 +2461,7 @@ include = [
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"
-fingerprint.bytes = 64
+fingerprint.bytes = 16
 ignore_older_secs = 86400
 
 # ── [하트비트] 주기적 상태 전송 (30초 간격) ──
