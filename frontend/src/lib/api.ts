@@ -15,6 +15,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     try {
       const body = await res.json();
       if (body.error) msg = typeof body.error === 'string' ? body.error : JSON.stringify(body.error);
+      if (body.details) msg += '\n' + (typeof body.details === 'string' ? body.details : JSON.stringify(body.details));
     } catch { /* JSON 파싱 실패 시 기본 메시지 사용 */ }
     throw new Error(msg);
   }

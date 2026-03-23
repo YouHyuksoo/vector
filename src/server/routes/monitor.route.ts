@@ -172,12 +172,33 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
-  /** Vector aggregator TOML 설정 저장 (백업 포함) */
+  /** Vector aggregator TOML 설정 저장 (validate → 백업 → 저장) */
   app.put('/api/monitor/aggregator/config', async (request, reply) => {
-    const { content } = request.body as { content: string };
+    const { content, skipValidation } = request.body as { content: string; skipValidation?: boolean };
     if (typeof content !== 'string' || content.trim().length === 0) {
       return reply.status(400).send({ error: 'Invalid content' });
     }
+
+    // vector validate 실행 (skipValidation이 아닌 경우)
+    if (!skipValidation) {
+      const tmpPath = join(VECTOR_CONFIG + '.validate.tmp');
+      try {
+        writeFileSync(tmpPath, content, 'utf-8');
+        const { execSync } = await import('child_process');
+        const vectorBin = existsSync('C:\\vector\\vector.exe') ? 'C:\\vector\\vector.exe' : 'vector';
+        execSync(`"${vectorBin}" validate --no-environment "${tmpPath}"`, {
+          timeout: 15000,
+          windowsHide: true,
+        });
+      } catch (validateErr: any) {
+        try { unlinkSync(tmpPath); } catch {}
+        const stderr = validateErr.stderr?.toString() || validateErr.message || 'Unknown error';
+        logger.warn({ err: stderr }, 'Aggregator config validation failed');
+        return reply.status(400).send({ error: 'Validation failed', details: stderr });
+      }
+      try { unlinkSync(tmpPath); } catch {}
+    }
+
     try {
       const backupName = createTomlBackup('editor');
       writeFileSync(VECTOR_CONFIG, content, 'utf-8');
@@ -557,11 +578,31 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   /** 특정 설비 TOML 저장 (백업 포함) */
   app.put('/api/monitor/agent/config/:name', async (request, reply) => {
     const { name } = request.params as { name: string };
-    const { content } = request.body as { content: string };
+    const { content, skipValidation } = request.body as { content: string; skipValidation?: boolean };
     if (!isValidAgentName(name)) return reply.status(400).send({ error: 'Invalid name' });
     if (typeof content !== 'string' || content.trim().length === 0) {
       return reply.status(400).send({ error: 'Invalid content' });
     }
+
+    // vector validate 실행
+    if (!skipValidation) {
+      const tmpPath = agentPath(name) + '.validate.tmp';
+      try {
+        writeFileSync(tmpPath, content, 'utf-8');
+        const { execSync } = await import('child_process');
+        const vectorBin = existsSync('C:\\vector\\vector.exe') ? 'C:\\vector\\vector.exe' : 'vector';
+        execSync(`"${vectorBin}" validate --no-environment "${tmpPath}"`, {
+          timeout: 15000,
+          windowsHide: true,
+        });
+      } catch (validateErr: any) {
+        try { unlinkSync(tmpPath); } catch {}
+        const stderr = validateErr.stderr?.toString() || validateErr.message || 'Unknown error';
+        return reply.status(400).send({ error: 'Validation failed', details: stderr });
+      }
+      try { unlinkSync(tmpPath); } catch {}
+    }
+
     const filePath = agentPath(name);
     try {
       if (existsSync(filePath)) {
