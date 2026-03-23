@@ -15,7 +15,8 @@ include = [
   'C:\logs\download\*.csv',
 ]
 read_from = "beginning"
-fingerprint.strategy = "device_and_inode"
+fingerprint.strategy = "checksum"
+fingerprint.bytes = 64
 ignore_older_secs = 86400
 
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
