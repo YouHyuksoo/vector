@@ -371,10 +371,30 @@ func (w *crlfWriter) Write(p []byte) (int, error) {
 	return w.f.WriteString(out)
 }
 
+const maxLogSize = 5 * 1024 * 1024 // 5MB
+
+func trimLogFile(path string) {
+	info, err := os.Stat(path)
+	if err != nil || info.Size() < maxLogSize {
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	// 후반 절반만 유지
+	half := len(data) / 2
+	idx := strings.Index(string(data[half:]), "\n")
+	if idx >= 0 {
+		os.WriteFile(path, data[half+idx+1:], 0644)
+	}
+}
+
 func setupLogFile() {
 	logDir := configDir
 	os.MkdirAll(logDir, 0755)
 	logFilePath = filepath.Join(logDir, "agent-manager.log")
+	trimLogFile(logFilePath)
 	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err == nil {
 		cw := &crlfWriter{f: f}
