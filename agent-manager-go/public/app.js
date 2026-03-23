@@ -654,12 +654,12 @@ function updateStatusCards() {
 
 function updateMetrics() {
   const m = state.metrics;
-  document.getElementById('txt-events-in').textContent = formatNum(m?.eventsIn);
-  document.getElementById('txt-events-out').textContent = formatNum(m?.eventsOut);
+  document.getElementById('txt-events-in').textContent = formatNum(m?.events_in);
+  document.getElementById('txt-events-out').textContent = formatNum(m?.events_out);
   document.getElementById('txt-errors').textContent = formatNum(m?.errors);
-  const pct = m?.bufferPercent ?? 0;
+  const pct = m?.buffer_pct ?? 0;
   document.getElementById('txt-buffer-pct').textContent = pct + '%';
-  document.getElementById('txt-buffer-detail').textContent = `${formatBytes(m?.bufferUsedBytes)} / ${formatBytes(m?.bufferMaxBytes)}`;
+  document.getElementById('txt-buffer-detail').textContent = `${formatBytes(m?.buffer_used)} / ${formatBytes(m?.buffer_max)}`;
   const bar = document.getElementById('bar-buffer');
   bar.style.width = pct + '%';
   bar.className = pct > 80 ? 'h-full rounded-full bg-warning transition-all duration-500' : 'h-full rounded-full bg-primary transition-all duration-500';
