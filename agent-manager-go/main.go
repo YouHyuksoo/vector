@@ -346,7 +346,13 @@ func isPortInUse() bool {
 }
 
 func main() {
-	// --no-tray 플래그면 서비스 모드 (HTTP 서버만)
+	// Windows 서비스로 실행 중인지 자동 감지
+	if isWindowsService() {
+		runAsService()
+		return
+	}
+
+	// --no-tray 플래그면 콘솔 모드 (HTTP 서버만, 서비스 아님)
 	for _, arg := range os.Args[1:] {
 		if arg == "--no-tray" || arg == "--console" {
 			startServer()
@@ -501,7 +507,8 @@ func onTrayReady() {
 	}()
 }
 
-func startServer() {
+// buildMux — HTTP 라우터 설정 (서비스 모드와 콘솔 모드에서 공유)
+func buildMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Health
@@ -555,14 +562,11 @@ func startServer() {
 	staticFS, _ := fs.Sub(publicFS, "public")
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
-	// 서버 시작
-	addr := "0.0.0.0:" + port
+	return mux
+}
 
-	// --no-tray 모드일 때만 로그 설정 (트레이 모드는 onTrayReady에서 이미 호출)
-	if logFilePath == "" {
-		setupLogFile()
-	}
-
+// logStartupInfo — 시작 시 환경 정보 출력
+func logStartupInfo() {
 	log.Printf("Agent Manager (Go) running at http://localhost:%s", port)
 	log.Printf("  Vector API:    %s", vectorAPI)
 	log.Printf("  Config path:   %s", findTomlConfig())
@@ -570,14 +574,23 @@ func startServer() {
 	log.Printf("  Master server: %s", masterServer)
 	log.Printf("  Edition:       %s (arch=%s)", detectEdition(), runtime.GOARCH)
 
-	// Vector 미설치 시 안내 (자동 설치 X → 웹 UI에서 수동 설치)
 	if _, err := os.Stat(vectorBinPath); err != nil {
 		log.Printf("[Init] Vector not found at %s — install via web UI", vectorBinPath)
 	}
+}
 
-	// Heartbeat: 30초마다 서버에 설비 상태 전송
+func startServer() {
+	// --no-tray / --console 콘솔 모드용
+	if logFilePath == "" {
+		setupLogFile()
+	}
+
+	logStartupInfo()
+
 	go startHeartbeat()
 
+	addr := "0.0.0.0:" + port
+	mux := buildMux()
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
