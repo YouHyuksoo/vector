@@ -192,9 +192,11 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         });
       } catch (validateErr: any) {
         try { unlinkSync(tmpPath); } catch {}
-        const stderr = validateErr.stderr?.toString() || validateErr.message || 'Unknown error';
-        logger.warn({ err: stderr }, 'Aggregator config validation failed');
-        return reply.status(400).send({ error: 'Validation failed', details: stderr });
+        const stderr = validateErr.stderr?.toString?.() || '';
+        const stdout = validateErr.stdout?.toString?.() || '';
+        const details = stderr || stdout || validateErr.message || 'Unknown error';
+        logger.warn({ details }, 'Aggregator config validation failed');
+        return reply.status(400).send({ error: 'Validation failed', details });
       }
       try { unlinkSync(tmpPath); } catch {}
     }
@@ -596,9 +598,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
           windowsHide: true,
         });
       } catch (validateErr: any) {
+        // tmp 파일은 디버깅을 위해 남겨두지 않고 삭제
         try { unlinkSync(tmpPath); } catch {}
-        const stderr = validateErr.stderr?.toString() || validateErr.message || 'Unknown error';
-        return reply.status(400).send({ error: 'Validation failed', details: stderr });
+        const stderr = validateErr.stderr?.toString?.() || '';
+        const stdout = validateErr.stdout?.toString?.() || '';
+        const details = stderr || stdout || validateErr.message || 'Unknown error';
+        logger.warn({ name, details }, 'Agent TOML validation failed');
+        return reply.status(400).send({ error: 'Validation failed', details });
       }
       try { unlinkSync(tmpPath); } catch {}
     }

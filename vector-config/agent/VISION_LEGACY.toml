@@ -31,7 +31,7 @@ ignore_older_secs = 86400
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
 [sources.work_logs.multiline]
 start_pattern = "^"
-condition_pattern = '^$$NEVER_MATCH'
+condition_pattern = '(?!x)x'
 mode = "halt_before"
 timeout_ms = 1000
 
