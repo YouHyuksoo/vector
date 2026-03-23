@@ -1441,13 +1441,15 @@ func sendHeartbeat() {
 	running := pid != ""
 
 	payload := map[string]any{
-		"equipment_id":   eqId,
-		"equipment_type": eqType,
-		"line_code":      lineCode,
-		"log_type":       logType,
-		"vector_running": running,
-		"pid":            pid,
-		"timestamp":      time.Now().UTC().Format(time.RFC3339),
+		"equipment_id": eqId,
+		"timestamp":    time.Now().UTC().Format(time.RFC3339),
+		"metadata": map[string]any{
+			"equipment_type": eqType,
+			"line_code":      lineCode,
+			"log_type":       logType,
+			"vector_running": running,
+			"pid":            pid,
+		},
 	}
 	data, _ := json.Marshal(payload)
 

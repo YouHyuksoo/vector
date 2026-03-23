@@ -141,23 +141,9 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
               tooltip={t('sender.form.tooltip.bufferSize')} />
           </div>
           <div className="mt-2 pt-2 border-t border-border/50 dark:border-border-dark/50">
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={f.heartbeatOn}
-                  onChange={e => u(c => e.target.checked ? addHeartbeat(c) : removeHeartbeat(c))}
-                  className="w-3.5 h-3.5 rounded border-border accent-primary" />
-                <span className="text-[11px] font-medium text-muted-foreground">
-                  {t('sender.form.heartbeat')}
-                </span>
-                <Tip text={t('sender.form.tooltip.heartbeat')} />
-              </label>
-              {f.heartbeatOn && (
-                <F label={t('sender.form.heartbeatInterval')} value={f.heartbeatInterval}
-                  type="number" suffix="s"
-                  onChange={v => u(c => setHeartbeatInterval(c, v))}
-                  tooltip={t('sender.form.tooltip.heartbeatInterval')} />
-              )}
-            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Heartbeat: Agent Manager가 30초마다 자동 전송
+            </p>
           </div>
         </Sec>
       </div>
