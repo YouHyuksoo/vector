@@ -398,16 +398,12 @@ func onTrayReady() {
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("끝내기", "Agent Manager 종료")
 
-	// 서비스 상태 주기적 갱신
-	go func() {
-		for {
-			vs := getServiceState("VectorAgent")
-			ms := getServiceState("VectorAgentManager")
-			mSvcVector.SetTitle("서비스: VectorAgent — " + svcStateKo(vs))
-			mSvcManager.SetTitle("서비스: AgentManager — " + svcStateKo(ms))
-			time.Sleep(10 * time.Second)
-		}
-	}()
+	// 서비스 상태 초기 조회
+	updateSvcMenu := func() {
+		mSvcVector.SetTitle("서비스: VectorAgent — " + svcStateKo(getServiceState("VectorAgent")))
+		mSvcManager.SetTitle("서비스: AgentManager — " + svcStateKo(getServiceState("VectorAgentManager")))
+	}
+	go updateSvcMenu()
 
 	// 메뉴 이벤트 처리
 	go func() {
@@ -421,9 +417,11 @@ func onTrayReady() {
 				exec.Command("notepad", filepath.Join(configDir, "vector.log")).Start()
 			case <-mSvcVector.ClickedCh:
 				toggleService("VectorAgent", vectorBinPath+" --config "+findTomlConfig())
+				updateSvcMenu()
 			case <-mSvcManager.ClickedCh:
 				exePath, _ := os.Executable()
 				toggleService("VectorAgentManager", exePath)
+				updateSvcMenu()
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 				os.Exit(0)
