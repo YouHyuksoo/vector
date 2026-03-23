@@ -860,23 +860,27 @@ function bindEvents() {
    ═══════════════════════════════════════════ */
 
 async function loadTomlList() {
-  const area = document.getElementById('toml-list-area');
-  if (!area) return;
+  const sel = document.getElementById('toml-select');
+  if (!sel) return;
   try {
     const data = await fetchJSON('/api/toml-list');
-    if (!data.names || data.names.length === 0) {
-      area.innerHTML = '<span style="font-size:13px;color:var(--fg3)">등록된 설비 설정이 없습니다</span>';
-      return;
+    // 기존 옵션 초기화 (첫 번째 placeholder 유지)
+    sel.innerHTML = '<option value="">설비를 선택하세요...</option>';
+    if (data.names && data.names.length > 0) {
+      data.names.forEach(function(name) {
+        sel.innerHTML += '<option value="' + esc(name) + '">' + esc(name) + '</option>';
+      });
     }
-    area.innerHTML = data.names.map(function(name) {
-      return '<button onclick="downloadToml(\'' + name + '\')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:4px;font-size:13px;font-weight:600;border:1px solid var(--border2);background:var(--card2);color:var(--fg);cursor:pointer;font-family:inherit;transition:all 0.15s"'
-        + ' onmouseover="this.style.borderColor=\'var(--cyan)\'" onmouseout="this.style.borderColor=\'var(--border2)\'">'
-        + '<span class="material-symbols-outlined" style="font-size:16px;color:var(--cyan)">description</span>'
-        + name + '</button>';
-    }).join('');
   } catch {
-    area.innerHTML = '<span style="font-size:13px;color:var(--fg3)">서버 주소를 먼저 설정하세요</span>';
+    sel.innerHTML = '<option value="">서버 주소를 먼저 설정하세요</option>';
   }
+}
+
+function downloadSelectedToml() {
+  var sel = document.getElementById('toml-select');
+  var name = sel.value;
+  if (!name) { showToast('설비를 선택하세요', 'warning'); return; }
+  downloadToml(name);
 }
 
 async function downloadToml(name) {

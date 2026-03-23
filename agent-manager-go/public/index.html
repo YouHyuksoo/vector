@@ -280,9 +280,15 @@
         <!-- TOML 다운로드 (서버에서 설비 설정 가져오기) -->
         <div>
           <div class="sec-title"><span class="material-symbols-outlined">description</span>설비 TOML 다운로드</div>
-          <div id="toml-list-area" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-            <span style="font-size:13px;color:var(--fg3)">서버에서 목록을 불러오는 중...</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="toml-select" class="form-input" style="flex:1;padding:8px 12px;font-size:14px">
+              <option value="">설비를 선택하세요...</option>
+            </select>
+            <button onclick="downloadSelectedToml()" class="btn btn-blue" style="white-space:nowrap">
+              <span class="material-symbols-outlined" style="font-size:16px">download</span> 다운로드
+            </button>
           </div>
+          <div id="toml-list-area" style="display:none"></div>
         </div>
 
         <!-- Settings -->
