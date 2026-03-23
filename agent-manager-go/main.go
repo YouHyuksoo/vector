@@ -1103,11 +1103,19 @@ func svcStateLabel(state string) string {
 func toggleService(name, binPath string) {
 	state := getServiceState(name)
 	if state == "NOT_INSTALLED" {
-		installService(name, binPath)
-		log.Printf("[Service] %s registered", name)
+		result := installService(name, binPath)
+		if result["success"] == true {
+			log.Printf("[Service] %s registered OK", name)
+		} else {
+			log.Printf("[Service] %s register FAILED: %v (admin required?)", name, result["error"])
+		}
 	} else {
-		uninstallService(name)
-		log.Printf("[Service] %s unregistered", name)
+		result := uninstallService(name)
+		if result["success"] == true {
+			log.Printf("[Service] %s unregistered OK", name)
+		} else {
+			log.Printf("[Service] %s unregister FAILED: %v", name, result["error"])
+		}
 	}
 }
 
