@@ -16,12 +16,12 @@ include = [
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"
-fingerprint.bytes = 16
+fingerprint.bytes = 256
 ignore_older_secs = 86400
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
 [sources.work_logs.multiline]
 start_pattern = "^"
-condition_pattern = '(?!x)x'
+condition_pattern = 'ZZZZZ_NEVER_MATCH_ZZZZZ'
 mode = "halt_before"
 timeout_ms = 1000
 

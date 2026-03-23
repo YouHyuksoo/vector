@@ -159,7 +159,7 @@ export const hasMultiline = (c: string): boolean =>
 /** multiline 섹션 추가 (파일 통째 전송) */
 export const addMultiline = (c: string): string => {
   if (hasMultiline(c)) return c;
-  const ml = `\n# ── 파일 전체를 하나의 이벤트로 묶기 ──\n[sources.work_logs.multiline]\nstart_pattern = "^"\ncondition_pattern = '(?!x)x'\nmode = "halt_before"\ntimeout_ms = 1000\n`;
+  const ml = `\n# ── 파일 전체를 하나의 이벤트로 묶기 ──\n[sources.work_logs.multiline]\nstart_pattern = "^"\ncondition_pattern = 'ZZZZZ_NEVER_MATCH_ZZZZZ'\nmode = "halt_before"\ntimeout_ms = 1000\n`;
   return c.replace(/(\[transforms\.add_metadata\])/, ml + '\n$1');
 };
 

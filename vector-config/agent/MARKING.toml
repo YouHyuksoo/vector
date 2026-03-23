@@ -1,8 +1,8 @@
 # =============================================================================
-#  Vector Agent (송신기) - COATINGVISION 설비
+#  Vector Agent (송신기) - MARKING 설비
 # =============================================================================
 
-data_dir = 'C:\vector-data-coatingvision'
+data_dir = 'C:\vector-data-marking'
 
 [api]
 enabled = true
@@ -11,40 +11,29 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  'C:\logs\coatingvision\*.txt',
-  'C:\logs\coatingvision\*.csv',
-  'C:\logs\coatingvision\*.log',
+  'C:\logs\marking\*.txt',
+  'C:\logs\marking\*.csv',
+  'C:\logs\marking\*.log',
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"
 fingerprint.bytes = 256
 ignore_older_secs = 86400
 
-# ── 파일 전체를 하나의 이벤트로 묶기 ──
-[sources.work_logs.multiline]
-start_pattern = "^"
-condition_pattern = 'ZZZZZ_NEVER_MATCH_ZZZZZ'
-mode = "halt_before"
-timeout_ms = 1000
-
-# ── [설비 설정] ──
-
 [transforms.add_metadata]
 type = "remap"
 inputs = ["work_logs"]
 source = '''
-.equipment_type = "COATINGVISION"
+.equipment_type = "MARKING"
 .log_type = "INSPECTION"
 .line_code = "LINE-01"
-.equipment_id = "COATINGVISION-001"
+.equipment_id = "MARKING-001"
 '''
-
-# ── [출력] Aggregator 서버로 전송 ──
 
 [sinks.to_aggregator]
 type = "vector"
 inputs = ["add_metadata"]
-address = "20.10.30.112:6000"
+address = "127.0.0.1:6000"
 
 [sinks.to_aggregator.buffer]
 type = "disk"
