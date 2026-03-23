@@ -3,9 +3,9 @@
  * @description 장비 하트비트 수신 엔드포인트
  *
  * 초보자 가이드:
- * 1. **주요 개념**: Agent TOML의 static_metrics 소스가 30초마다 하트비트를 Aggregator로 전송
- * 2. **데이터 흐름**: Agent(static_metrics) → Aggregator(route) → Node.js(여기) → 인메모리 Map
- * 3. **형식 지원**: 표준 heartbeat JSON + Vector static_metrics 메트릭 원본 형식 모두 처리
+ * 1. **주요 개념**: Agent TOML의 internal_metrics + remap이 30초마다 하트비트를 Aggregator로 전송
+ * 2. **데이터 흐름**: Agent(internal_metrics) → Aggregator(route) → Node.js(여기) → 인메모리 Map
+ * 3. **형식 지원**: 표준 heartbeat JSON + Vector 메트릭 원본 형식 모두 처리
  * 4. **동작**: TTL 내 하트비트 없으면 자동으로 오프라인 판정
  */
 
@@ -14,7 +14,7 @@ import { heartbeatSchema } from '../../schemas/log-ingest.schema.js';
 import { heartbeatService } from '../../services/heartbeat.service.js';
 import { logger } from '../../utils/logger.js';
 
-/** Vector static_metrics 형식에서 heartbeat 데이터 추출 */
+/** Vector internal_metrics 형식에서 heartbeat 데이터 추출 */
 function extractFromMetric(item: Record<string, unknown>, ip?: string): {
   equipment_id: string; timestamp?: string; metadata?: Record<string, unknown>;
 } | null {
@@ -31,7 +31,7 @@ function extractFromMetric(item: Record<string, unknown>, ip?: string): {
       ...(tags.description ? { description: tags.description } : {}),
       ...(!tags.ip && ip ? { ip } : {}),
       ...(tags.ip ? { ip: tags.ip } : {}),
-      source: 'vector_static_metrics',
+      source: 'vector_internal_metrics',
     },
   };
 }
@@ -56,7 +56,7 @@ export const heartbeatRoute: FastifyPluginAsync = async (app) => {
         continue;
       }
 
-      // 2) Vector static_metrics 메트릭 형식 시도
+      // 2) Vector internal_metrics 메트릭 형식 시도
       const metric = extractFromMetric(item, clientIp);
       if (metric) {
         await heartbeatService.update(metric.equipment_id, {

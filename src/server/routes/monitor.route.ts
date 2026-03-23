@@ -25,7 +25,7 @@ import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AG
 
 /**
  * Win7(Vector 0.38) 호환 TOML 변환
- * static_metrics (0.41+) → internal_metrics + remap transform 으로 교체
+ * 하트비트: internal_metrics + remap transform (v0.38~v0.45 호환)
  */
 // convertTomlForWin7 — 제거됨: generator 타입으로 통일하여 변환 불필요
 import {
