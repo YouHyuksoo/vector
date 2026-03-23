@@ -42,28 +42,28 @@ export function QuickGuide() {
   const { t } = useI18n();
 
   return (
-    <Card className="p-3">
+    <Card className="p-4">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-center justify-between"
       >
-        <p className="text-xs font-bold text-text dark:text-white">{t('download.guide.title')}</p>
-        <Icon name={open ? 'expand_less' : 'expand_more'} size="sm" className="text-muted-foreground" />
+        <p className="text-base font-bold text-text dark:text-white">{t('download.guide.title')}</p>
+        <Icon name={open ? 'expand_less' : 'expand_more'} size="md" className="text-muted-foreground" />
       </button>
 
       {open && (
-        <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
           {STEPS.map((step, i) => (
-            <div key={step.titleKey} className="rounded-lg border border-border dark:border-border-dark p-3">
-              <p className="text-xs font-bold text-text dark:text-white mb-1">
+            <div key={step.titleKey} className="rounded-lg border border-border dark:border-border-dark p-4">
+              <p className="text-base font-bold text-text dark:text-white mb-2">
                 <span className="text-primary mr-1">{i + 1}.</span>
                 {t(step.titleKey)}
               </p>
-              <p className="text-[11px] text-muted-foreground mb-2">{t(step.descKey)}</p>
-              <ul className="space-y-1">
+              <p className="text-sm text-muted-foreground mb-3">{t(step.descKey)}</p>
+              <ul className="space-y-2">
                 {step.details.map(d => (
-                  <li key={d.labelKey} className="text-[11px] text-muted-foreground">
+                  <li key={d.labelKey} className="text-sm text-muted-foreground">
                     <span className="font-bold text-text dark:text-white">{t(d.labelKey)}</span> — {t(d.textKey)}
                   </li>
                 ))}
