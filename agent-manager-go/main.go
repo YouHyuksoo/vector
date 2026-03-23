@@ -387,7 +387,8 @@ func onTrayReady() {
 	systray.SetTooltip("Vector Agent Manager - localhost:" + port)
 
 	mOpen := systray.AddMenuItem("열기 (브라우저)", "웹 브라우저에서 Agent Manager 열기")
-	mLog := systray.AddMenuItem("로그 보기", "로그 파일 열기")
+	mLog := systray.AddMenuItem("Agent 로그", "Agent Manager 로그 파일 열기")
+	mVectorLog := systray.AddMenuItem("Vector 로그", "Vector 실행 로그 파일 열기")
 	systray.AddSeparator()
 	mStatus := systray.AddMenuItem("상태: 시작 중...", "")
 	mStatus.Disable()
@@ -402,6 +403,8 @@ func onTrayReady() {
 				exec.Command("rundll32", "url.dll,FileProtocolHandler", "http://localhost:"+port).Start()
 			case <-mLog.ClickedCh:
 				exec.Command("notepad", logFilePath).Start()
+			case <-mVectorLog.ClickedCh:
+				exec.Command("notepad", filepath.Join(configDir, "vector.log")).Start()
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 				os.Exit(0)
