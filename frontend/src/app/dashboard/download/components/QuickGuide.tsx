@@ -44,7 +44,7 @@ const STEPS = [
     ],
   },
   {
-    icon: 'miscellaneous_services',
+    icon: 'build',
     title: '서비스 등록 (선택)',
     desc: 'PC 부팅 시 자동 시작 설정',
     details: [
