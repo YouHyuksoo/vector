@@ -516,6 +516,15 @@ async function saveMasterServer() {
 }
 
 /** 선택된 Vector edition 반환 ('default' | 'win7') */
+async function loadVectorLog() {
+  try {
+    const data = await fetchJSON('/api/vector-log');
+    const el = document.getElementById('vector-log-area');
+    el.textContent = data.log || '로그 없음';
+    el.scrollTop = el.scrollHeight;
+  } catch { /* 무시 */ }
+}
+
 function getSelectedEdition() {
   const radio = document.querySelector('input[name="vector-edition"]:checked');
   return radio ? radio.value : 'default';

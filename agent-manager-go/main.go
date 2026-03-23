@@ -456,6 +456,9 @@ func startServer() {
 	mux.HandleFunc("/api/service/install", handleServiceInstall)
 	mux.HandleFunc("/api/service/uninstall", handleServiceUninstall)
 
+	// ─── Vector 로그 ───
+	mux.HandleFunc("/api/vector-log", handleVectorLog)
+
 	// ─── TOML 목록/다운로드 ───
 	mux.HandleFunc("/api/toml-list", handleTomlList)
 	mux.HandleFunc("/api/toml-download", handleTomlDownload)
@@ -660,11 +663,30 @@ func handleVectorStart(w http.ResponseWriter, r *http.Request) {
 
 	cmd := exec.Command(vectorBinPath, "--config", cfgPath)
 	cmd.SysProcAttr = windowsHideAttr()
+
+	// Vector 로그를 파일로 저장
+	vectorLogPath := filepath.Join(configDir, "vector.log")
+	logFile, _ := os.OpenFile(vectorLogPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if logFile != nil {
+		cmd.Stdout = logFile
+		cmd.Stderr = logFile
+	}
+
 	err := cmd.Start()
 	if err != nil {
+		if logFile != nil {
+			logFile.Close()
+		}
 		jsonError(w, 500, err.Error())
 		return
 	}
+	// 프로세스 종료 시 로그 파일 닫기
+	go func() {
+		cmd.Wait()
+		if logFile != nil {
+			logFile.Close()
+		}
+	}()
 	jsonResp(w, map[string]any{"success": true, "pid": cmd.Process.Pid})
 }
 
@@ -1109,6 +1131,21 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 // ─── Logs ───
+
+func handleVectorLog(w http.ResponseWriter, r *http.Request) {
+	vectorLogPath := filepath.Join(configDir, "vector.log")
+	data, err := os.ReadFile(vectorLogPath)
+	if err != nil {
+		jsonResp(w, map[string]any{"log": ""})
+		return
+	}
+	// 마지막 100줄만
+	lines := strings.Split(string(data), "\n")
+	if len(lines) > 100 {
+		lines = lines[len(lines)-100:]
+	}
+	jsonResp(w, map[string]any{"log": strings.Join(lines, "\n")})
+}
 
 func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
 	// TOML에서 include 경로 추출 + 폴더 존재 여부 체크
