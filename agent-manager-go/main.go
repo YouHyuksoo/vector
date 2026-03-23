@@ -390,10 +390,24 @@ func onTrayReady() {
 	mLog := systray.AddMenuItem("Agent 로그", "Agent Manager 로그 파일 열기")
 	mVectorLog := systray.AddMenuItem("Vector 로그", "Vector 실행 로그 파일 열기")
 	systray.AddSeparator()
+	mSvcVector := systray.AddMenuItem("서비스: VectorAgent — 확인 중...", "")
+	mSvcManager := systray.AddMenuItem("서비스: AgentManager — 확인 중...", "")
+	systray.AddSeparator()
 	mStatus := systray.AddMenuItem("상태: 시작 중...", "")
 	mStatus.Disable()
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("끝내기", "Agent Manager 종료")
+
+	// 서비스 상태 주기적 갱신
+	go func() {
+		for {
+			vs := getServiceState("VectorAgent")
+			ms := getServiceState("VectorAgentManager")
+			mSvcVector.SetTitle("서비스: VectorAgent — " + svcStateKo(vs))
+			mSvcManager.SetTitle("서비스: AgentManager — " + svcStateKo(ms))
+			time.Sleep(10 * time.Second)
+		}
+	}()
 
 	// 메뉴 이벤트 처리
 	go func() {
@@ -405,6 +419,11 @@ func onTrayReady() {
 				exec.Command("notepad", logFilePath).Start()
 			case <-mVectorLog.ClickedCh:
 				exec.Command("notepad", filepath.Join(configDir, "vector.log")).Start()
+			case <-mSvcVector.ClickedCh:
+				toggleService("VectorAgent", vectorBinPath+" --config "+findTomlConfig())
+			case <-mSvcManager.ClickedCh:
+				exePath, _ := os.Executable()
+				toggleService("VectorAgentManager", exePath)
 			case <-mQuit.ClickedCh:
 				systray.Quit()
 				os.Exit(0)
@@ -1050,6 +1069,30 @@ func handleServiceUninstall(w http.ResponseWriter, r *http.Request) {
 		results["manager"] = uninstallService("VectorAgentManager")
 	}
 	jsonResp(w, results)
+}
+
+func svcStateKo(state string) string {
+	switch state {
+	case "RUNNING":
+		return "실행 중 ✓"
+	case "STOPPED":
+		return "중지됨"
+	case "NOT_INSTALLED":
+		return "미등록 (클릭하여 등록)"
+	default:
+		return state
+	}
+}
+
+func toggleService(name, binPath string) {
+	state := getServiceState(name)
+	if state == "NOT_INSTALLED" {
+		installService(name, binPath)
+		log.Printf("[Service] %s 등록 완료", name)
+	} else {
+		uninstallService(name)
+		log.Printf("[Service] %s 해제 완료", name)
+	}
 }
 
 func getServiceState(name string) string {
