@@ -622,7 +622,7 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Vector GraphQL API로 메트릭 조회
-	query := `{"query":"{ sources { metrics { receivedEventsTotal { receivedEventsTotal } } } sinks { metrics { sentEventsTotal { sentEventsTotal } sentBytesTotal { sentBytesTotal } errors { errorsTotal } } } }"}`
+	query := `{"query":"{ sources { edges { node { metrics { receivedEventsTotal { receivedEventsTotal } } } } } sinks { edges { node { metrics { sentEventsTotal { sentEventsTotal } sentBytesTotal { sentBytesTotal } } } } } }"}`
 	resp, err := http.Post(vectorAPI+"/graphql", "application/json", strings.NewReader(query))
 	if err != nil {
 		jsonResp(w, result)
@@ -637,50 +637,52 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// sources → events_in
+	// sources → events_in (edges.node 패턴)
 	if data, ok := gql["data"].(map[string]any); ok {
-		if sources, ok := data["sources"].([]any); ok {
-			var totalIn float64
-			for _, s := range sources {
-				if sm, ok := s.(map[string]any); ok {
-					if metrics, ok := sm["metrics"].(map[string]any); ok {
-						if rev, ok := metrics["receivedEventsTotal"].(map[string]any); ok {
-							if v, ok := rev["receivedEventsTotal"].(float64); ok {
-								totalIn += v
+		if sources, ok := data["sources"].(map[string]any); ok {
+			if edges, ok := sources["edges"].([]any); ok {
+				var totalIn float64
+				for _, e := range edges {
+					if edge, ok := e.(map[string]any); ok {
+						if node, ok := edge["node"].(map[string]any); ok {
+							if metrics, ok := node["metrics"].(map[string]any); ok {
+								if rev, ok := metrics["receivedEventsTotal"].(map[string]any); ok {
+									if v, ok := rev["receivedEventsTotal"].(float64); ok {
+										totalIn += v
+									}
+								}
 							}
 						}
 					}
 				}
+				result["events_in"] = int(totalIn)
 			}
-			result["events_in"] = int(totalIn)
 		}
-		// sinks → events_out, errors
-		if sinks, ok := data["sinks"].([]any); ok {
-			var totalOut, totalErr, totalBytes float64
-			for _, s := range sinks {
-				if sm, ok := s.(map[string]any); ok {
-					if metrics, ok := sm["metrics"].(map[string]any); ok {
-						if sev, ok := metrics["sentEventsTotal"].(map[string]any); ok {
-							if v, ok := sev["sentEventsTotal"].(float64); ok {
-								totalOut += v
-							}
-						}
-						if sb, ok := metrics["sentBytesTotal"].(map[string]any); ok {
-							if v, ok := sb["sentBytesTotal"].(float64); ok {
-								totalBytes += v
-							}
-						}
-						if errs, ok := metrics["errors"].(map[string]any); ok {
-							if v, ok := errs["errorsTotal"].(float64); ok {
-								totalErr += v
+		// sinks → events_out
+		if sinks, ok := data["sinks"].(map[string]any); ok {
+			if edges, ok := sinks["edges"].([]any); ok {
+				var totalOut, totalBytes float64
+				for _, e := range edges {
+					if edge, ok := e.(map[string]any); ok {
+						if node, ok := edge["node"].(map[string]any); ok {
+							if metrics, ok := node["metrics"].(map[string]any); ok {
+								if sev, ok := metrics["sentEventsTotal"].(map[string]any); ok {
+									if v, ok := sev["sentEventsTotal"].(float64); ok {
+										totalOut += v
+									}
+								}
+								if sb, ok := metrics["sentBytesTotal"].(map[string]any); ok {
+									if v, ok := sb["sentBytesTotal"].(float64); ok {
+										totalBytes += v
+									}
+								}
 							}
 						}
 					}
 				}
+				result["events_out"] = int(totalOut)
+				result["buffer_used"] = int(totalBytes)
 			}
-			result["events_out"] = int(totalOut)
-			result["errors"] = int(totalErr)
-			result["buffer_used"] = int(totalBytes)
 		}
 	}
 
