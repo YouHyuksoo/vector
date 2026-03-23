@@ -459,6 +459,13 @@ async function checkInstall() {
       document.getElementById('inp-master-server').value = data.masterServer;
       document.getElementById('inp-master-server-banner').value = data.masterServer;
     }
+    // 감지된 edition으로 라디오 버튼 자동 선택
+    if (data.edition) {
+      const edMap = { 'win7': 'win7', 'x86': 'x86', 'win7-x86': 'x86' };
+      const val = edMap[data.edition] || 'default';
+      const radio = document.querySelector('input[name="vector-edition"][value="' + val + '"]');
+      if (radio) radio.checked = true;
+    }
     // Vector 미설치 시 상단 배너 표시
     const banner = document.getElementById('server-banner');
     if (!data.binaryExists) {
@@ -518,7 +525,7 @@ async function installVector() {
   document.getElementById('btn-install').disabled = true;
   showToast(t('toast.downloading'), 'info');
   const edition = getSelectedEdition();
-  const editionParam = edition === 'win7' ? '?edition=win7' : '';
+  const editionParam = edition !== 'default' ? '?edition=' + edition : '';
   try {
     const data = await fetchJSON(`/api/install${editionParam}`, { method: 'POST' });
     showToast(data.message || '설치 완료', 'success');
@@ -531,7 +538,7 @@ async function installVector() {
 
 async function checkUpdate() {
   const edition = getSelectedEdition();
-  const editionParam = edition === 'win7' ? '?edition=win7' : '';
+  const editionParam = edition !== 'default' ? '?edition=' + edition : '';
   try {
     const data = await fetchJSON(`/api/update/check${editionParam}`);
     document.getElementById('txt-local-ver').textContent = data.localVersion || t('mgmt.notInstalled');
@@ -550,7 +557,7 @@ async function executeUpdate() {
   document.getElementById('btn-update').disabled = true;
   showToast(t('toast.updating'), 'info');
   const edition = getSelectedEdition();
-  const editionParam = edition === 'win7' ? '?edition=win7' : '';
+  const editionParam = edition !== 'default' ? '?edition=' + edition : '';
   try {
     const data = await fetchJSON(`/api/update/execute${editionParam}`, { method: 'POST' });
     showToast(data.message || '업데이트 완료', 'success');

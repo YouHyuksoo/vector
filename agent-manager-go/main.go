@@ -757,6 +757,7 @@ func handleInstallStatus(w http.ResponseWriter, r *http.Request) {
 		"binaryPath":    vectorBinPath,
 		"configPath":    cfgPath,
 		"masterServer":  masterServer,
+		"edition":       detectEdition(),
 	})
 }
 
