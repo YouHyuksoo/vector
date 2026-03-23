@@ -373,6 +373,30 @@ func (w *crlfWriter) Write(p []byte) (int, error) {
 
 const maxLogSize = 5 * 1024 * 1024 // 5MB
 
+// limitedWriter — 파일 크기가 maxSize 초과 시 후반만 남기고 자동 정리
+type limitedWriter struct {
+	f       *os.File
+	path    string
+	maxSize int64
+	written int64
+}
+
+func (w *limitedWriter) Write(p []byte) (int, error) {
+	n, err := w.f.Write(p)
+	w.written += int64(n)
+	// 1MB마다 크기 체크 (매 write마다 하면 낭비)
+	if w.written > 1024*1024 {
+		w.written = 0
+		info, e := w.f.Stat()
+		if e == nil && info.Size() > w.maxSize {
+			w.f.Close()
+			trimLogFile(w.path)
+			w.f, _ = os.OpenFile(w.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		}
+	}
+	return n, err
+}
+
 func trimLogFile(path string) {
 	info, err := os.Stat(path)
 	if err != nil || info.Size() < maxLogSize {
@@ -722,12 +746,13 @@ func handleVectorStart(w http.ResponseWriter, r *http.Request) {
 	cmd := exec.Command(vectorBinPath, "--config", cfgPath)
 	cmd.SysProcAttr = windowsHideAttr()
 
-	// Vector 로그를 파일로 저장
+	// Vector 로그를 파일로 저장 (크기 제한)
 	vectorLogPath := filepath.Join(configDir, "vector.log")
 	logFile, _ := os.OpenFile(vectorLogPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if logFile != nil {
-		cmd.Stdout = logFile
-		cmd.Stderr = logFile
+		lw := &limitedWriter{f: logFile, path: vectorLogPath, maxSize: maxLogSize}
+		cmd.Stdout = lw
+		cmd.Stderr = lw
 	}
 
 	err := cmd.Start()
