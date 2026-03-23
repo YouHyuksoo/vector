@@ -335,8 +335,18 @@ func tomlSetInclude(content, paths string) string {
 
 // ─── 메인 ───
 
+// 포트가 이미 사용 중인지 확인 (서비스가 떠있는지)
+func isPortInUse() bool {
+	ln, err := net.Listen("tcp", "0.0.0.0:"+port)
+	if err != nil {
+		return true
+	}
+	ln.Close()
+	return false
+}
+
 func main() {
-	// --no-tray 플래그면 콘솔 모드
+	// --no-tray 플래그면 서비스 모드 (HTTP 서버만)
 	for _, arg := range os.Args[1:] {
 		if arg == "--no-tray" || arg == "--console" {
 			startServer()
@@ -398,6 +408,15 @@ func onTrayReady() {
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("끝내기", "Agent Manager 종료")
 
+	// 서비스가 이미 떠있으면 HTTP 서버 안 띄움 (트레이만)
+	serviceRunning := isPortInUse()
+	if serviceRunning {
+		mStatus.SetTitle("상태: 서비스 실행 중 (트레이만)")
+		log.Println("[Tray] 서비스가 이미 실행 중 — 트레이만 표시")
+	} else {
+		go startServer()
+	}
+
 	// 서비스 상태 초기 조회
 	updateSvcMenu := func() {
 		mSvcVector.SetTitle("서비스: VectorAgent — " + svcStateKo(getServiceState("VectorAgent")))
@@ -429,13 +448,12 @@ func onTrayReady() {
 		}
 	}()
 
-	// 서버 시작 (별도 고루틴)
-	go startServer()
-
 	// 상태 업데이트
 	go func() {
 		time.Sleep(2 * time.Second)
-		mStatus.SetTitle("상태: 실행 중 (:" + port + ")")
+		if !serviceRunning {
+			mStatus.SetTitle("상태: 실행 중 (:" + port + ")")
+		}
 	}()
 }
 
