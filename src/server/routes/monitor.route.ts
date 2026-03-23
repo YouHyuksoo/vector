@@ -2508,7 +2508,7 @@ include = [
 ]
 read_from = "beginning"
 fingerprint.strategy = "checksum"
-fingerprint.bytes = 16
+fingerprint.bytes = 256
 ignore_older_secs = 86400
 
 [transforms.add_metadata]

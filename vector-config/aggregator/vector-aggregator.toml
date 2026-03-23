@@ -311,6 +311,7 @@ if .equipment_type == "SP" {
   }
 
 } else if .equipment_type == "ICT" {
+  .target_table = "LOG_ICT"
   # Log Structure:
   # Line 0: header row (BARCODE,PCB NO,RESULT,...)
   # Line 1: first data row (actual values)
@@ -820,51 +821,250 @@ if .equipment_type == "SP" {
     }
   }
 } else if .equipment_type == "COATING1" {
-  # ── COATING1 ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
+  .target_table = "LOG_COATING1"
+  # Log Structure:
+  # Line 0: header row (DateTime,Barcode,FlowMeter(g),Flow Min(g),Flow Max(g),Result)
+  # Line 1+: data rows (two identical rows in sample)
+  # All columns are parsed as strings (no numeric conversion)
+  # Fields mapped to UPPERCASE_SNAKE_CASE from header names
+
+  lines = split!(.message, "\n")
+
+  # Parse header line (line 0) to confirm column order
+  header = split(to_string!(get!(lines, [0])), ",")
+  # Column 0: DateTime -> DATETIME
+  # Column 1: Barcode -> BARCODE
+  # Column 2: FlowMeter(g) -> FLOW_METER_G
+  # Column 3: Flow Min(g) -> FLOW_MIN_G
+  # Column 4: Flow Max(g) -> FLOW_MAX_G
+  # Column 5: Result -> RESULT
+
+  # Parse first data row (line 1) into individual .data fields
+  first_row = split(to_string!(get!(lines, [1])), ",")
+  .data.DATETIME = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [1])))
+  .data.FLOW_METER_G = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.FLOW_MIN_G = strip_whitespace(to_string!(get!(first_row, [3])))
+  .data.FLOW_MAX_G = strip_whitespace(to_string!(get!(first_row, [4])))
+  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [5])))
+
+  # Parse ALL data rows into .data.DETAILS array (including first row)
+  .data.DETAILS = []
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      item = {
+        "DATETIME": strip_whitespace(to_string!(get!(cols, [0]))),
+        "BARCODE": strip_whitespace(to_string!(get!(cols, [1]))),
+        "FLOW_METER_G": strip_whitespace(to_string!(get!(cols, [2]))),
+        "FLOW_MIN_G": strip_whitespace(to_string!(get!(cols, [3]))),
+        "FLOW_MAX_G": strip_whitespace(to_string!(get!(cols, [4]))),
+        "RESULT": strip_whitespace(to_string!(get!(cols, [5])))
+      }
+      .data.DETAILS = push(.data.DETAILS, item)
+    }
+  }
+} else if .equipment_type == "COATING2" {  # Log Structure: Multi-row CSV with single header line (line 0)
+  .target_table = "LOG_COATING2"
+  # Line 0: header row (DateTime,Barcode,FlowMeter(g),Flow Min(g),Flow Max(g),Result)
+  # Lines 1+: data rows
+  # Parse first data row into individual .data.FIELD values
+  # Parse ALL data rows into .data.COATING_ITEMS array
+
+  lines = split!(.message, "\n")
+
+  # Parse header line to confirm structure (not used for field names, but validates log format)
+  header = split(to_string!(get!(lines, [0])), ",")
+  if length(header) != 6 || get!(header, [0]) != "DateTime" {
+    abort
   }
 
-} else if .equipment_type == "COATING2" {
-  # ── COATING2 ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
+  # Parse first data row into individual fields (board/summary info)
+  first_row = split(to_string!(get!(lines, [1])), ",")
+  .data.DATE_TIME = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [1])))
+  .data.FLOW_METER_G = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.FLOW_MIN_G = strip_whitespace(to_string!(get!(first_row, [3])))
+  .data.FLOW_MAX_G = strip_whitespace(to_string!(get!(first_row, [4])))
+  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [5])))
 
+  # Parse ALL data rows into array
+  .data.COATING_ITEMS = []
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      item = {
+        "DATE_TIME": strip_whitespace(to_string!(get!(cols, [0]))),
+        "BARCODE": strip_whitespace(to_string!(get!(cols, [1]))),
+        "FLOW_METER_G": strip_whitespace(to_string!(get!(cols, [2]))),
+        "FLOW_MIN_G": strip_whitespace(to_string!(get!(cols, [3]))),
+        "FLOW_MAX_G": strip_whitespace(to_string!(get!(cols, [4]))),
+        "RESULT": strip_whitespace(to_string!(get!(cols, [5]))),
+      }
+      .data.COATING_ITEMS = push(.data.COATING_ITEMS, item)
+    }
+  }
 } else if .equipment_type == "COATINGVISION" {
-  # ── COATINGVISION ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
+  .target_table = "LOG_COATINGVISION"
+  # Log Structure:
+  # Line 0: header row (SaveDate,ProgramName,MainBarcode,SubBarcode,Name,Result,FinalResult)
+  # Lines 1+: data rows (multiple rows, all same format)
+  # No section labels — pure CSV with header.
+  # Parse first data row into individual .data.FIELD values for summary.
+  # Parse ALL data rows into .data.COATING_RESULTS array.
+
+  lines = split!(.message, "\n")
+
+  # Parse header line (line 0) — not used for field names, but confirms column count
+  header = split(to_string!(get!(lines, [0])), ",")
+
+  # Parse first data row (line 1) into individual .data fields
+  first_row = split(to_string!(get!(lines, [1])), ",")
+  .data.SAVE_DATE = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.PROGRAM_NAME = strip_whitespace(to_string!(get!(first_row, [1])))
+  .data.MAIN_BARCODE = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.SUB_BARCODE = strip_whitespace(to_string!(get!(first_row, [3])))
+  .data.AREA_NAME = strip_whitespace(to_string!(get!(first_row, [4])))
+  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [5])))
+  .data.FINAL_RESULT = strip_whitespace(to_string!(get!(first_row, [6])))
+
+  # Parse ALL data rows (lines 1+) into .data.COATING_RESULTS array
+  .data.COATING_RESULTS = []
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      item = {
+        "SAVE_DATE": strip_whitespace(to_string!(get!(cols, [0]))),
+        "PROGRAM_NAME": strip_whitespace(to_string!(get!(cols, [1]))),
+        "MAIN_BARCODE": strip_whitespace(to_string!(get!(cols, [2]))),
+        "SUB_BARCODE": strip_whitespace(to_string!(get!(cols, [3]))),
+        "AREA_NAME": strip_whitespace(to_string!(get!(cols, [4]))),
+        "RESULT": strip_whitespace(to_string!(get!(cols, [5]))),
+        "FINAL_RESULT": strip_whitespace(to_string!(get!(cols, [6])))
+      }
+      .data.COATING_RESULTS = push(.data.COATING_RESULTS, item)
+    }
+  }
+} else if .equipment_type == "COATINGREVIEW" {
+  .target_table = "LOG_COATINGREVIEW"
+  # Log Structure:
+  # Line 0: header row (SaveDate,ProgramName,MainBarcode,SubBarcode,Name,Result,FinalResult)
+  # Lines 1+: data rows (multiple rows per board, grouped by MainBarcode/SubBarcode/FinalResult)
+  # Multi-row mode: ACCUMULATE — all rows belong to the same logical record
+  # Fields to parse:
+  # - SaveDate → SAVE_DATE
+  # - ProgramName → PROGRAM_NAME
+  # - MainBarcode → MAIN_BARCODE
+  # - SubBarcode → SUB_BARCODE
+  # - Name → AREA_NAME
+  # - Result → AREA_RESULT
+  # - FinalResult → FINAL_RESULT
+
+  lines = split!(.message, "\n")
+
+  # Parse header (line 0) to verify column order — not used for field names
+  header = split(to_string!(get!(lines, [0])), ",")
+
+  # Initialize data arrays
+  .data.COATING_AREAS = []
+
+  # Parse ALL data rows (lines 1+)
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+
+      # Parse each column as string (no numeric conversion)
+      save_date = strip_whitespace(to_string!(get!(cols, [0])))
+      program_name = strip_whitespace(to_string!(get!(cols, [1])))
+      main_barcode = strip_whitespace(to_string!(get!(cols, [2])))
+      sub_barcode = strip_whitespace(to_string!(get!(cols, [3])))
+      area_name = strip_whitespace(to_string!(get!(cols, [4])))
+      area_result = strip_whitespace(to_string!(get!(cols, [5])))
+      final_result = strip_whitespace(to_string!(get!(cols, [6])))
+
+      # Create area record
+      area = {
+        "SAVE_DATE": save_date,
+        "PROGRAM_NAME": program_name,
+        "MAIN_BARCODE": main_barcode,
+        "SUB_BARCODE": sub_barcode,
+        "AREA_NAME": area_name,
+        "AREA_RESULT": area_result,
+        "FINAL_RESULT": final_result,
+      }
+
+      # Accumulate all areas into array
+      .data.COATING_AREAS = push(.data.COATING_AREAS, area)
+    }
   }
 
-} else if .equipment_type == "COATINGREVIEW" {
-  # ── COATINGREVIEW ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
+  # Extract board-level summary from FIRST data row (line 1)
+  first_row = split(to_string!(get!(lines, [1])), ",")
+  .data.SAVE_DATE = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.PROGRAM_NAME = strip_whitespace(to_string!(get!(first_row, [1])))
+  .data.MAIN_BARCODE = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.SUB_BARCODE = strip_whitespace(to_string!(get!(first_row, [3])))
+  # Note: FINAL_RESULT is per-area, not board-level. Omitted here.
+} else if .equipment_type == "MARKING" {
+  .target_table = "LOG_MARKING"
+  # Log Structure:
+  # Line 0: header row (WORK_ORDER_NO,MAIN_BARCODE,MARKED_BARCODE,MARKING_DT,EQUIPMENT_CD)
+  # Lines 1+: data rows (multiple marking records for the same or different work orders)
+  # All columns are parsed as strings (no numeric conversion)
+  # Fields are mapped to UPPERCASE_SNAKE_CASE from header names
+
+  lines = split!(.message, "\n")
+
+  # Parse header to confirm structure (not used for field names, but good practice)
+  header = split(to_string!(get!(lines, [0])), ",")
+  # WORK_ORDER_NO -> WORK_ORDER_NO
+  # MAIN_BARCODE -> MAIN_BARCODE
+  # MARKED_BARCODE -> MARKED_BARCODE
+  # MARKING_DT -> MARKING_DT
+  # EQUIPMENT_CD -> EQUIPMENT_CD
+
+  # Initialize array for all marking records
+  .data.MARKING_RECORDS = []
+
+  # Process all data rows (skip header at line 0)
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+
+      # Parse each column into string fields
+      work_order_no = strip_whitespace(to_string!(get!(cols, [0])))
+      main_barcode = strip_whitespace(to_string!(get!(cols, [1])))
+      marked_barcode = strip_whitespace(to_string!(get!(cols, [2])))
+      marking_dt = strip_whitespace(to_string!(get!(cols, [3])))
+      equipment_cd = strip_whitespace(to_string!(get!(cols, [4])))
+
+      # Create record object
+      record = {
+        "WORK_ORDER_NO": work_order_no,
+        "MAIN_BARCODE": main_barcode,
+        "MARKED_BARCODE": marked_barcode,
+        "MARKING_DT": marking_dt,
+        "EQUIPMENT_CD": equipment_cd
+      }
+
+      # Add to records array
+      .data.MARKING_RECORDS = push(.data.MARKING_RECORDS, record)
+    }
+  }
+
+  # Also parse first record into top-level fields for summary/quick access
+  if length(.data.MARKING_RECORDS) > 0 {
+    first_record = get!(.data.MARKING_RECORDS, [0])
+    .data.WORK_ORDER_NO = get!(first_record, ["WORK_ORDER_NO"])
+    .data.MAIN_BARCODE = get!(first_record, ["MAIN_BARCODE"])
+    .data.MARKED_BARCODE = get!(first_record, ["MARKED_BARCODE"])
+    .data.MARKING_DT = get!(first_record, ["MARKING_DT"])
+    .data.EQUIPMENT_CD = get!(first_record, ["EQUIPMENT_CD"])
   }
 
 } else {
@@ -886,7 +1086,19 @@ if .equipment_type == "SP" {
 type = "remap"
 inputs = ["parse_logs"]
 source = '''
-ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
+ts = if exists(.timestamp) { to_string!(.timestamp) } else if .equipment_type == "MARKING" {
+  # ── MARKING ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else { to_string!(now()) }
 . = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)

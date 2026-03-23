@@ -6,5 +6,9 @@
   "LOWCURRENT": {
     "description": "저전류검사기",
     "encoding": "euc-kr"
+  },
+  "MARKING": {
+    "description": "LASER MARKING",
+    "encoding": "utf-8"
   }
 }
