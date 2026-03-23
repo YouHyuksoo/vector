@@ -18,21 +18,6 @@ read_from = "beginning"
 fingerprint.strategy = "checksum"
 fingerprint.bytes = 16
 ignore_older_secs = 86400
-
-# ── [하트비트] 주기적 상태 전송 (30초 간격) ──
-[sources.heartbeat]
-type = "internal_metrics"
-scrape_interval_secs = 30
-
-[transforms.heartbeat_meta]
-type = "remap"
-inputs = ["heartbeat"]
-source = '''
-.tags.equipment_type = "LOWCURRENT"
-.tags.equipment_id = "LOWCURRENT-001"
-.tags.line_code = "LINE-01"
-.tags.log_type = "INSPECTION"
-'''
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
 [sources.work_logs.multiline]
 start_pattern = "^"
@@ -52,7 +37,7 @@ source = '''
 
 [sinks.to_aggregator]
 type = "vector"
-inputs = ["add_metadata", "heartbeat_meta"]
+inputs = ["add_metadata"]
 address = "20.10.30.112:6000"
 
 [sinks.to_aggregator.buffer]

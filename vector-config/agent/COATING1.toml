@@ -27,21 +27,6 @@ condition_pattern = '^$$NEVER_MATCH'
 mode = "halt_before"
 timeout_ms = 1000
 
-# ── [하트비트] 주기적 상태 전송 (30초 간격) ──
-[sources.heartbeat]
-type = "internal_metrics"
-scrape_interval_secs = 30
-
-[transforms.heartbeat_meta]
-type = "remap"
-inputs = ["heartbeat"]
-source = '''
-.tags.equipment_type = "COATING1"
-.tags.equipment_id = "COATING1-001"
-.tags.line_code = "LINE-01"
-.tags.log_type = "INSPECTION"
-'''
-
 # ── [설비 설정] ──
 
 [transforms.add_metadata]
@@ -58,7 +43,7 @@ source = '''
 
 [sinks.to_aggregator]
 type = "vector"
-inputs = ["add_metadata", "heartbeat_meta"]
+inputs = ["add_metadata"]
 address = "20.10.30.112:6000"
 
 [sinks.to_aggregator.buffer]

@@ -25,7 +25,7 @@ import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AG
 
 /**
  * Win7(Vector 0.38) 호환 TOML 변환
- * 하트비트: internal_metrics + remap transform (v0.38~v0.45 호환)
+ * 하트비트: Agent Manager가 직접 HTTP POST로 전송 (Vector TOML에서 제거)
  */
 // convertTomlForWin7 — 제거됨: generator 타입으로 통일하여 변환 불필요
 import {
@@ -2464,21 +2464,6 @@ fingerprint.strategy = "checksum"
 fingerprint.bytes = 16
 ignore_older_secs = 86400
 
-# ── [하트비트] 주기적 상태 전송 (30초 간격) ──
-[sources.heartbeat]
-type = "internal_metrics"
-scrape_interval_secs = 30
-
-[transforms.heartbeat_meta]
-type = "remap"
-inputs = ["heartbeat"]
-source = '''
-.tags.equipment_type = "${name}"
-.tags.equipment_id = "${name}-001"
-.tags.line_code = "LINE-01"
-.tags.log_type = "INSPECTION"
-'''
-
 [transforms.add_metadata]
 type = "remap"
 inputs = ["work_logs"]
@@ -2491,7 +2476,7 @@ source = '''
 
 [sinks.to_aggregator]
 type = "vector"
-inputs = ["add_metadata", "heartbeat_meta"]
+inputs = ["add_metadata"]
 address = "127.0.0.1:6000"
 
 [sinks.to_aggregator.buffer]

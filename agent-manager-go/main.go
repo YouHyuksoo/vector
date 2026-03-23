@@ -575,6 +575,9 @@ func startServer() {
 		log.Printf("[Init] Vector not found at %s — install via web UI", vectorBinPath)
 	}
 
+	// Heartbeat: 30초마다 서버에 설비 상태 전송
+	go startHeartbeat()
+
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
@@ -1403,6 +1406,50 @@ func ensureDataDir(tomlPath string) {
 			break
 		}
 	}
+}
+
+func startHeartbeat() {
+	for {
+		time.Sleep(30 * time.Second)
+		sendHeartbeat()
+	}
+}
+
+func sendHeartbeat() {
+	cfgPath := findTomlConfig()
+	content, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return
+	}
+	s := string(content)
+	eqType := tomlGetMeta(s, "equipment_type")
+	eqId := tomlGetMeta(s, "equipment_id")
+	lineCode := tomlGetMeta(s, "line_code")
+	logType := tomlGetMeta(s, "log_type")
+	if eqId == "" {
+		return
+	}
+
+	pid := findVectorPID()
+	running := pid != ""
+
+	payload := map[string]any{
+		"equipment_id":   eqId,
+		"equipment_type": eqType,
+		"line_code":      lineCode,
+		"log_type":       logType,
+		"vector_running": running,
+		"pid":            pid,
+		"timestamp":      time.Now().UTC().Format(time.RFC3339),
+	}
+	data, _ := json.Marshal(payload)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Post(masterServer+"/api/heartbeat", "application/json", strings.NewReader(string(data)))
+	if err != nil {
+		return
+	}
+	resp.Body.Close()
 }
 
 func httpGet(url string) (*http.Response, error) {

@@ -125,29 +125,9 @@ type = "route"
 inputs = ["from_agents", "normalize_fluent"]
 
 [transforms.route_events.route]
-heartbeat = 'exists(.tags.equipment_type) || .name == "heartbeat"'
+# heartbeat는 Agent Manager가 직접 전송 — Vector 경유 안 함
 
-# ── 하트비트 메트릭 → Node.js POST /api/heartbeat ──
-# internal_metrics + remap 태그 또는 legacy heartbeat 모두 매칭
-[sinks.to_heartbeat_api]
-type = "http"
-inputs = ["route_events.heartbeat"]
-uri = "http://127.0.0.1:3110/api/heartbeat"
-method = "post"
-
-[sinks.to_heartbeat_api.encoding]
-codec = "json"
-
-[sinks.to_heartbeat_api.batch]
-max_events = 1
-timeout_secs = 30
-
-[sinks.to_heartbeat_api.request]
-retry_initial_backoff_secs = 5
-retry_max_duration_secs = 60
-
-[sinks.to_heartbeat_api.request.headers]
-Content-Type = "application/json"
+# 하트비트는 Agent Manager가 직접 HTTP POST로 전송 — Aggregator 경유 안 함
 
 
 # =============================================================================
