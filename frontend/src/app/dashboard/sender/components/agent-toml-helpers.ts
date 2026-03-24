@@ -41,42 +41,15 @@ export const setSinkAddr = (c: string, ip: string, port: string) =>
     `$1${ip}:${port}$2`,
   );
 
-/* ── 하트비트 (internal_metrics + remap) 헬퍼 ── */
+/* ── 하트비트 (레거시 — Agent Manager가 직접 전송하므로 더 이상 사용 안 함) ── */
+/* 하트비트는 Agent Manager가 HTTP POST로 직접 전송합니다.
+   아래 함수들은 기존 TOML에 남아있는 internal_metrics 섹션 정리용으로만 유지합니다. */
 
-/** [sources.heartbeat] 섹션 존재 여부 */
+/** @deprecated Agent Manager가 하트비트를 직접 전송 — Vector internal_metrics 불필요 */
 export const hasHeartbeat = (c: string): boolean =>
   /\[sources\.heartbeat\]/.test(c);
 
-/** heartbeat scrape_interval_secs 추출 */
-export const getHeartbeatInterval = (c: string): string => {
-  const m = c.match(/\[sources\.heartbeat\][\s\S]*?scrape_interval_secs\s*=\s*(\d+)/);
-  return m?.[1] ?? '30';
-};
-
-/** heartbeat scrape_interval_secs 교체 */
-export const setHeartbeatInterval = (c: string, v: string): string =>
-  c.replace(
-    /(\[sources\.heartbeat\][\s\S]*?scrape_interval_secs\s*=\s*)\d+/,
-    `$1${v}`,
-  );
-
-/** heartbeat 섹션 추가 (internal_metrics + remap 방식) */
-export const addHeartbeat = (c: string): string => {
-  if (hasHeartbeat(c)) return c;
-  const eqType = getMeta(c, 'equipment_type') || 'UNKNOWN';
-  const eqId = getMeta(c, 'equipment_id') || 'UNKNOWN';
-  const lineCode = getMeta(c, 'line_code') || 'LINE-01';
-  const logType = getMeta(c, 'log_type') || 'INSPECTION';
-  const hb = `\n# ── [하트비트] 주기적 상태 전송 (30초 간격) ──\n[sources.heartbeat]\ntype = "internal_metrics"\nscrape_interval_secs = 30\n\n[transforms.heartbeat_meta]\ntype = "remap"\ninputs = ["heartbeat"]\nsource = '''\n.tags.equipment_type = "${eqType}"\n.tags.equipment_id = "${eqId}"\n.tags.line_code = "${lineCode}"\n.tags.log_type = "${logType}"\n'''\n`;
-  let result = c.replace(/(\[transforms\.add_metadata\])/, hb + '\n$1');
-  result = result.replace(
-    /inputs\s*=\s*\["add_metadata"\]/,
-    'inputs = ["add_metadata", "heartbeat_meta"]',
-  );
-  return result;
-};
-
-/** heartbeat 섹션 제거 */
+/** 레거시 heartbeat 섹션 제거 (기존 TOML 정리용) */
 export const removeHeartbeat = (c: string): string => {
   // internal_metrics + remap 방식 제거
   let result = c.replace(
@@ -99,38 +72,16 @@ export const removeHeartbeat = (c: string): string => {
   return result;
 };
 
-/** heartbeat remap에서 특정 태그 값 추출 */
+/** @deprecated 레거시 heartbeat remap 태그 추출 */
 export const getHeartbeatTag = (c: string, key: string): string => {
-  // internal_metrics + remap 방식
   const m = c.match(new RegExp(
     `\\[transforms\\.heartbeat_meta\\][\\s\\S]*?\\.tags\\.${key}\\s*=\\s*"([^"]*)"`,
   ));
   if (m) return m[1];
-  // 이전 static_metrics 방식 호환
   const m2 = c.match(new RegExp(
     `\\[sources\\.heartbeat\\.metrics\\.tags\\][\\s\\S]*?${key}\\s*=\\s*"([^"]*)"`,
   ));
   return m2?.[1] ?? '';
-};
-
-/** heartbeat remap의 설비 메타데이터를 add_metadata와 동기화 */
-export const syncHeartbeatTags = (c: string, key: string, value: string): string => {
-  if (!hasHeartbeat(c)) return c;
-  // internal_metrics + remap 방식
-  const tagRegex = new RegExp(
-    `(\\[transforms\\.heartbeat_meta\\][\\s\\S]*?)\\.tags\\.${key}\\s*=\\s*"[^"]*"`,
-  );
-  if (tagRegex.test(c)) {
-    return c.replace(tagRegex, `$1.tags.${key} = "${value}"`);
-  }
-  // 이전 static_metrics 방식 호환
-  const oldRegex = new RegExp(
-    `(\\[sources\\.heartbeat\\.metrics\\.tags\\][\\s\\S]*?)${key}\\s*=\\s*"[^"]*"`,
-  );
-  if (oldRegex.test(c)) {
-    return c.replace(oldRegex, `$1${key} = "${value}"`);
-  }
-  return c;
 };
 
 /* ── include 경로 헬퍼 ────────────────────────── */

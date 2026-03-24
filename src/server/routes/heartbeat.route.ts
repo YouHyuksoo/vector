@@ -3,9 +3,9 @@
  * @description 장비 하트비트 수신 엔드포인트
  *
  * 초보자 가이드:
- * 1. **주요 개념**: Agent TOML의 internal_metrics + remap이 30초마다 하트비트를 Aggregator로 전송
- * 2. **데이터 흐름**: Agent(internal_metrics) → Aggregator(route) → Node.js(여기) → 인메모리 Map
- * 3. **형식 지원**: 표준 heartbeat JSON + Vector 메트릭 원본 형식 모두 처리
+ * 1. **주요 개념**: Agent Manager가 30초마다 HTTP POST로 직접 하트비트 전송
+ * 2. **데이터 흐름**: Agent Manager → Node.js(여기) → 인메모리 Map
+ * 3. **형식 지원**: 표준 heartbeat JSON + Vector 메트릭 원본 형식(레거시 호환) 모두 처리
  * 4. **동작**: TTL 내 하트비트 없으면 자동으로 오프라인 판정
  */
 

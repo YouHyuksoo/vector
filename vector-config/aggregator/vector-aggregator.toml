@@ -125,9 +125,11 @@ type = "route"
 inputs = ["from_agents", "normalize_fluent"]
 
 [transforms.route_events.route]
-# heartbeat는 Agent Manager가 직접 전송 — Vector 경유 안 함
-
-# 하트비트는 Agent Manager가 직접 HTTP POST로 전송 — Aggregator 경유 안 함
+# Vector internal_metrics(메트릭 이벤트)를 분리하여 드랍
+# - Agent가 internal_metrics 소스를 포함한 경우, namespace="vector" 메트릭이 유입됨
+# - 이 메트릭은 로그가 아니므로 parse_logs로 보내면 Validation 에러 발생
+# - heartbeat는 Agent Manager가 직접 HTTP POST로 전송 — Vector 경유 안 함
+is_metric = 'exists(.namespace) && .namespace == "vector" && exists(.kind)'
 
 
 # =============================================================================
@@ -1248,3 +1250,19 @@ retry_max_duration_secs = 30      # 재시도 간격 최대 30초
 
 [sinks.to_api.request.headers]
 Content-Type = "application/json"
+
+
+# -----------------------------------------------------------------------------
+# Sink 3: 메트릭 이벤트 드랍 (Vector internal_metrics)
+# -----------------------------------------------------------------------------
+#
+#  Agent에서 유입되는 Vector 내부 메트릭(internal_metrics)을 버립니다.
+#  route_events에서 is_metric 조건으로 분리된 이벤트를 소비합니다.
+#  blackhole sink는 이벤트를 받기만 하고 아무 곳에도 저장하지 않습니다.
+#
+# -----------------------------------------------------------------------------
+
+[sinks.drop_metrics]
+type = "blackhole"
+inputs = ["route_events.is_metric"]
+print_interval_secs = 0

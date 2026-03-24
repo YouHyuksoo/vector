@@ -17,8 +17,6 @@ import { AgentTransportOptions } from './AgentTransportOptions';
 import {
   getMeta, setMeta, getVal, setVal,
   getSinkAddr, setSinkAddr,
-  hasHeartbeat, getHeartbeatInterval, setHeartbeatInterval,
-  addHeartbeat, removeHeartbeat, syncHeartbeatTags, getHeartbeatTag,
   getInclude, setInclude,
   hasMultiline, addMultiline, removeMultiline,
   hasRecursive, toggleRecursive,
@@ -48,15 +46,12 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
       logType: getMeta(content, 'log_type'),
       lineCode: getMeta(content, 'line_code'),
       equipId: getMeta(content, 'equipment_id'),
-      equipIp: getHeartbeatTag(content, 'ip'),
-      sinkIp, sinkPort,
+  sinkIp, sinkPort,
       logPaths: getInclude(content),
       readFrom: getVal(content, 'read_from'),
       ignoreOlder: getVal(content, 'ignore_older_secs'),
       timeoutMs: getVal(content, 'timeout_ms'),
       maxSize: getVal(content, 'max_size'),
-      heartbeatOn: hasHeartbeat(content),
-      heartbeatInterval: getHeartbeatInterval(content),
     };
   }, [content]);
 
@@ -69,21 +64,17 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
         <Sec icon="precision_manufacturing" title={t('sender.form.equipment')} iconColor={IC}>
           <div className="grid grid-cols-2 gap-2">
             <F label={t('sender.form.equipType')} value={f.equipType}
-              onChange={v => u(c => syncHeartbeatTags(setMeta(c, 'equipment_type', v), 'equipment_type', v))}
+              onChange={v => u(c => setMeta(c, 'equipment_type', v))}
               tooltip={t('sender.form.tooltip.equipType')} />
             <F label={t('sender.form.logType')} value={f.logType}
-              onChange={v => u(c => syncHeartbeatTags(setMeta(c, 'log_type', v), 'log_type', v))}
+              onChange={v => u(c => setMeta(c, 'log_type', v))}
               tooltip={t('sender.form.tooltip.logType')} />
             <F label={t('sender.form.lineCode')} value={f.lineCode}
-              onChange={v => u(c => syncHeartbeatTags(setMeta(c, 'line_code', v), 'line_code', v))}
+              onChange={v => u(c => setMeta(c, 'line_code', v))}
               tooltip={t('sender.form.tooltip.lineCode')} />
             <F label={t('sender.form.equipId')} value={f.equipId}
-              onChange={v => u(c => syncHeartbeatTags(setMeta(c, 'equipment_id', v), 'equipment_id', v))}
+              onChange={v => u(c => setMeta(c, 'equipment_id', v))}
               tooltip={t('sender.form.tooltip.equipId')} />
-            <F label={t('sender.form.equipIp')} value={f.equipIp}
-              onChange={v => u(c => syncHeartbeatTags(c, 'ip', v))}
-              placeholder="192.168.0.100"
-              tooltip={t('sender.form.tooltip.equipIp')} />
           </div>
           {onDescriptionChange && (
             <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">

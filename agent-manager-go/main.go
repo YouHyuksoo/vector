@@ -179,59 +179,6 @@ func tomlSetMeta(content, key, value string) string {
 	return strings.Join(lines, "\n")
 }
 
-func tomlGetHeartbeatTag(content, key string) string {
-	inTags := false
-	for _, line := range strings.Split(content, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "[sources.heartbeat.metrics.tags]") {
-			inTags = true
-			continue
-		}
-		if inTags && strings.HasPrefix(trimmed, "[") {
-			break
-		}
-		if inTags && strings.HasPrefix(trimmed, key+" ") || (inTags && strings.HasPrefix(trimmed, key+"=")) {
-			idx := strings.Index(trimmed, `"`)
-			if idx < 0 {
-				continue
-			}
-			end := strings.Index(trimmed[idx+1:], `"`)
-			if end < 0 {
-				continue
-			}
-			return trimmed[idx+1 : idx+1+end]
-		}
-	}
-	return ""
-}
-
-func tomlSetHeartbeatTag(content, key, value string) string {
-	lines := strings.Split(content, "\n")
-	inTags := false
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "[sources.heartbeat.metrics.tags]") {
-			inTags = true
-			continue
-		}
-		if inTags && strings.HasPrefix(trimmed, "[") {
-			break
-		}
-		if inTags && (strings.HasPrefix(trimmed, key+" ") || strings.HasPrefix(trimmed, key+"=")) {
-			idx := strings.Index(line, `"`)
-			if idx < 0 {
-				continue
-			}
-			end := strings.Index(line[idx+1:], `"`)
-			if end < 0 {
-				continue
-			}
-			lines[i] = line[:idx+1] + value + line[idx+1+end:]
-			break
-		}
-	}
-	return strings.Join(lines, "\n")
-}
 
 func tomlGetSinkAddr(content string) (string, string) {
 	inSink := false
@@ -723,7 +670,6 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 		jsonResp(w, map[string]string{
 			"equipment_id":   tomlGetMeta(s, "equipment_id"),
 			"equipment_type": tomlGetMeta(s, "equipment_type"),
-			"ip":             tomlGetHeartbeatTag(s, "ip"),
 			"line_code":      tomlGetMeta(s, "line_code"),
 			"log_type":       tomlGetMeta(s, "log_type"),
 			"include_paths":  tomlGetInclude(s),
@@ -749,11 +695,7 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 		for _, key := range []string{"equipment_id", "equipment_type", "line_code", "log_type"} {
 			if v, ok := body[key]; ok {
 				s = tomlSetMeta(s, key, v)
-				s = tomlSetHeartbeatTag(s, key, v)
 			}
-		}
-		if v, ok := body["ip"]; ok {
-			s = tomlSetHeartbeatTag(s, "ip", v)
 		}
 		if v, ok := body["include_paths"]; ok {
 			s = tomlSetInclude(s, v)
