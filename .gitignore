@@ -14,6 +14,7 @@ config/parse-fields.json
 
 # Vector binary & runtime data
 vector-bin/
+vector-build/
 !vector-bin/vector.zip
 !vector-bin/agent-manager.exe
 vector-data/
