@@ -1,7 +1,7 @@
 /**
- * @file RemoteStatusTab.tsx — 원격 장비 상태 + 메트릭 탭
+ * @file RemoteStatusTab.tsx — 원격 장비 상태 + 메트릭 탭 (컴팩트)
  * @description agent-monitor의 /api/status, /api/metrics를 프록시로 조회하여 표시.
- *   초보자 가이드: 원격 장비의 Vector 프로세스 상태와 전송 통계를 실시간으로 보여줍니다.
+ *   초보자 가이드: 원격 장비의 Vector 프로세스 상태와 전송 통계를 보여줍니다.
  */
 'use client';
 import { useEffect, useState, useCallback } from 'react';
@@ -23,15 +23,6 @@ interface MetricsData {
   eventsIn?: number;
   eventsOut?: number;
   errors?: number;
-}
-
-function Stat({ label, value, color }: { label: string; value: string | number; color?: string }) {
-  return (
-    <div className="rounded-lg bg-surface/50 dark:bg-surface-dark/50 p-2 text-center">
-      <div className="text-[10px] text-muted-foreground/60 mb-0.5">{label}</div>
-      <div className={`text-sm font-mono font-bold ${color || 'text-foreground dark:text-white'}`}>{value}</div>
-    </div>
-  );
 }
 
 export function RemoteStatusTab({ equipmentId }: { equipmentId: string }) {
@@ -61,7 +52,7 @@ export function RemoteStatusTab({ equipmentId }: { equipmentId: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6">
+      <div className="flex items-center justify-center py-4">
         <Icon name="progress_activity" size="md" className="animate-spin text-primary" />
       </div>
     );
@@ -69,7 +60,7 @@ export function RemoteStatusTab({ equipmentId }: { equipmentId: string }) {
 
   if (!status?.reachable) {
     return (
-      <div className="text-center py-6 text-sm text-muted-foreground">
+      <div className="text-center py-4 text-sm text-muted-foreground">
         <Icon name="cloud_off" size="lg" className="text-destructive mb-2 mx-auto block" />
         {t('remote.status.unreachable')}
         <button onClick={load} className="block mx-auto mt-2 text-xs text-primary hover:underline">
@@ -80,37 +71,43 @@ export function RemoteStatusTab({ equipmentId }: { equipmentId: string }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
-        <span>{t('remote.status.title')}</span>
+    <div className="space-y-2">
+      {/* 상태 한 줄 요약: 실행상태 · PID · 가동시간 · 버전 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 text-xs font-mono">
+          <span className={`flex items-center gap-1 font-semibold ${status.running ? 'text-primary' : 'text-destructive'}`}>
+            <span className={`size-1.5 rounded-full ${status.running ? 'bg-primary' : 'bg-destructive'}`} />
+            {status.running ? 'ON' : 'OFF'}
+          </span>
+          {status.pid && (
+            <span className="text-muted-foreground">PID {status.pid}</span>
+          )}
+          {status.uptime && (
+            <span className="text-muted-foreground">{status.uptime}</span>
+          )}
+          {status.version && (
+            <span className="text-muted-foreground/60">v{status.version}</span>
+          )}
+        </div>
         <button onClick={load} className="p-1 hover:bg-surface dark:hover:bg-surface-dark rounded transition-colors">
           <Icon name="refresh" size="xs" />
         </button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Stat
-          label={t('remote.status.running')}
-          value={status.running ? 'ON' : 'OFF'}
-          color={status.running ? 'text-primary' : 'text-destructive'}
-        />
-        <Stat label={t('remote.status.pid')} value={status.pid ?? '—'} />
-        <Stat label={t('remote.status.uptime')} value={status.uptime || '—'} />
-        <Stat label={t('remote.status.version')} value={status.version || '—'} />
-      </div>
 
+      {/* 메트릭 한 줄 */}
       {metrics?.reachable && (
-        <>
-          <div className="text-xs font-semibold text-muted-foreground">{t('remote.status.metrics')}</div>
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label={t('remote.status.eventsIn')} value={metrics.eventsIn ?? 0} color="text-primary" />
-            <Stat label={t('remote.status.eventsOut')} value={metrics.eventsOut ?? 0} color="text-accent" />
-            <Stat
-              label={t('remote.status.errors')}
-              value={metrics.errors ?? 0}
-              color={(metrics.errors ?? 0) > 0 ? 'text-destructive' : 'text-muted-foreground'}
-            />
-          </div>
-        </>
+        <div className="flex items-center gap-4 text-xs font-mono tabular-nums
+          px-2 py-1.5 rounded bg-surface/50 dark:bg-surface-dark/50">
+          <span className="text-primary">
+            {t('remote.status.eventsIn')} <span className="font-bold">{metrics.eventsIn ?? 0}</span>
+          </span>
+          <span className="text-accent">
+            {t('remote.status.eventsOut')} <span className="font-bold">{metrics.eventsOut ?? 0}</span>
+          </span>
+          <span className={(metrics.errors ?? 0) > 0 ? 'text-destructive' : 'text-muted-foreground/50'}>
+            {t('remote.status.errors')} <span className="font-bold">{metrics.errors ?? 0}</span>
+          </span>
+        </div>
       )}
     </div>
   );

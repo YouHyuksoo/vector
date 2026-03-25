@@ -155,7 +155,8 @@
       "size": "Tamaño",
       "modified": "Modificado",
       "watchPaths": "Rutas de Monitoreo",
-      "noFiles": "Sin archivos monitoreados"
+      "noFiles": "Sin archivos monitoreados",
+      "resendTitle": "Carpeta de Reenvío"
     }
   },
   "errors": {
@@ -444,11 +445,16 @@
         "compression": "Método de compresión para datos enviados al Aggregator. Usar gzip si el ancho de banda de red es limitado.",
         "acknowledgements": "Habilitar acuses de recibo de entrega. Retiene datos hasta que el Aggregator confirme la recepción.",
         "heartbeat": "Habilitar latido para enviar estado periódicamente a través del Aggregator. Permite al panel monitorear el estado en línea/fuera de línea del equipo en tiempo real.",
-        "heartbeatInterval": "Intervalo de latido en segundos. Valores más bajos detectan el estado más rápido pero aumentan la carga de red. Recomendado: 30s"
+        "heartbeatInterval": "Intervalo de latido en segundos. Valores más bajos detectan el estado más rápido pero aumentan la carga de red. Recomendado: 30s",
+        "resendPath": "Ruta de carpeta de reenvío. Los archivos copiados aquí se envían automáticamente y se eliminan.",
+        "resendDeleteSecs": "Segundos de espera antes de eliminar un archivo después de la transmisión exitosa."
       },
       "encoding": "Codificación de Archivo",
       "heartbeat": "Latido",
-      "heartbeatInterval": "Intervalo"
+      "heartbeatInterval": "Intervalo",
+      "resend": "Carpeta de Reenvío",
+      "resendPath": "Ruta de Reenvío",
+      "resendDeleteSecs": "Eliminar Después"
     },
     "status": {
       "equip": "Información del Equipo",

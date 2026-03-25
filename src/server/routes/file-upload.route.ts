@@ -45,7 +45,7 @@ export const fileUploadRoute: FastifyPluginAsync = async (app) => {
   });
 
   /** POST /api/upload - 파일 업로드 */
-  app.post('/upload', async (request, reply) => {
+  app.post('/upload', { bodyLimit: 100 * 1024 * 1024 }, async (request, reply) => {
     const parts = request.parts();
     let equipmentId = 'UNKNOWN';
     const saved: { filename: string; size: number; path: string }[] = [];

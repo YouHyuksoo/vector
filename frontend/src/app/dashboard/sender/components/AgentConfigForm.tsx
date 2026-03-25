@@ -18,6 +18,8 @@ import {
   getMeta, setMeta, getVal, setVal,
   getSinkAddr, setSinkAddr,
   getInclude, setInclude,
+  getResendInclude, setResendInclude,
+  getResendDeleteSecs, setResendDeleteSecs,
   hasMultiline, addMultiline, removeMultiline,
   hasRecursive, toggleRecursive,
 } from './agent-toml-helpers';
@@ -48,6 +50,8 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
       equipId: getMeta(content, 'equipment_id'),
   sinkIp, sinkPort,
       logPaths: getInclude(content),
+      resendPath: getResendInclude(content),
+      resendDeleteSecs: getResendDeleteSecs(content),
       readFrom: getVal(content, 'read_from'),
       ignoreOlder: getVal(content, 'ignore_older_secs'),
       timeoutMs: getVal(content, 'timeout_ms'),
@@ -176,6 +180,18 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
               </span>
             </label>
           </div>
+        </div>
+      </Sec>
+
+      {/* 재전송 폴더 */}
+      <Sec icon="replay" title={t('sender.form.resend')} iconColor={IC}>
+        <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+          <F label={t('sender.form.resendPath')} value={f.resendPath}
+            onChange={v => u(c => setResendInclude(c, v))}
+            tooltip={t('sender.form.tooltip.resendPath')} />
+          <F label={t('sender.form.resendDeleteSecs')} value={f.resendDeleteSecs} type="number" suffix="s"
+            onChange={v => u(c => setResendDeleteSecs(c, v))}
+            tooltip={t('sender.form.tooltip.resendDeleteSecs')} />
         </div>
       </Sec>
 

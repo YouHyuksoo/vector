@@ -155,7 +155,8 @@
       "size": "Size",
       "modified": "Modified",
       "watchPaths": "Watch Paths",
-      "noFiles": "No watched files"
+      "noFiles": "No watched files",
+      "resendTitle": "Resend Folder"
     }
   },
   "errors": {
@@ -444,11 +445,16 @@
         "compression": "Compression method for data sent to Aggregator. Use gzip if network bandwidth is limited.",
         "acknowledgements": "Enable delivery acknowledgements. Retains data until the Aggregator confirms receipt.",
         "heartbeat": "Enable heartbeat to periodically send status via Aggregator. Allows the dashboard to monitor equipment online/offline status in real-time.",
-        "heartbeatInterval": "Heartbeat interval in seconds. Lower values detect status faster but increase network load. Recommended: 30s"
+        "heartbeatInterval": "Heartbeat interval in seconds. Lower values detect status faster but increase network load. Recommended: 30s",
+        "resendPath": "Resend folder path. Files copied here are automatically sent and deleted.",
+        "resendDeleteSecs": "Seconds to wait before deleting a file after successful transmission."
       },
       "encoding": "File Encoding",
       "heartbeat": "Heartbeat",
-      "heartbeatInterval": "Interval"
+      "heartbeatInterval": "Interval",
+      "resend": "Resend Folder",
+      "resendPath": "Resend Path",
+      "resendDeleteSecs": "Delete After"
     },
     "status": {
       "equip": "Equipment Info",

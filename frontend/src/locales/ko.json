@@ -155,7 +155,8 @@
       "size": "크기",
       "modified": "수정일",
       "watchPaths": "감시 경로",
-      "noFiles": "감시 대상 파일 없음"
+      "noFiles": "감시 대상 파일 없음",
+      "resendTitle": "재전송 폴더"
     }
   },
   "errors": {
@@ -444,11 +445,16 @@
         "compression": "Aggregator 전송 시 데이터 압축 방식입니다. 네트워크 대역폭이 제한적이면 gzip을 권장합니다.",
         "acknowledgements": "전송 확인을 활성화합니다. 활성화 시 Aggregator가 수신 확인할 때까지 데이터를 보관합니다.",
         "heartbeat": "하트비트를 활성화하면 설정된 간격으로 Aggregator를 통해 상태를 전송합니다. 대시보드에서 설비의 온/오프라인 여부를 실시간으로 확인할 수 있습니다.",
-        "heartbeatInterval": "하트비트 전송 간격(초)입니다. 값이 작을수록 상태 감지가 빠르지만 네트워크 부하가 늘어납니다. 권장: 30초"
+        "heartbeatInterval": "하트비트 전송 간격(초)입니다. 값이 작을수록 상태 감지가 빠르지만 네트워크 부하가 늘어납니다. 권장: 30초",
+        "resendPath": "재전송 폴더 경로입니다. 이 폴더에 파일을 복사하면 자동 전송 후 삭제됩니다.",
+        "resendDeleteSecs": "전송 완료 후 파일을 자동 삭제하기까지 대기 시간(초)입니다."
       },
       "encoding": "파일 인코딩",
       "heartbeat": "하트비트 전송",
-      "heartbeatInterval": "전송 간격"
+      "heartbeatInterval": "전송 간격",
+      "resend": "재전송 폴더",
+      "resendPath": "재전송 경로",
+      "resendDeleteSecs": "전송 후 삭제"
     },
     "status": {
       "equip": "설비 정보",

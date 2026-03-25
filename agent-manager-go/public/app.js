@@ -22,6 +22,8 @@ const I18N = {
     'status.recentFiles': '최근 감시 파일', 'status.fileName': '파일명', 'status.directory': '디렉토리',
     'status.modifiedAt': '수정 시간', 'status.size': '크기', 'status.loadingFiles': '파일 정보를 불러오는 중...',
     'status.running': '실행 중', 'status.stopped': '중지됨', 'status.noFiles': '감시 중인 파일이 없습니다',
+    'status.resendFiles': '재전송 폴더', 'status.noResendFiles': '재전송 대기 파일 없음',
+    'settings.resendPath': '재전송 폴더 경로', 'settings.resendDeleteSecs': '전송 후 삭제(초)', 'settings.serverAddr': '서버 주소',
     'settings.formMode': '폼 모드', 'settings.tomlMode': 'TOML 편집', 'settings.equipInfo': '설비 정보',
     'settings.equipId': '설비 ID (equipment_id)', 'settings.equipType': '설비 타입 (equipment_type)',
     'settings.ipAddr': 'IP 주소', 'settings.lineCode': '라인 코드 (line_code)',
@@ -62,6 +64,8 @@ const I18N = {
     'status.recentFiles': 'Recent Watched Files', 'status.fileName': 'File Name', 'status.directory': 'Directory',
     'status.modifiedAt': 'Modified', 'status.size': 'Size', 'status.loadingFiles': 'Loading file info...',
     'status.running': 'Running', 'status.stopped': 'Stopped', 'status.noFiles': 'No watched files',
+    'status.resendFiles': 'Resend Folder', 'status.noResendFiles': 'No resend files',
+    'settings.resendPath': 'Resend Folder Path', 'settings.resendDeleteSecs': 'Delete after (sec)', 'settings.serverAddr': 'Server Address',
     'settings.formMode': 'Form Mode', 'settings.tomlMode': 'TOML Edit', 'settings.equipInfo': 'Equipment Info',
     'settings.equipId': 'Equipment ID', 'settings.equipType': 'Equipment Type',
     'settings.ipAddr': 'IP Address', 'settings.lineCode': 'Line Code',
@@ -305,6 +309,17 @@ async function loadRecentLogs() {
   }
 }
 
+async function loadResendLogs() {
+  try {
+    const data = await fetchJSON('/api/logs/resend');
+    state.resendFiles = data.files || [];
+    updateResendFiles(data.resendPath || '');
+  } catch {
+    state.resendFiles = [];
+    updateResendFiles('');
+  }
+}
+
 /* ═══════════════════════════════════════════
    설정 탭 API
    ═══════════════════════════════════════════ */
@@ -318,6 +333,8 @@ async function loadSetup() {
     document.getElementById('inp-line').value = data.line_code || '';
     document.getElementById('inp-log-type').value = data.log_type || '';
     document.getElementById('inp-include').value = data.include_paths || '';
+    document.getElementById('inp-resend-path').value = data.resend_path || '';
+    document.getElementById('inp-resend-delete-secs').value = data.resend_delete_secs || '30';
     // Aggregator 주소가 비어있으면 masterServer IP에서 자동 추출
     let sinkAddr = data.sink_address || '';
     if (!sinkAddr) {
@@ -344,6 +361,8 @@ async function saveSetup() {
     line_code: document.getElementById('inp-line').value,
     log_type: document.getElementById('inp-log-type').value,
     include_paths: document.getElementById('inp-include').value,
+    resend_path: document.getElementById('inp-resend-path').value,
+    resend_delete_secs: document.getElementById('inp-resend-delete-secs').value,
     sink_address: document.getElementById('inp-sink-addr').value,
     sink_port: document.getElementById('inp-sink-port').value,
   };
@@ -633,15 +652,13 @@ function updateStatusCards() {
   const icon = document.getElementById('icon-status');
 
   if (s.running) {
-    dot.className = 'inline-block w-3 h-3 rounded-full bg-success dot-pulse';
+    dot.className = 'dot dot-g';
     txt.textContent = t('status.running');
-    icon.textContent = 'check_circle';
-    icon.classList.remove('text-error'); icon.classList.add('text-success');
+    txt.style.color = 'var(--green)';
   } else {
-    dot.className = 'inline-block w-3 h-3 rounded-full bg-error';
+    dot.className = 'dot dot-r';
     txt.textContent = t('status.stopped');
-    icon.textContent = 'error';
-    icon.classList.remove('text-success'); icon.classList.add('text-error');
+    txt.style.color = 'var(--red)';
   }
   document.getElementById('txt-pid').textContent = s.pid ?? '-';
   document.getElementById('txt-uptime').textContent = s.uptime ?? '-';
@@ -698,9 +715,29 @@ function updateRecentFiles(watchPaths) {
     return `<tr class="${stripe}">
       <td class="py-1.5 pr-4 font-mono text-xs">${esc(f.name)}</td>
       <td class="py-1.5 pr-4 text-xs text-muted-fg hidden sm:table-cell truncate max-w-[200px]">${esc(f.dir)}</td>
-      <td class="py-1.5 pr-4 text-xs text-muted-fg">${formatDate(f.modifiedAt)}</td>
-      <td class="py-1.5 text-xs text-right font-mono">${formatBytes(f.sizeBytes)}</td>
+      <td class="py-1.5 pr-4 text-xs text-muted-fg">${formatDate(f.modifiedAt || f.modTime)}</td>
+      <td class="py-1.5 text-xs text-right font-mono">${formatBytes(f.sizeBytes || f.size)}</td>
     </tr>`;
+  }).join('');
+}
+
+function updateResendFiles(resendPath) {
+  const pathEl = document.getElementById('resend-path');
+  if (pathEl) pathEl.textContent = resendPath || '';
+  const tbody = document.getElementById('tbody-resend');
+  if (!tbody) return;
+  if (!state.resendFiles || !state.resendFiles.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-muted-fg italic">${esc(t('status.noResendFiles'))}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = state.resendFiles.map(function(f, i) {
+    var stripe = i % 2 === 0 ? 'bg-transparent' : 'bg-secondary/50';
+    return '<tr class="' + stripe + '">'
+      + '<td class="py-1.5 pr-4 font-mono text-xs">' + esc(f.name) + '</td>'
+      + '<td class="py-1.5 pr-4 text-xs text-muted-fg hidden sm:table-cell truncate max-w-[200px]">' + esc(f.dir) + '</td>'
+      + '<td class="py-1.5 pr-4 text-xs text-muted-fg">' + formatDate(f.modTime) + '</td>'
+      + '<td class="py-1.5 text-xs text-right font-mono">' + formatBytes(f.size) + '</td>'
+      + '</tr>';
   }).join('');
 }
 
@@ -903,7 +940,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initLang();
   initDarkMode();
   bindEvents();
-  await Promise.all([poll(), loadRecentLogs(), loadTomlList(), loadSetup(), loadConfig(), checkInstall(), loadServiceStatus()]);
+  await Promise.all([poll(), loadRecentLogs(), loadResendLogs(), loadTomlList(), loadSetup(), loadConfig(), checkInstall(), loadServiceStatus()]);
   pollTimer = setInterval(poll, POLL_INTERVAL);
   setInterval(loadRecentLogs, 30000);
+  setInterval(loadResendLogs, 30000);
 });

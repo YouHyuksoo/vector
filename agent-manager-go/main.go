@@ -280,6 +280,98 @@ func tomlSetInclude(content, paths string) string {
 	return content[:idx] + newBlock + content[idx+end+1:]
 }
 
+func tomlGetResendInclude(content string) string {
+	idx := strings.Index(content, "[sources.resend_logs]")
+	if idx < 0 {
+		return ""
+	}
+	sub := content[idx:]
+	incIdx := strings.Index(sub, "include = [")
+	if incIdx < 0 {
+		return ""
+	}
+	end := strings.Index(sub[incIdx:], "]")
+	if end < 0 {
+		return ""
+	}
+	block := sub[incIdx : incIdx+end+1]
+	var paths []string
+	for _, line := range strings.Split(block, "\n") {
+		line = strings.TrimSpace(line)
+		line = strings.Trim(line, `"',`)
+		line = strings.TrimSpace(line)
+		if line != "" && line != "include = [" && line != "]" {
+			paths = append(paths, strings.ReplaceAll(line, `\\`, `\`))
+		}
+	}
+	return strings.Join(paths, "\n")
+}
+
+func tomlGetResendDeleteSecs(content string) string {
+	idx := strings.Index(content, "[sources.resend_logs]")
+	if idx < 0 {
+		return ""
+	}
+	// 다음 섹션까지만 탐색
+	sub := content[idx:]
+	nextSec := strings.Index(sub[1:], "\n[")
+	if nextSec > 0 {
+		sub = sub[:nextSec+1]
+	}
+	for _, line := range strings.Split(sub, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "remove_after_secs") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				return strings.TrimSpace(parts[1])
+			}
+		}
+	}
+	return ""
+}
+
+func tomlSetResendDeleteSecs(content, secs string) string {
+	secs = strings.TrimSpace(secs)
+	if secs == "" {
+		return content
+	}
+	idx := strings.Index(content, "[sources.resend_logs]")
+	if idx < 0 {
+		return content
+	}
+	sub := content[idx:]
+	for _, line := range strings.Split(sub, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "remove_after_secs") {
+			absIdx := idx + strings.Index(sub, line)
+			newLine := "remove_after_secs = " + secs
+			return content[:absIdx] + newLine + content[absIdx+len(line):]
+		}
+	}
+	return content
+}
+
+func tomlSetResendInclude(content, path string) string {
+	path = strings.TrimSpace(path)
+	idx := strings.Index(content, "[sources.resend_logs]")
+	if idx < 0 {
+		return content
+	}
+	sub := content[idx:]
+	incIdx := strings.Index(sub, "include = [")
+	if incIdx < 0 {
+		return content
+	}
+	end := strings.Index(sub[incIdx:], "]")
+	if end < 0 {
+		return content
+	}
+	absIncIdx := idx + incIdx
+	absEnd := absIncIdx + end + 1
+	newBlock := "include = [\n  '" + path + "',\n]"
+	return content[:absIncIdx] + newBlock + content[absEnd:]
+}
+
 // ─── 메인 ───
 
 // 포트가 이미 사용 중인지 확인 (서비스가 떠있는지)
@@ -501,6 +593,7 @@ func buildMux() *http.ServeMux {
 
 	// ─── Logs ───
 	mux.HandleFunc("/api/logs/recent", handleLogsRecent)
+	mux.HandleFunc("/api/logs/resend", handleLogsResend)
 
 	// ─── Server Config (서버 주소 조회/변경) ───
 	mux.HandleFunc("/api/server-config", handleServerConfig)
@@ -673,7 +766,9 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 			"line_code":      tomlGetMeta(s, "line_code"),
 			"log_type":       tomlGetMeta(s, "log_type"),
 			"include_paths":  tomlGetInclude(s),
-			"sink_address":   sinkIP,
+			"resend_path":         tomlGetResendInclude(s),
+			"resend_delete_secs":  tomlGetResendDeleteSecs(s),
+			"sink_address":        sinkIP,
 			"sink_port":      sinkPort,
 		})
 		return
@@ -699,6 +794,12 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 		}
 		if v, ok := body["include_paths"]; ok {
 			s = tomlSetInclude(s, v)
+		}
+		if v, ok := body["resend_path"]; ok {
+			s = tomlSetResendInclude(s, v)
+		}
+		if v, ok := body["resend_delete_secs"]; ok {
+			s = tomlSetResendDeleteSecs(s, v)
 		}
 		curIP, curPort := tomlGetSinkAddr(s)
 		if v, ok := body["sink_address"]; ok {
@@ -1377,6 +1478,75 @@ func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResp(w, map[string]any{"files": files, "watchPaths": watchPaths})
+}
+
+func handleLogsResend(w http.ResponseWriter, r *http.Request) {
+	cfgPath := findTomlConfig()
+	content, err := os.ReadFile(cfgPath)
+	if err != nil {
+		jsonResp(w, map[string]any{"files": []any{}, "resendPath": ""})
+		return
+	}
+	s := string(content)
+
+	// [sources.resend_logs] 섹션에서 include 경로 추출
+	resendIdx := strings.Index(s, "[sources.resend_logs]")
+	var resendPath string
+	var globPatterns []string
+	if resendIdx >= 0 {
+		sub := s[resendIdx:]
+		incIdx := strings.Index(sub, "include = [")
+		if incIdx >= 0 {
+			end := strings.Index(sub[incIdx:], "]")
+			if end >= 0 {
+				block := sub[incIdx : incIdx+end+1]
+				for _, line := range strings.Split(block, "\n") {
+					line = strings.TrimSpace(line)
+					line = strings.Trim(line, `"',`)
+					line = strings.TrimSpace(line)
+					if line != "" && line != "include = [" && line != "]" {
+						globPatterns = append(globPatterns, line)
+						if resendPath == "" {
+							resendPath = filepath.Dir(line)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	var files []map[string]any
+	for _, pattern := range globPatterns {
+		matches, _ := filepath.Glob(pattern)
+		for _, m := range matches {
+			info, err := os.Stat(m)
+			if err != nil || info.IsDir() {
+				continue
+			}
+			files = append(files, map[string]any{
+				"name":    info.Name(),
+				"dir":     filepath.Dir(m),
+				"modTime": info.ModTime().Format("2006-01-02 15:04:05"),
+				"size":    info.Size(),
+			})
+		}
+	}
+
+	// 최근 수정순 정렬 (최대 20개)
+	if len(files) > 1 {
+		for i := 0; i < len(files)-1; i++ {
+			for j := i + 1; j < len(files); j++ {
+				if files[j]["modTime"].(string) > files[i]["modTime"].(string) {
+					files[i], files[j] = files[j], files[i]
+				}
+			}
+		}
+	}
+	if len(files) > 20 {
+		files = files[:20]
+	}
+
+	jsonResp(w, map[string]any{"files": files, "resendPath": resendPath})
 }
 
 // ─── HTTP 유틸 ───

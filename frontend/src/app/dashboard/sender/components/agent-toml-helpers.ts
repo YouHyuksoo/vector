@@ -101,6 +101,44 @@ export const setInclude = (c: string, paths: string) => {
   return c.replace(/include\s*=\s*\[[\s\S]*?\]/, `include = [\n${lines}\n]`);
 };
 
+/* ── resend 폴더 헬퍼 ─────────────────────────── */
+
+/** [sources.resend_logs] 섹션의 include 경로 추출 */
+export const getResendInclude = (c: string): string => {
+  const sec = c.match(/\[sources\.resend_logs\][\s\S]*?include\s*=\s*\[([\s\S]*?)\]/);
+  if (!sec) return '';
+  return sec[1].split('\n').map(l => l.replace(/["',]/g, '').trim())
+    .filter(Boolean).map(p => p.replace(/\\\\/g, '\\')).join('\n');
+};
+
+/** [sources.resend_logs] 섹션의 include 경로 교체 */
+export const setResendInclude = (c: string, path: string): string => {
+  const trimmed = path.trim();
+  if (!trimmed) return c;
+  const m = c.match(/(\[sources\.resend_logs\][\s\S]*?)include\s*=\s*\[[\s\S]*?\]/);
+  if (!m) return c;
+  const before = c.slice(0, m.index! + m[1].length);
+  const after = c.slice(m.index! + m[0].length);
+  return before + `include = [\n  '${trimmed}',\n]` + after;
+};
+
+/** [sources.resend_logs] 섹션의 remove_after_secs 추출 */
+export const getResendDeleteSecs = (c: string): string => {
+  const sec = c.match(/\[sources\.resend_logs\][\s\S]*?remove_after_secs\s*=\s*(\d+)/);
+  return sec?.[1] ?? '';
+};
+
+/** [sources.resend_logs] 섹션의 remove_after_secs 교체 */
+export const setResendDeleteSecs = (c: string, secs: string): string => {
+  const idx = c.indexOf('[sources.resend_logs]');
+  if (idx < 0) return c;
+  const sub = c.slice(idx);
+  const m = sub.match(/remove_after_secs\s*=\s*\d+/);
+  if (!m) return c;
+  const absIdx = idx + m.index!;
+  return c.slice(0, absIdx) + `remove_after_secs = ${secs}` + c.slice(absIdx + m[0].length);
+};
+
 /* ── multiline / recursive 헬퍼 ──────────────── */
 
 /** multiline 섹션 존재 여부 (파일 통째 전송 모드) */

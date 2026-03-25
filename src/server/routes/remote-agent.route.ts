@@ -136,4 +136,17 @@ export const remoteAgentRoute: FastifyPluginAsync = async (app) => {
     }
     return reply.status(result.status || 200).send({ reachable: true, ip, ...(result.data as object) });
   });
+
+  /** 원격 장비 재전송 폴더 파일 목록 */
+  app.get('/api/monitor/remote/:equipmentId/resend-logs', async (request, reply) => {
+    const { equipmentId } = request.params as { equipmentId: string };
+    const ip = resolveIp(equipmentId);
+    if (!ip) return reply.status(404).send({ error: 'Equipment not found or offline', reachable: false });
+
+    const result = await proxyToAgent(ip, '/api/logs/resend');
+    if (!result.ok && result.status === 0) {
+      return reply.send({ reachable: false, ip });
+    }
+    return reply.status(result.status || 200).send({ reachable: true, ip, ...(result.data as object) });
+  });
 };

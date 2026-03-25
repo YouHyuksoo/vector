@@ -16,6 +16,7 @@ include = [
   'C:\logs\coating1\*.log',
 ]
 read_from = "beginning"
+ignore_older_secs = 86400
 fingerprint.strategy = "checksum"
 fingerprint.bytes = 256
 
@@ -36,7 +37,7 @@ include = [
 read_from = "beginning"
 fingerprint.strategy = "checksum"
 fingerprint.bytes = 256
-remove_after_secs = 300
+remove_after_secs = 30
 ignore_checkpoints = true
 
 [sources.resend_logs.multiline]
