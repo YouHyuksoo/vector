@@ -16,6 +16,7 @@
     "menu": "메뉴",
     "retry": "재전송",
     "systemLogs": "시스템 로그",
+    "upload": "파일 업로드",
     "footer": "Vector 로그 수집기"
   },
   "header": {
@@ -810,5 +811,27 @@
     "autoOn": "자동 갱신",
     "autoOff": "갱신 중지",
     "searchPlaceholder": "로그 메시지 검색..."
+  },
+  "upload": {
+    "title": "파일 업로드",
+    "subtitle": "설비 로그 파일 업로드",
+    "uploadArea": "파일 업로드",
+    "equipmentId": "설비 ID",
+    "eqPlaceholder": "설비 ID를 입력하세요 (예: EQ001)",
+    "eqRequired": "설비 ID를 입력해주세요.",
+    "noFiles": "업로드할 파일을 선택해주세요.",
+    "dragDrop": "파일을 여기에 드래그하거나 클릭하여 선택",
+    "dragDropSub": "로그 파일, CSV, TXT 등 (최대 50MB, 20개)",
+    "selectedFiles": "선택된 파일",
+    "uploadBtn": "업로드",
+    "successSuffix": "개 파일 업로드 완료",
+    "failed": "업로드 실패",
+    "history": "업로드 이력",
+    "allEquipments": "전체 설비",
+    "noHistory": "업로드된 파일이 없습니다.",
+    "colEquipment": "설비 ID",
+    "colFilename": "파일명",
+    "colSize": "크기",
+    "colDate": "업로드 시간"
   }
 }

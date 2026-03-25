@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { labelKey: 'nav.retry', icon: 'replay', href: '/dashboard/retry' },
   { labelKey: 'nav.logFileSearch', icon: 'folder_open', href: '/dashboard/log-files' },
   { labelKey: 'nav.systemLogs', icon: 'terminal', href: '/dashboard/system-logs' },
+  { labelKey: 'nav.upload', icon: 'cloud_upload', href: '/dashboard/upload' },
   { labelKey: 'nav.download', icon: 'file_download', href: '/dashboard/download' },
   { labelKey: 'nav.settings', icon: 'settings', href: '/dashboard/settings' },
   { labelKey: 'nav.help', icon: 'help', href: '/dashboard/help' },

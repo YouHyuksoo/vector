@@ -1255,6 +1255,22 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 기존 TOML에서 메타데이터 백업
+	tomlPath := filepath.Join(configDir, name+".toml")
+	var oldMeta map[string]string
+	var oldSinkIP, oldSinkPort, oldInclude string
+	if oldContent, err := os.ReadFile(tomlPath); err == nil {
+		old := string(oldContent)
+		oldMeta = map[string]string{
+			"equipment_id":   tomlGetMeta(old, "equipment_id"),
+			"equipment_type": tomlGetMeta(old, "equipment_type"),
+			"line_code":      tomlGetMeta(old, "line_code"),
+			"log_type":       tomlGetMeta(old, "log_type"),
+		}
+		oldSinkIP, oldSinkPort = tomlGetSinkAddr(old)
+		oldInclude = tomlGetInclude(old)
+	}
+
 	resp, err := httpGet(masterServer + "/api/monitor/download/agent/" + name)
 	if err != nil {
 		jsonError(w, 502, "Download failed")
@@ -1262,10 +1278,27 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 	content, _ := io.ReadAll(resp.Body)
+	newToml := string(content)
+
+	// 기존 메타데이터가 있으면 새 TOML에 복원
+	if oldMeta != nil {
+		for key, val := range oldMeta {
+			if val != "" {
+				newToml = tomlSetMeta(newToml, key, val)
+			}
+		}
+		if oldSinkIP != "" {
+			newToml = tomlSetSinkAddr(newToml, oldSinkIP, oldSinkPort)
+		}
+		if oldInclude != "" {
+			newToml = tomlSetInclude(newToml, oldInclude)
+		}
+		log.Printf("[TOML Download] %s — 기존 설비 설정 유지 (equipment_id=%s, sink=%s:%s)",
+			name, oldMeta["equipment_id"], oldSinkIP, oldSinkPort)
+	}
 
 	os.MkdirAll(configDir, 0755)
-	tomlPath := filepath.Join(configDir, name+".toml")
-	os.WriteFile(tomlPath, content, 0644)
+	os.WriteFile(tomlPath, []byte(newToml), 0644)
 	// TOML 저장 후 data_dir 폴더 자동 생성
 	ensureDataDir(tomlPath)
 	jsonResp(w, map[string]any{"success": true, "message": fmt.Sprintf("%s.toml saved to %s", name, configDir)})
@@ -1339,8 +1372,8 @@ func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if len(files) > 20 {
-		files = files[:20]
+	if len(files) > 10 {
+		files = files[:10]
 	}
 
 	jsonResp(w, map[string]any{"files": files, "watchPaths": watchPaths})

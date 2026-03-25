@@ -16,6 +16,7 @@
     "menu": "Menu",
     "retry": "Retry",
     "systemLogs": "System Logs",
+    "upload": "File Upload",
     "footer": "Vector Log Collector"
   },
   "header": {
@@ -810,5 +811,27 @@
     "autoOn": "Auto refresh",
     "autoOff": "Paused",
     "searchPlaceholder": "Search log messages..."
+  },
+  "upload": {
+    "title": "File Upload",
+    "subtitle": "Equipment Log File Upload",
+    "uploadArea": "File Upload",
+    "equipmentId": "Equipment ID",
+    "eqPlaceholder": "Enter equipment ID (e.g. EQ001)",
+    "eqRequired": "Please enter an equipment ID.",
+    "noFiles": "Please select files to upload.",
+    "dragDrop": "Drag files here or click to select",
+    "dragDropSub": "Log files, CSV, TXT, etc. (max 50MB, 20 files)",
+    "selectedFiles": "Selected Files",
+    "uploadBtn": "Upload",
+    "successSuffix": " file(s) uploaded successfully",
+    "failed": "Upload failed",
+    "history": "Upload History",
+    "allEquipments": "All Equipment",
+    "noHistory": "No uploaded files.",
+    "colEquipment": "Equipment ID",
+    "colFilename": "Filename",
+    "colSize": "Size",
+    "colDate": "Upload Time"
   }
 }

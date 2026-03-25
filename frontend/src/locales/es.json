@@ -16,6 +16,7 @@
     "menu": "Menú",
     "retry": "Reintentar",
     "systemLogs": "Registros del Sistema",
+    "upload": "Carga de Archivos",
     "footer": "Vector Recolector de Logs"
   },
   "header": {
@@ -810,5 +811,27 @@
     "autoOn": "Actualización automática",
     "autoOff": "Pausado",
     "searchPlaceholder": "Buscar mensajes de registro..."
+  },
+  "upload": {
+    "title": "Carga de Archivos",
+    "subtitle": "Carga de archivos de registro de equipos",
+    "uploadArea": "Carga de Archivos",
+    "equipmentId": "ID de Equipo",
+    "eqPlaceholder": "Ingrese ID de equipo (ej. EQ001)",
+    "eqRequired": "Ingrese un ID de equipo.",
+    "noFiles": "Seleccione archivos para cargar.",
+    "dragDrop": "Arrastre archivos aquí o haga clic para seleccionar",
+    "dragDropSub": "Archivos de registro, CSV, TXT, etc. (máx 50MB, 20 archivos)",
+    "selectedFiles": "Archivos Seleccionados",
+    "uploadBtn": "Cargar",
+    "successSuffix": " archivo(s) cargado(s) exitosamente",
+    "failed": "Carga fallida",
+    "history": "Historial de Cargas",
+    "allEquipments": "Todos los Equipos",
+    "noHistory": "No hay archivos cargados.",
+    "colEquipment": "ID de Equipo",
+    "colFilename": "Nombre",
+    "colSize": "Tamaño",
+    "colDate": "Fecha de Carga"
   }
 }

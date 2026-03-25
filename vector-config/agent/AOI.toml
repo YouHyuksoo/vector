@@ -33,7 +33,6 @@ include = [
 read_from = "beginning"
 fingerprint.strategy = "checksum"
 fingerprint.bytes = 256
-ignore_older_secs = 86400
 
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
 # 첫 번째 줄이 새 이벤트의 시작이 됨.
@@ -48,11 +47,30 @@ timeout_ms = 1000
 # Aggregator를 통해 Node.js API로 전달되어 Redis에 TTL 저장됩니다.
 # TTL 내 하트비트가 없으면 오프라인으로 판정됩니다.
 
+# ── [소스] 재전송 폴더 — 여기에 복사하면 전송 후 자동 삭제 ──
+
+[sources.resend_logs]
+type = "file"
+include = [
+  'C:\logs\aoi\resend\*',
+]
+read_from = "beginning"
+fingerprint.strategy = "checksum"
+fingerprint.bytes = 256
+remove_after_secs = 300
+ignore_checkpoints = true
+
+[sources.resend_logs.multiline]
+start_pattern = "^"
+condition_pattern = 'ZZZZZ_NEVER_MATCH_ZZZZZ'
+mode = "halt_before"
+timeout_ms = 1000
+
 # ── [설비 설정] ──
 
 [transforms.add_metadata]
 type = "remap"
-inputs = ["work_logs"]
+inputs = ["work_logs", "resend_logs"]
 source = '''
 .equipment_type = "AOI"
 .log_type = "INSPECTION"
