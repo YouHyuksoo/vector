@@ -136,6 +136,41 @@ jobs:
           }
           pm2 save
 
+      - name: Sync Aggregator TOML if changed
+        run: |
+          $src = "${{ github.workspace }}\vector-config\aggregator\vector-aggregator.toml"
+          $dst = "$env:DEPLOY_DIR\vector-config\aggregator\vector-aggregator.toml"
+          if (Test-Path $dst) {
+            $srcHash = (Get-FileHash $src -Algorithm SHA256).Hash
+            $dstHash = (Get-FileHash $dst -Algorithm SHA256).Hash
+            if ($srcHash -ne $dstHash) {
+              Write-Host "Aggregator TOML changed — updating and restarting Vector..."
+              Copy-Item $src $dst -Force
+              # CRLF → LF 변환
+              $content = [System.IO.File]::ReadAllText($dst)
+              $content = $content -replace "`r`n", "`n"
+              [System.IO.File]::WriteAllText($dst, $content, [System.Text.UTF8Encoding]::new($false))
+              # Vector Aggregator 재시작
+              $vectorProc = Get-Process -Name "vector" -ErrorAction SilentlyContinue
+              if ($vectorProc) {
+                Stop-Process -Name "vector" -Force
+                Start-Sleep -Seconds 2
+              }
+              $vectorExe = "$env:DEPLOY_DIR\vector-bin\bin\vector.exe"
+              if (Test-Path $vectorExe) {
+                Start-Process -FilePath $vectorExe -ArgumentList "--config", $dst -WindowStyle Hidden
+                Write-Host "Vector Aggregator restarted with new TOML"
+              } else {
+                Write-Host "##[warning]vector.exe not found at $vectorExe — manual restart needed"
+              }
+            } else {
+              Write-Host "Aggregator TOML unchanged — skipping restart"
+            }
+          } else {
+            Write-Host "First deploy — copying Aggregator TOML"
+            Copy-Item $src $dst -Force
+          }
+
       - name: Health check
         run: |
           Start-Sleep -Seconds 5
