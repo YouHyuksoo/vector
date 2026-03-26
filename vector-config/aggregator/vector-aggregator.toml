@@ -837,28 +837,9 @@ if .equipment_type == "SP" {
   .target_table = "LOG_COATING2"
   # Line 0: header row (DateTime,Barcode,FlowMeter(g),Flow Min(g),Flow Max(g),Result)
   # Lines 1+: data rows
-  # Parse first data row into individual .data.FIELD values
-  # Parse ALL data rows into .data.COATING_ITEMS array
-
+  # CSV 모든 데이터 행을 .data.ROWS 배열로 파싱 — Node.js가 행별로 INSERT
   lines = split!(.message, "\n")
-
-  # Parse header line to confirm structure (not used for field names, but validates log format)
-  header = split(to_string!(get!(lines, [0])), ",")
-  if length(header) != 6 || get!(header, [0]) != "DateTime" {
-    abort
-  }
-
-  # Parse first data row into individual fields (board/summary info)
-  first_row = split(to_string!(get!(lines, [1])), ",")
-  .data.DATE_TIME = strip_whitespace(to_string!(get!(first_row, [0])))
-  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [1])))
-  .data.FLOW_METER_G = strip_whitespace(to_string!(get!(first_row, [2])))
-  .data.FLOW_MIN_G = strip_whitespace(to_string!(get!(first_row, [3])))
-  .data.FLOW_MAX_G = strip_whitespace(to_string!(get!(first_row, [4])))
-  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [5])))
-
-  # Parse ALL data rows into array
-  .data.COATING_ITEMS = []
+  .data.ROWS = []
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
     if row != "" {
@@ -871,7 +852,7 @@ if .equipment_type == "SP" {
         "FLOW_MAX_G": strip_whitespace(to_string!(get!(cols, [4]))),
         "RESULT": strip_whitespace(to_string!(get!(cols, [5]))),
       }
-      .data.COATING_ITEMS = push(.data.COATING_ITEMS, item)
+      .data.ROWS = push(.data.ROWS, item)
     }
   }
 } else if .equipment_type == "COATINGVISION" {
@@ -880,26 +861,9 @@ if .equipment_type == "SP" {
   # Line 0: header row (SaveDate,ProgramName,MainBarcode,SubBarcode,Name,Result,FinalResult)
   # Lines 1+: data rows (multiple rows, all same format)
   # No section labels — pure CSV with header.
-  # Parse first data row into individual .data.FIELD values for summary.
-  # Parse ALL data rows into .data.COATING_RESULTS array.
-
+  # CSV 모든 데이터 행을 .data.ROWS 배열로 파싱 — Node.js가 행별로 INSERT
   lines = split!(.message, "\n")
-
-  # Parse header line (line 0) — not used for field names, but confirms column count
-  header = split(to_string!(get!(lines, [0])), ",")
-
-  # Parse first data row (line 1) into individual .data fields
-  first_row = split(to_string!(get!(lines, [1])), ",")
-  .data.SAVE_DATE = strip_whitespace(to_string!(get!(first_row, [0])))
-  .data.PROGRAM_NAME = strip_whitespace(to_string!(get!(first_row, [1])))
-  .data.MAIN_BARCODE = strip_whitespace(to_string!(get!(first_row, [2])))
-  .data.SUB_BARCODE = strip_whitespace(to_string!(get!(first_row, [3])))
-  .data.AREA_NAME = strip_whitespace(to_string!(get!(first_row, [4])))
-  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [5])))
-  .data.FINAL_RESULT = strip_whitespace(to_string!(get!(first_row, [6])))
-
-  # Parse ALL data rows (lines 1+) into .data.COATING_RESULTS array
-  .data.COATING_RESULTS = []
+  .data.ROWS = []
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
     if row != "" {
@@ -913,7 +877,7 @@ if .equipment_type == "SP" {
         "RESULT": strip_whitespace(to_string!(get!(cols, [5]))),
         "FINAL_RESULT": strip_whitespace(to_string!(get!(cols, [6])))
       }
-      .data.COATING_RESULTS = push(.data.COATING_RESULTS, item)
+      .data.ROWS = push(.data.ROWS, item)
     }
   }
 } else if .equipment_type == "COATINGREVIEW" {
