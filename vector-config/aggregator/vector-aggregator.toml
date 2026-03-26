@@ -920,62 +920,29 @@ if .equipment_type == "SP" {
   }
 } else if .equipment_type == "MARKING" {
   .target_table = "LOG_MARKING"
-  # Log Structure:
-  # Line 0: header row (WORK_ORDER_NO,MAIN_BARCODE,MARKED_BARCODE,MARKING_DT,EQUIPMENT_CD)
-  # Lines 1+: data rows (multiple marking records for the same or different work orders)
-  # All columns are parsed as strings (no numeric conversion)
-  # Fields are mapped to UPPERCASE_SNAKE_CASE from header names
+  # Log Structure: MARKING equipment log (MULTI_ROW BATCH mode)
+  # Line 0: CSV header row (WORK_ORDER_NO,MAIN_BARCODE,MARKED_BARCODE,MARKING_DT,EQUIPMENT_CD)
+  # Lines 1+: Data rows (multiple rows per batch)
+  # All data rows must be parsed into .data.ROWS array — Node.js will INSERT each row individually
 
   lines = split!(.message, "\n")
+  .data.ROWS = []
 
-  # Parse header to confirm structure (not used for field names, but good practice)
-  header = split(to_string!(get!(lines, [0])), ",")
-  # WORK_ORDER_NO -> WORK_ORDER_NO
-  # MAIN_BARCODE -> MAIN_BARCODE
-  # MARKED_BARCODE -> MARKED_BARCODE
-  # MARKING_DT -> MARKING_DT
-  # EQUIPMENT_CD -> EQUIPMENT_CD
-
-  # Initialize array for all marking records
-  .data.MARKING_RECORDS = []
-
-  # Process all data rows (skip header at line 0)
+  # Skip header (line 0), parse ALL data rows (lines 1+)
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
     if row != "" {
       cols = split(to_string!(row), ",")
-
-      # Parse each column into string fields
-      work_order_no = strip_whitespace(to_string!(get!(cols, [0])))
-      main_barcode = strip_whitespace(to_string!(get!(cols, [1])))
-      marked_barcode = strip_whitespace(to_string!(get!(cols, [2])))
-      marking_dt = strip_whitespace(to_string!(get!(cols, [3])))
-      equipment_cd = strip_whitespace(to_string!(get!(cols, [4])))
-
-      # Create record object
-      record = {
-        "WORK_ORDER_NO": work_order_no,
-        "MAIN_BARCODE": main_barcode,
-        "MARKED_BARCODE": marked_barcode,
-        "MARKING_DT": marking_dt,
-        "EQUIPMENT_CD": equipment_cd
+      item = {
+        "WORK_ORDER_NO": strip_whitespace(to_string!(get!(cols, [0]))),
+        "MAIN_BARCODE": strip_whitespace(to_string!(get!(cols, [1]))),
+        "MARKED_BARCODE": strip_whitespace(to_string!(get!(cols, [2]))),
+        "MARKING_DT": strip_whitespace(to_string!(get!(cols, [3]))),
+        "EQUIPMENT_CD": strip_whitespace(to_string!(get!(cols, [4]))),
       }
-
-      # Add to records array
-      .data.MARKING_RECORDS = push(.data.MARKING_RECORDS, record)
+      .data.ROWS = push(.data.ROWS, item)
     }
   }
-
-  # Also parse first record into top-level fields for summary/quick access
-  if length(.data.MARKING_RECORDS) > 0 {
-    first_record = get!(.data.MARKING_RECORDS, [0])
-    .data.WORK_ORDER_NO = get!(first_record, ["WORK_ORDER_NO"])
-    .data.MAIN_BARCODE = get!(first_record, ["MAIN_BARCODE"])
-    .data.MARKED_BARCODE = get!(first_record, ["MARKED_BARCODE"])
-    .data.MARKING_DT = get!(first_record, ["MARKING_DT"])
-    .data.EQUIPMENT_CD = get!(first_record, ["EQUIPMENT_CD"])
-  }
-
 } else {
   log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
   .data = {}
@@ -995,19 +962,7 @@ if .equipment_type == "SP" {
 type = "remap"
 inputs = ["parse_logs"]
 source = '''
-ts = if exists(.timestamp) { to_string!(.timestamp) } else if .equipment_type == "MARKING" {
-  # ── MARKING ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
-} else { to_string!(now()) }
+ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
 . = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)
