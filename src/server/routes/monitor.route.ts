@@ -2930,6 +2930,15 @@ function extractVrlFields(tomlContent: string): Record<string, string[]> {
           result[currentType].push(fieldName);
         }
       }
+
+      // ROWS item 내부 필드 추출: "FIELD_NAME": strip_whitespace(...)
+      const itemFieldMatch = trimmed.match(/^"([A-Z][A-Z0-9_]*)"\s*:/);
+      if (itemFieldMatch) {
+        const fieldName = `data.${itemFieldMatch[1]}`;
+        if (!result[currentType].includes(fieldName)) {
+          result[currentType].push(fieldName);
+        }
+      }
     }
   }
 
