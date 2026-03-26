@@ -21,8 +21,11 @@ export default function LogsPage() {
   const [logData, setLogData] = useState<LogData | null>(null);
   const [loading, setLoading] = useState(false);
   const [limit, setLimit] = useState(50);
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 16);
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 16));
   const { t } = useI18n();
 
   useEffect(() => {
@@ -69,13 +72,13 @@ export default function LogsPage() {
         </div>
         <div>
           <label className="block text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1.5">{t('logs.startDate')}</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+          <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)}
             className="px-3 py-2.5 rounded-lg bg-surface dark:bg-surface-dark border border-border dark:border-border-dark
               text-sm text-text dark:text-white" />
         </div>
         <div>
           <label className="block text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1.5">{t('logs.endDate')}</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+          <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)}
             className="px-3 py-2.5 rounded-lg bg-surface dark:bg-surface-dark border border-border dark:border-border-dark
               text-sm text-text dark:text-white" />
         </div>

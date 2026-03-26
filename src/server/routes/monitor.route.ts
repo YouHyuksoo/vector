@@ -1196,11 +1196,11 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       const whereClauses: string[] = [];
       if (dateCol && startDate) {
         whereClauses.push(`${dateCol} >= TO_TIMESTAMP(:sd, 'YYYY-MM-DD HH24:MI:SS')`);
-        binds.sd = startDate.length === 10 ? `${startDate} 00:00:00` : startDate;
+        binds.sd = startDate.replace('T', ' ').length < 19 ? `${startDate.replace('T', ' ')}:00` : startDate.replace('T', ' ');
       }
       if (dateCol && endDate) {
         whereClauses.push(`${dateCol} <= TO_TIMESTAMP(:ed, 'YYYY-MM-DD HH24:MI:SS')`);
-        binds.ed = endDate.length === 10 ? `${endDate} 23:59:59` : endDate;
+        binds.ed = endDate.replace('T', ' ').length < 19 ? `${endDate.replace('T', ' ')}:59` : endDate.replace('T', ' ');
       }
       const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
       const sql = `SELECT ${columns.join(', ')} FROM ${tableName}
