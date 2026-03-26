@@ -2503,8 +2503,34 @@ OUTPUT FORMAT:
 - Return ONLY VRL code with comments. No markdown, no code fences.`;
 }
 
+/** aggregator TOML에서 Agent 수신 주소(host:port)를 읽어온다 */
+function getAggregatorAddress(): string {
+  try {
+    const toml = readFileSync(VECTOR_CONFIG, 'utf-8');
+    const m = toml.match(/\[sources\.vector_agents\][\s\S]*?address\s*=\s*"([^"]+)"/);
+    if (m) {
+      const addr = m[1];
+      const host = addr.split(':')[0];
+      const port = addr.split(':')[1] ?? '6000';
+      // 0.0.0.0은 모든 인터페이스 수신 → 실제 서버 IP로 변환
+      if (host === '0.0.0.0' || host === '127.0.0.1') {
+        const { networkInterfaces } = require('os');
+        const nets = networkInterfaces();
+        for (const ifaces of Object.values(nets) as any[]) {
+          for (const iface of ifaces ?? []) {
+            if (iface.family === 'IPv4' && !iface.internal) return `${iface.address}:${port}`;
+          }
+        }
+      }
+      return addr;
+    }
+  } catch { /* fallback */ }
+  return '20.10.30.112:6000';
+}
+
 /** 새 설비용 기본 TOML 템플릿 */
 function getDefaultAgentToml(name: string): string {
+  const aggregatorAddr = getAggregatorAddress();
   return `# =============================================================================
 #  Vector Agent (송신기) - ${name} 설비
 # =============================================================================
@@ -2540,7 +2566,7 @@ source = '''
 [sinks.to_aggregator]
 type = "vector"
 inputs = ["add_metadata"]
-address = "127.0.0.1:6000"
+address = "${aggregatorAddr}"
 
 [sinks.to_aggregator.buffer]
 type = "disk"
