@@ -54,9 +54,9 @@ function VF({ label, value, mono }: { label: string; value: string; mono?: boole
 function VBadge({ label, value, color = 'primary' }: {
   label: string; value: string; color?: string;
 }) {
-  const cls = color === 'success' ? 'bg-success/10 text-success'
-    : color === 'warning' ? 'bg-warning/10 text-warning'
-    : 'bg-primary/10 text-primary';
+  const cls = color === 'success' ? 'bg-success/10 text-text dark:text-white'
+    : color === 'warning' ? 'bg-warning/10 text-text dark:text-white'
+    : 'bg-primary/10 text-text dark:text-white';
   return (
     <div className="flex items-center gap-2 py-0.5">
       <span className="text-xs text-muted-foreground whitespace-nowrap">{label}</span>

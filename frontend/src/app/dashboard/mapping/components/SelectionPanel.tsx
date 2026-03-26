@@ -86,7 +86,7 @@ export default function SelectionPanel({
               <button key={tbl} onClick={() => onSelectTable(tbl)}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm font-mono transition-colors
                   ${selected === tbl
-                    ? 'bg-primary/10 text-primary border border-primary/20 font-bold'
+                    ? 'bg-primary/10 text-text dark:text-white border border-primary/20 font-bold'
                     : 'text-muted-foreground hover:bg-surface dark:hover:bg-surface-dark'}`}>
                 {tbl}
               </button>
@@ -107,7 +107,7 @@ export default function SelectionPanel({
               <button key={proc.DISPLAY_NAME} onClick={() => onSelectProcedure(proc)}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm font-mono transition-colors
                   ${selectedProc === proc.DISPLAY_NAME
-                    ? 'bg-primary/10 text-primary border border-primary/20 font-bold'
+                    ? 'bg-primary/10 text-text dark:text-white border border-primary/20 font-bold'
                     : 'text-muted-foreground hover:bg-surface dark:hover:bg-surface-dark'}`}>
                 <div className="flex items-center gap-1.5">
                   <Icon name={proc.OBJECT_TYPE === 'PACKAGE' ? 'inventory_2' : 'terminal'} size="xs" className="shrink-0 opacity-50" />

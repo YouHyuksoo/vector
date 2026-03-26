@@ -88,7 +88,7 @@ export function RemoteControlTab({ equipmentId }: { equipmentId: string }) {
 
       {result && (
         <div className={`text-xs px-2 py-1.5 rounded font-mono ${
-          result.type === 'ok' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+          result.type === 'ok' ? 'bg-success/10 text-text dark:text-white' : 'bg-destructive/10 text-text dark:text-white'
         }`}>
           {result.text}
         </div>

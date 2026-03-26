@@ -265,7 +265,7 @@ export default function LogFilesPage() {
                 onClick={() => handleBreadcrumb(i)}
                 className={`px-2 py-0.5 rounded-md font-medium transition-colors
                   ${i === pathSegments.length - 1
-                    ? 'bg-primary/10 text-primary font-bold'
+                    ? 'bg-primary/10 text-text dark:text-white font-bold'
                     : 'text-text dark:text-white hover:bg-surface dark:hover:bg-surface-dark'
                   }`}
               >
@@ -329,7 +329,7 @@ export default function LogFilesPage() {
                   key={entry.name}
                   className={`w-full text-left px-3 py-2 flex items-center gap-2 transition-colors border-b border-border/30 dark:border-border-dark/30
                     ${isSelected
-                      ? 'bg-primary/10 text-primary font-bold'
+                      ? 'bg-primary/10 text-text dark:text-white font-bold'
                       : 'hover:bg-surface dark:hover:bg-surface-dark text-text dark:text-white'
                     }`}
                 >

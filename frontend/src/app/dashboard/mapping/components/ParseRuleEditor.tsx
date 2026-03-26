@@ -126,7 +126,7 @@ export default function ParseRuleEditor({ isOpen, onClose, parseRules, onSaved, 
                   ${eqType === lt
                     ? 'bg-primary text-white'
                     : hasFields
-                      ? 'bg-success/10 text-success border border-success/30 cursor-pointer'
+                      ? 'bg-success/10 text-text dark:text-white border border-success/30 cursor-pointer'
                       : 'bg-surface dark:bg-surface-dark text-muted-foreground/30 border border-border dark:border-border-dark cursor-not-allowed'}`}>
                 {lt}
               </button>

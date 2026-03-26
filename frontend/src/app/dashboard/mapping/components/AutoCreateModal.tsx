@@ -254,7 +254,7 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
                         <td className="px-3 py-1.5 font-mono font-bold">
                           {col.columnName}
                           {col.isSystem && (
-                            <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                            <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-primary/10 text-text dark:text-white">
                               {t('mapping.systemCol')}
                             </span>
                           )}

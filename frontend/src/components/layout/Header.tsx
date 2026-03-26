@@ -46,7 +46,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
 
       <div className="flex items-center gap-4">
         <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full
-          bg-success/10 border border-success/20 text-success text-[10px] font-semibold">
+          bg-success/10 border border-success/20 text-text dark:text-white text-[10px] font-semibold">
           <span className="size-1.5 rounded-full bg-success animate-pulse-glow" />
           {t('header.live')}
         </div>

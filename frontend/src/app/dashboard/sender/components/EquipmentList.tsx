@@ -79,8 +79,8 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
         className={`inline-flex items-center gap-1 px-2 py-1 rounded text-left transition-all duration-150 group text-xs
           ${isSel
             ? fluentMode
-              ? 'bg-info/10 text-info border border-info/30 font-bold'
-              : 'bg-accent/10 text-accent border border-accent/30 font-bold'
+              ? 'bg-info/10 text-text dark:text-white border border-info/30 font-bold'
+              : 'bg-accent/10 text-text dark:text-white border border-accent/30 font-bold'
             : done
               ? 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 border border-emerald-400/60 dark:border-emerald-500/40'
               : 'bg-surface dark:bg-surface-dark hover:bg-accent/5 dark:hover:bg-accent/5 text-text dark:text-white border border-transparent'
@@ -88,7 +88,7 @@ export function EquipmentList({ names, descriptions, pipelineStatus, selected, o
       >
         <span className="font-bold truncate max-w-[120px]">{name}</span>
         {fluentMode ? (
-          <span className="px-1 py-px rounded text-[8px] font-bold uppercase leading-none bg-info/10 text-info">CONF</span>
+          <span className="px-1 py-px rounded text-[8px] font-bold uppercase leading-none bg-info/10 text-text dark:text-white">CONF</span>
         ) : pipeline?.targetType ? (
           <span className={`px-1 py-px rounded text-[8px] font-bold uppercase leading-none
             ${pipeline.targetType === 'PROCEDURE'

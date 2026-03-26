@@ -157,7 +157,7 @@ export default function SenderPage() {
           <button onClick={() => handleModeChange('vector')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all border-2
               ${!isFluent
-                ? 'border-accent bg-accent/10 text-accent'
+                ? 'border-accent bg-accent/10 text-text dark:text-white'
                 : 'border-border dark:border-border-dark text-muted-foreground hover:border-accent/40'}`}>
             <Icon name="terminal" size="sm" />
             Vector (.toml)
@@ -165,7 +165,7 @@ export default function SenderPage() {
           <button onClick={() => handleModeChange('fluent')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all border-2
               ${isFluent
-                ? 'border-info bg-info/10 text-info'
+                ? 'border-info bg-info/10 text-text dark:text-white'
                 : 'border-border dark:border-border-dark text-muted-foreground hover:border-info/40'}`}>
             <Icon name="air" size="sm" />
             Fluent Bit (.conf)

@@ -44,7 +44,7 @@ export default function ProcedureMapping({
         <span className="font-mono text-sm font-bold text-primary">{procedureName}</span>
         <span className="text-sm text-muted-foreground">{params.length} {t('mapping.params')}</span>
         {mappedCount > 0 && (
-          <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-success/10 text-success">
+          <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-success/10 text-text dark:text-white">
             {mappedCount} {t('mapping.mapped')}
           </span>
         )}
@@ -110,7 +110,7 @@ export default function ProcedureMapping({
                       {isMapped && <Icon name="check_circle" size="xs" className="text-success" />}
                     </td>
                     <td className="px-4 py-2 text-center">
-                      <span className="inline-flex items-center justify-center size-7 rounded-full bg-primary/10 text-primary text-sm font-bold font-mono">
+                      <span className="inline-flex items-center justify-center size-7 rounded-full bg-primary/10 text-text dark:text-white text-sm font-bold font-mono">
                         {param.PARAM_ORDER}
                       </span>
                     </td>
@@ -118,7 +118,7 @@ export default function ProcedureMapping({
                     <td className="px-4 py-2"><span className="text-sm text-muted-foreground font-mono">{param.DATA_TYPE}</span></td>
                     <td className="px-4 py-2 text-center">
                       <span className={`text-xs font-bold px-1.5 py-0.5 rounded
-                        ${param.IN_OUT === 'IN' ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'}`}>
+                        ${param.IN_OUT === 'IN' ? 'bg-primary/10 text-text dark:text-white' : 'bg-warning/10 text-text dark:text-white'}`}>
                         {param.IN_OUT}
                       </span>
                     </td>

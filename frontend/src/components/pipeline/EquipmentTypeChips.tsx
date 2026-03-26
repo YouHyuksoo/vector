@@ -22,9 +22,9 @@ interface EquipmentTypeChipsProps {
 
 function chipColor(doneCount: number, isSel: boolean): string {
   if (isSel) return 'bg-primary text-white border-primary';
-  if (doneCount >= 5) return 'bg-success/5 text-success border-success/30 hover:bg-success/10 dark:bg-success/10 dark:hover:bg-success/15';
-  if (doneCount >= 3) return 'bg-warning/5 text-warning border-warning/30 hover:bg-warning/10 dark:bg-warning/10 dark:hover:bg-warning/15';
-  return 'bg-background dark:bg-background-dark text-muted-foreground border-border dark:border-border-dark hover:bg-muted-foreground/5';
+  if (doneCount >= 5) return 'bg-success/10 text-text dark:text-white border-success/30 hover:bg-success/15';
+  if (doneCount >= 3) return 'bg-warning/10 text-text dark:text-white border-warning/30 hover:bg-warning/15';
+  return 'bg-background dark:bg-background-dark text-text dark:text-white border-border dark:border-border-dark hover:bg-muted-foreground/5';
 }
 
 function dotColor(doneCount: number): string {
@@ -50,7 +50,7 @@ function ChipButton({ name, doneCount, isSel, targetType, onClick }: {
           {targetType === 'PROCEDURE' ? 'PROC' : 'TBL'}
         </span>
       )}
-      {!isSel && <span className="opacity-50 ml-0.5">{doneCount}/5</span>}
+      {!isSel && <span className="opacity-70 ml-0.5">{doneCount}/5</span>}
     </button>
   );
 }
@@ -84,7 +84,7 @@ export function EquipmentTypeChips({ agents, selected, onSelect, groupByStatus =
     <div className="space-y-2">
       {done.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-[10px] font-bold text-success uppercase tracking-wider mr-1 shrink-0 w-10">
+          <span className="text-[10px] font-bold text-text dark:text-white uppercase tracking-wider mr-1 shrink-0 w-10">
             {t('mapping.pipeline.complete')}
           </span>
           <div className="flex flex-wrap -space-x-px">
@@ -99,7 +99,7 @@ export function EquipmentTypeChips({ agents, selected, onSelect, groupByStatus =
       )}
       {prog.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-[10px] font-bold text-warning uppercase tracking-wider mr-1 shrink-0 w-10">
+          <span className="text-[10px] font-bold text-text dark:text-white uppercase tracking-wider mr-1 shrink-0 w-10">
             {t('mapping.pipeline.incomplete')}
           </span>
           <div className="flex flex-wrap -space-x-px">

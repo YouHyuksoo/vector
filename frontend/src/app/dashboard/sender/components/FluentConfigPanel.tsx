@@ -120,7 +120,7 @@ export function FluentConfigPanel({ name, onSaved }: Props) {
           <div className="flex items-center gap-2">
             <Icon name="air" className="text-info" />
             <h3 className="text-sm font-bold text-text dark:text-white">{name}.conf</h3>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-info/10 text-info font-bold">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-info/10 text-text dark:text-white font-bold">
               Fluent Bit
             </span>
           </div>

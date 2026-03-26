@@ -300,7 +300,7 @@ export default function RetryPage() {
                       </td>
                       <td className="p-3 font-mono text-xs">{row.LOG_ID}</td>
                       <td className="p-3">
-                        <span className="px-2 py-0.5 rounded bg-info/10 text-info text-xs font-medium">
+                        <span className="px-2 py-0.5 rounded bg-info/10 text-text dark:text-white text-xs font-medium">
                           {row.SOURCE_TABLE}
                         </span>
                       </td>
@@ -311,9 +311,9 @@ export default function RetryPage() {
                       <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">{row.CREATED_AT}</td>
                       <td className="p-3 text-xs">
                         {hasRaw ? (
-                          <span className="px-2 py-0.5 rounded bg-success/10 text-success font-medium">O</span>
+                          <span className="px-2 py-0.5 rounded bg-success/10 text-text dark:text-white font-medium">O</span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-error/10 text-error font-medium" title={t('retry.noRawData')}>X</span>
+                          <span className="px-2 py-0.5 rounded bg-error/10 text-text dark:text-white font-medium" title={t('retry.noRawData')}>X</span>
                         )}
                       </td>
                     </tr>

@@ -64,14 +64,14 @@ export function PipelineStepBar({ agents, agentName, clickable = false, compact 
           <span key={i} title={t(step.labelKey)}
             className={`inline-flex items-center justify-center w-4 h-4 rounded-full
               ${step.done
-                ? 'bg-success/20 text-success'
+                ? 'bg-success/20 text-text dark:text-white'
                 : 'bg-border/30 dark:bg-border-dark/30 text-muted-foreground/40'
               }`}>
             <Icon name={step.icon} size="xs" className="!text-[10px]" />
           </span>
         ))}
         <span className={`text-[9px] ml-0.5 font-medium
-          ${doneCount === 5 ? 'text-success' : doneCount > 0 ? 'text-warning' : 'text-muted-foreground/50'}`}>
+          ${doneCount === 5 ? 'text-text dark:text-white' : doneCount > 0 ? 'text-text dark:text-white' : 'text-muted-foreground/50'}`}>
           {doneCount}/5
         </span>
       </div>

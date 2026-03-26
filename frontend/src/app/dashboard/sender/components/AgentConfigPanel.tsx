@@ -144,8 +144,8 @@ export function AgentConfigPanel({ name, onDownload, description = '', encoding 
       {validResult && (
         <div className={`text-xs px-3 py-2 rounded-lg border ${
           validResult.valid
-            ? 'bg-success/10 border-success/30 text-success'
-            : 'bg-error/10 border-error/30 text-error'
+            ? 'bg-success/10 border-success/30 text-text dark:text-white'
+            : 'bg-error/10 border-error/30 text-text dark:text-white'
         }`}>
           <div className="flex items-center gap-1.5 font-bold mb-0.5">
             <Icon name={validResult.valid ? 'check_circle' : 'error'} size="xs" />

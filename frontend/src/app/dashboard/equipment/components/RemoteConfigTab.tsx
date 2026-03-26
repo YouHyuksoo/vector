@@ -91,7 +91,7 @@ export function RemoteConfigTab({ equipmentId }: { equipmentId: string }) {
 
       {msg && (
         <div className={`text-xs px-2 py-1 rounded ${
-          msg.type === 'ok' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+          msg.type === 'ok' ? 'bg-success/10 text-text dark:text-white' : 'bg-destructive/10 text-text dark:text-white'
         }`}>
           {msg.text}
         </div>

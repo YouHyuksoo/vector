@@ -25,7 +25,7 @@
 # - 디스크 버퍼, 체크포인트 등을 저장합니다
 # - 이 폴더가 없으면 Vector가 자동 생성합니다
 # -----------------------------------------------------------------------------
-data_dir = "C:\\Project\\vector\\vector-data"
+data_dir = 'C:\Project\vector\vector-data'
 
 
 # -----------------------------------------------------------------------------
@@ -60,6 +60,53 @@ address = "0.0.0.0:6000"
 
 
 # =============================================================================
+#  Source 2: Fluent Bit Agent 수신 (Fluentd forward 프로토콜)
+# =============================================================================
+#
+#  32비트 Windows 등 Vector를 사용할 수 없는 설비 PC에서
+#  Fluent Bit Agent가 forward 프로토콜로 전송한 로그를 수신합니다.
+#
+#  Fluent Bit Agent 설정 예시:
+#    [OUTPUT]
+#      Name   forward
+#      Match  *
+#      Host   서버IP
+#      Port   24224
+#
+#  주의: Agent 설정의 Host/Port와 반드시 동일해야 합니다!
+#
+# =============================================================================
+
+[sources.from_fluent_agents]
+type = "fluent"
+address = "0.0.0.0:24224"
+
+
+# =============================================================================
+#  Fluent Bit → Vector 필드 정규화
+# =============================================================================
+#
+#  Fluent Bit가 보내는 필드명을 Vector Agent와 동일하게 맞춥니다.
+#    .log  → .message  (파일 내용)
+#    .path → .file     (원본 파일 경로)
+#
+#  metadata (equipment_type, equipment_id 등)는
+#  Fluent Bit의 modify filter에서 동일하게 태깅되므로 그대로 통과합니다.
+#
+# =============================================================================
+
+[transforms.normalize_fluent]
+type = "remap"
+inputs = ["from_fluent_agents"]
+source = '''
+msg = del(.log)
+if msg != null { .message = msg }
+fp = del(.path)
+if fp != null { .file = fp }
+'''
+
+
+# =============================================================================
 #  이벤트 라우팅: 하트비트 메트릭 vs 로그 이벤트 분리
 # =============================================================================
 #
@@ -69,36 +116,18 @@ address = "0.0.0.0:6000"
 #  - heartbeat: .name == "heartbeat" → 하트비트 API로 전달
 #  - _unmatched: 나머지 로그 이벤트 → 기존 파싱 파이프라인
 #
+#  inputs: Vector Agent(from_agents) + Fluent Bit Agent(normalize_fluent) 모두 수신
+#
 # =============================================================================
 
 [transforms.route_events]
 type = "route"
-inputs = ["from_agents"]
+inputs = ["from_agents", "normalize_fluent"]
 
 [transforms.route_events.route]
-heartbeat = '.name == "heartbeat"'
+# heartbeat는 Agent Manager가 직접 전송 — Vector 경유 안 함
 
-# ── 하트비트 메트릭 → Node.js POST /api/heartbeat ──
-# static_metrics 원본을 그대로 전송, Node.js에서 tags 추출 처리
-[sinks.to_heartbeat_api]
-type = "http"
-inputs = ["route_events.heartbeat"]
-uri = "http://127.0.0.1:3100/api/heartbeat"
-method = "post"
-
-[sinks.to_heartbeat_api.encoding]
-codec = "json"
-
-[sinks.to_heartbeat_api.batch]
-max_events = 1
-timeout_secs = 30
-
-[sinks.to_heartbeat_api.request]
-retry_initial_backoff_secs = 5
-retry_max_duration_secs = 60
-
-[sinks.to_heartbeat_api.request.headers]
-Content-Type = "application/json"
+# 하트비트는 Agent Manager가 직접 HTTP POST로 전송 — Aggregator 경유 안 함
 
 
 # =============================================================================
@@ -144,14 +173,12 @@ source = '''
 .raw_message = .message
 
 # Windows 줄바꿈(\r) 제거 — CSV 파일의 \r\n을 \n으로 통일
-.message = replace!(.message, r'\r', "")
+.message = replace!(to_string!(.message), r'\r', "")
 
 # 원본 파일명 추출
 .filename = ""
-file_str, err = to_string(.file)
-if err == null {
-  .filename = replace(file_str, r'.*[\\/]', "")
-}
+file_str = to_string!(.file)
+.filename = replace!(file_str, r'.*[\\/]', "")
 
 # 데이터 저장 방식 (TABLE: 테이블 INSERT, PROCEDURE: 프로시져 CALL)
 .target_type = "TABLE"
@@ -185,13 +212,10 @@ if .equipment_type == "SP" {
   }
 
 } else if .equipment_type == "SPI" {
+  .target_table = "LOG_SPI"
   # PROCEDURE 모드 사용 시 아래 두 줄의 주석을 해제하세요
-  # .target_type = "PROCEDURE"
-  # .target_table = "PKG_BATCH.P_SPI_INSERT"
-  values = split!(.message, "\n")
-  header = split(to_string!(get!(values, [0])), ",")
-  data_line = split(to_string!(get!(values, [1])), ",")
-
+  values = split!(to_string!(.message), "\n")
+  data_line = split!(to_string!(get!(values, [1])), ",")
   .data.MASTER_BARCODE = strip_whitespace(to_string!(get!(data_line, [0])))
   .data.PCB_ID = strip_whitespace(to_string!(get!(data_line, [1])))
   .data.INSPECTION_DATE = strip_whitespace(to_string!(get!(data_line, [2])))
@@ -229,22 +253,22 @@ if .equipment_type == "SP" {
     #   줄5: ModuleID,RefID,WindowNo,DefectType,...
     #   줄6~: 0,_COMP_61462_,5,WrongPart,...  (N행)
 
-    lines = split!(.message, "\n")
+    lines = split!(to_string!(.message), "\n")
 
     # ── BoardInfo 파싱 (줄3) ──
     board_line = get!(lines, [2])
-    board = split!(board_line, ",")
-    .data.INSPECTOR    = get!(board, [0])
-    .data.MODEL        = get!(board, [1])
-    .data.LOT_ID       = get!(board, [2])
-    .data.SERIAL_NO    = get!(board, [3])
-    .data.RESULT       = get!(board, [4])
-    .data.START_DATE   = get!(board, [5])
-    .data.END_DATE     = get!(board, [6])
-    .data.REVIEWED_DATE = get!(board, [7])
-    .data.OPERATOR     = get!(board, [8])
-    .data.BOARD_SIDE   = get!(board, [9])
-    .data.LANE         = get!(board, [10])
+    board = split(to_string!(board_line), ",")
+    .data.INSPECTOR    = strip_whitespace(to_string!(get!(board, [0])))
+    .data.MODEL        = strip_whitespace(to_string!(get!(board, [1])))
+    .data.LOT_ID       = strip_whitespace(to_string!(get!(board, [2])))
+    .data.SERIAL_NO    = strip_whitespace(to_string!(get!(board, [3])))
+    .data.RESULT       = strip_whitespace(to_string!(get!(board, [4])))
+    .data.START_DATE   = strip_whitespace(to_string!(get!(board, [5])))
+    .data.END_DATE     = strip_whitespace(to_string!(get!(board, [6])))
+    .data.REVIEWED_DATE = strip_whitespace(to_string!(get!(board, [7])))
+    .data.OPERATOR     = strip_whitespace(to_string!(get!(board, [8])))
+    .data.BOARD_SIDE   = strip_whitespace(to_string!(get!(board, [9])))
+    .data.LANE         = strip_whitespace(to_string!(get!(board, [10])))
 
     # ── Inspection 상세 파싱 (줄6~) ──
     .data.INSPECTIONS = []
@@ -254,13 +278,13 @@ if .equipment_type == "SP" {
         cols = split(to_string!(row), ",")
         if length(cols) >= 7 {
           inspection = {
-            "MODULE_ID":   get!(cols, [0]),
-            "REF_ID":      get!(cols, [1]),
-            "WINDOW_NO":   get!(cols, [2]),
-            "DEFECT_TYPE": get!(cols, [3]),
-            "PART_NAME":   get!(cols, [4]),
-            "REVIEW":      get!(cols, [5]),
-            "FALSE_CALL":  get!(cols, [6]),
+            "MODULE_ID":   strip_whitespace(to_string!(get!(cols, [0]))),
+            "REF_ID":      strip_whitespace(to_string!(get!(cols, [1]))),
+            "WINDOW_NO":   strip_whitespace(to_string!(get!(cols, [2]))),
+            "DEFECT_TYPE": strip_whitespace(to_string!(get!(cols, [3]))),
+            "PART_NAME":   strip_whitespace(to_string!(get!(cols, [4]))),
+            "REVIEW":      strip_whitespace(to_string!(get!(cols, [5]))),
+            "FALSE_CALL":  strip_whitespace(to_string!(get!(cols, [6]))),
           }
           .data.INSPECTIONS = push(.data.INSPECTIONS, inspection)
         }
@@ -287,19 +311,84 @@ if .equipment_type == "SP" {
   }
 
 } else if .equipment_type == "ICT" {
-  # ── ICT (In-Circuit Test) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
+  # Log Structure:
+  # Line 0: header row (BARCODE,PCB NO,RESULT,...)
+  # Line 1: first data row (actual values)
+  # Lines 2-3: empty rows (skip)
+  # Multi-row mode ACCUMULATE: parse ALL data rows into .data.DETAILS array
+  # Header has 24 columns — map ALL to UPPERCASE_SNAKE_CASE fields
 
-} else if .equipment_type == "FCT" {
   lines = split!(.message, "\n")
+
+  # Parse header row (line 0) — not used for field names, but we know column count
+  header = split(to_string!(get!(lines, [0])), ",")
+  # Expected columns: 24
+
+  # Parse first data row (line 1) into individual .data.FIELD values
+  first_row = split(to_string!(get!(lines, [1])), ",")
+  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.PCB_NO = strip_whitespace(to_string!(get!(first_row, [1])))
+  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.MODEL = strip_whitespace(to_string!(get!(first_row, [3])))
+  .data.DAY = strip_whitespace(to_string!(get!(first_row, [4])))
+  .data.TIME = strip_whitespace(to_string!(get!(first_row, [5])))
+  .data.SW_VER = strip_whitespace(to_string!(get!(first_row, [6])))
+  .data.MCU_HEX_CRC_1 = strip_whitespace(to_string!(get!(first_row, [7])))
+  .data.MCU_HEX_CRC_2 = strip_whitespace(to_string!(get!(first_row, [8])))
+  .data.MCU_HEX_CRC_3 = strip_whitespace(to_string!(get!(first_row, [9])))
+  .data.MCU_HEX_CRC_4 = strip_whitespace(to_string!(get!(first_row, [10])))
+  .data.MCU_HEX_CRC_5 = strip_whitespace(to_string!(get!(first_row, [11])))
+  .data.MCU_HEX_CRC_6 = strip_whitespace(to_string!(get!(first_row, [12])))
+  .data.MCU_HEX_CRC_7 = strip_whitespace(to_string!(get!(first_row, [13])))
+  .data.ROM_CRC = strip_whitespace(to_string!(get!(first_row, [14])))
+  .data.NAME = strip_whitespace(to_string!(get!(first_row, [15])))
+  .data.MCU_CHKSUM = strip_whitespace(to_string!(get!(first_row, [16])))
+  .data.ROM_CHKSUM = strip_whitespace(to_string!(get!(first_row, [17])))
+  .data.MCU_READ_CHKSUM = strip_whitespace(to_string!(get!(first_row, [18])))
+  .data.ROM_READ_CHKSUM = strip_whitespace(to_string!(get!(first_row, [19])))
+  .data.MCU_RESULT = strip_whitespace(to_string!(get!(first_row, [20])))
+  .data.ROM_RESULT = strip_whitespace(to_string!(get!(first_row, [21])))
+  .data.DRV_IC_RESULT = strip_whitespace(to_string!(get!(first_row, [22])))
+
+  # Parse ALL data rows (lines 1+) into .data.DETAILS array
+  .data.DETAILS = []
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      # Only process rows with at least 24 columns (header count)
+      if length(cols) >= 24 {
+        item = {
+          "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+          "PCB_NO": strip_whitespace(to_string!(get!(cols, [1]))),
+          "RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
+          "MODEL": strip_whitespace(to_string!(get!(cols, [3]))),
+          "DAY": strip_whitespace(to_string!(get!(cols, [4]))),
+          "TIME": strip_whitespace(to_string!(get!(cols, [5]))),
+          "SW_VER": strip_whitespace(to_string!(get!(cols, [6]))),
+          "MCU_HEX_CRC_1": strip_whitespace(to_string!(get!(cols, [7]))),
+          "MCU_HEX_CRC_2": strip_whitespace(to_string!(get!(cols, [8]))),
+          "MCU_HEX_CRC_3": strip_whitespace(to_string!(get!(cols, [9]))),
+          "MCU_HEX_CRC_4": strip_whitespace(to_string!(get!(cols, [10]))),
+          "MCU_HEX_CRC_5": strip_whitespace(to_string!(get!(cols, [11]))),
+          "MCU_HEX_CRC_6": strip_whitespace(to_string!(get!(cols, [12]))),
+          "MCU_HEX_CRC_7": strip_whitespace(to_string!(get!(cols, [13]))),
+          "ROM_CRC": strip_whitespace(to_string!(get!(cols, [14]))),
+          "NAME": strip_whitespace(to_string!(get!(cols, [15]))),
+          "MCU_CHKSUM": strip_whitespace(to_string!(get!(cols, [16]))),
+          "ROM_CHKSUM": strip_whitespace(to_string!(get!(cols, [17]))),
+          "MCU_READ_CHKSUM": strip_whitespace(to_string!(get!(cols, [18]))),
+          "ROM_READ_CHKSUM": strip_whitespace(to_string!(get!(cols, [19]))),
+          "MCU_RESULT": strip_whitespace(to_string!(get!(cols, [20]))),
+          "ROM_RESULT": strip_whitespace(to_string!(get!(cols, [21]))),
+          "DRV_IC_RESULT": strip_whitespace(to_string!(get!(cols, [22]))),
+        }
+        .data.DETAILS = push(.data.DETAILS, item)
+      }
+    }
+  }
+} else if .equipment_type == "FCT" {
+  lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_FCT"
   .data.ROWS = []
 
@@ -370,18 +459,92 @@ if .equipment_type == "SP" {
     .data = {}
   }
 
-} else if .equipment_type == "EOL" {
-  # ── EOL (End of Line Test) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
+} else if .equipment_type == "EOL" {  # Log Structure:
+  .target_table = "LOG_EOL"
+  # Line 0: CSV header row (BARCODE,LABEL,ARRAY_RESULT,...)
+  # Lines 1+: Data rows (all rows are data, no section labels)
+  # All columns are parsed as strings — no numeric conversion.
+  # First data row (line 1) is parsed into individual .data.FIELD values for summary.
+  # All data rows are parsed into .data.TEST_RESULTS array.
 
+  lines = split!(.message, "\n")
+
+  # Parse first data row (line 1) into individual .data.FIELD values
+  first_row = split(to_string!(get!(lines, [1])), ",")
+  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.LABEL = strip_whitespace(to_string!(get!(first_row, [1])))
+  .data.ARRAY_RESULT = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.PCB_NO = strip_whitespace(to_string!(get!(first_row, [3])))
+  .data.STEP_RESULT = strip_whitespace(to_string!(get!(first_row, [4])))
+  .data.MODEL = strip_whitespace(to_string!(get!(first_row, [5])))
+  .data.START_TIME = strip_whitespace(to_string!(get!(first_row, [6])))
+  .data.END_TIME = strip_whitespace(to_string!(get!(first_row, [7])))
+  .data.NO = strip_whitespace(to_string!(get!(first_row, [8])))
+  .data.NAME = strip_whitespace(to_string!(get!(first_row, [9])))
+  .data.NAME_DETAIL = strip_whitespace(to_string!(get!(first_row, [10])))
+  .data.VOLT_V = strip_whitespace(to_string!(get!(first_row, [11])))
+  .data.MIN_1 = strip_whitespace(to_string!(get!(first_row, [12])))
+  .data.TYP_1 = strip_whitespace(to_string!(get!(first_row, [13])))
+  .data.MAX_2 = strip_whitespace(to_string!(get!(first_row, [14])))
+  .data.MEAS_1 = strip_whitespace(to_string!(get!(first_row, [15])))
+  .data.MIN_2 = strip_whitespace(to_string!(get!(first_row, [16])))
+  .data.TYP_2 = strip_whitespace(to_string!(get!(first_row, [17])))
+  .data.MAX_2_2 = strip_whitespace(to_string!(get!(first_row, [18])))
+  .data.MEAS_2 = strip_whitespace(to_string!(get!(first_row, [19])))
+  .data.CAN_STD = strip_whitespace(to_string!(get!(first_row, [20])))
+  .data.MEAS_CAN = strip_whitespace(to_string!(get!(first_row, [21])))
+  .data.DTC_CODE = strip_whitespace(to_string!(get!(first_row, [22])))
+  .data.MEAS_DTC_CODE = strip_whitespace(to_string!(get!(first_row, [23])))
+  .data.LABEL_BCODE_1 = strip_whitespace(to_string!(get!(first_row, [24])))
+  .data.LABEL_BCODE_2 = strip_whitespace(to_string!(get!(first_row, [25])))
+  .data.STEP_TIME = strip_whitespace(to_string!(get!(first_row, [26])))
+  .data.CAN_TX_1 = strip_whitespace(to_string!(get!(first_row, [27])))
+  .data.CAN_RX_1 = strip_whitespace(to_string!(get!(first_row, [28])))
+  .data.CAN_TX_2 = strip_whitespace(to_string!(get!(first_row, [29])))
+  .data.DATA_RX_2 = strip_whitespace(to_string!(get!(first_row, [30])))
+
+  # Parse ALL data rows into .data.TEST_RESULTS array
+  .data.TEST_RESULTS = []
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      item = {
+        "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+        "LABEL": strip_whitespace(to_string!(get!(cols, [1]))),
+        "ARRAY_RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
+        "PCB_NO": strip_whitespace(to_string!(get!(cols, [3]))),
+        "STEP_RESULT": strip_whitespace(to_string!(get!(cols, [4]))),
+        "MODEL": strip_whitespace(to_string!(get!(cols, [5]))),
+        "START_TIME": strip_whitespace(to_string!(get!(cols, [6]))),
+        "END_TIME": strip_whitespace(to_string!(get!(cols, [7]))),
+        "NO": strip_whitespace(to_string!(get!(cols, [8]))),
+        "NAME": strip_whitespace(to_string!(get!(cols, [9]))),
+        "NAME_DETAIL": strip_whitespace(to_string!(get!(cols, [10]))),
+        "VOLT_V": strip_whitespace(to_string!(get!(cols, [11]))),
+        "MIN_1": strip_whitespace(to_string!(get!(cols, [12]))),
+        "TYP_1": strip_whitespace(to_string!(get!(cols, [13]))),
+        "MAX_2": strip_whitespace(to_string!(get!(cols, [14]))),
+        "MEAS_1": strip_whitespace(to_string!(get!(cols, [15]))),
+        "MIN_2": strip_whitespace(to_string!(get!(cols, [16]))),
+        "TYP_2": strip_whitespace(to_string!(get!(cols, [17]))),
+        "MAX_2_2": strip_whitespace(to_string!(get!(cols, [18]))),
+        "MEAS_2": strip_whitespace(to_string!(get!(cols, [19]))),
+        "CAN_STD": strip_whitespace(to_string!(get!(cols, [20]))),
+        "MEAS_CAN": strip_whitespace(to_string!(get!(cols, [21]))),
+        "DTC_CODE": strip_whitespace(to_string!(get!(cols, [22]))),
+        "MEAS_DTC_CODE": strip_whitespace(to_string!(get!(cols, [23]))),
+        "LABEL_BCODE_1": strip_whitespace(to_string!(get!(cols, [24]))),
+        "LABEL_BCODE_2": strip_whitespace(to_string!(get!(cols, [25]))),
+        "STEP_TIME": strip_whitespace(to_string!(get!(cols, [26]))),
+        "CAN_TX_1": strip_whitespace(to_string!(get!(cols, [27]))),
+        "CAN_RX_1": strip_whitespace(to_string!(get!(cols, [28]))),
+        "CAN_TX_2": strip_whitespace(to_string!(get!(cols, [29]))),
+        "DATA_RX_2": strip_whitespace(to_string!(get!(cols, [30])))
+      }
+      .data.TEST_RESULTS = push(.data.TEST_RESULTS, item)
+    }
+  }
 } else if .equipment_type == "METALMASK" {
   # ── METALMASK (Metal Mask) ──
   if .log_type == "INSPECTION" {
@@ -419,7 +582,7 @@ if .equipment_type == "SP" {
   }
 
 } else if .equipment_type == "VISION_LEGACY" {
-  lines = split!(.message, "\n")
+  lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_VISION_LEGACY"
   .data.ROWS = []
 
@@ -481,44 +644,101 @@ if .equipment_type == "SP" {
     }
   }
   .data.ROW_COUNT = length(.data.ROWS)
-} else if .equipment_type == "VISION_NATIVE" {
-  # ── VISION_NATIVE ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
+} else if .equipment_type == "VISION_NATIVE" {  # Log Structure:
+  .target_table = "LOG_VISION_NATIVE"
+  # - Single header row (line 0): CSV header with 28 columns
+  # - Data rows (lines 1+): CSV data rows, all columns present
+  # - All columns are parsed as strings (no numeric conversion)
+  # - First data row (line 1) is parsed into individual .data.FIELD values for summary
+  # - All data rows are parsed into .data.RESULTS array for detailed records
 
-} else if .equipment_type == "DOWNLOAD" {  lines = split!(.message, "\n")
-  .target_table = "LOG_DOWNLOAD"
+  lines = split!(.message, "\n")
   header = split(to_string!(get!(lines, [0])), ",")
-  .data.BARCODE = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [0])))
-  .data.PCB_NO = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [1])))
-  .data.RESULT = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [2])))
-  .data.MODEL = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [3])))
-  .data.DAY = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [4])))
-  .data.TIME = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [5])))
-  .data.SW_VER = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [6])))
-  .data.MCU_HEX_CRC_1 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [7])))
-  .data.MCU_HEX_CRC_2 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [8])))
-  .data.MCU_HEX_CRC_3 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [9])))
-  .data.MCU_HEX_CRC_4 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [10])))
-  .data.MCU_HEX_CRC_5 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [11])))
-  .data.MCU_HEX_CRC_6 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [12])))
-  .data.MCU_HEX_CRC_7 = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [13])))
-  .data.ROM_CRC = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [14])))
-  .data.NAME = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [15])))
-  .data.MCU_CHKSUM = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [16])))
-  .data.ROM_CHKSUM = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [17])))
-  .data.MCU_READ_CHKSUM = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [18])))
-  .data.ROM_READ_CHKSUM = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [19])))
-  .data.MCU_RESULT = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [20])))
-  .data.ROM_RESULT = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [21])))
-  .data.DRV_IC_RESULT = strip_whitespace(to_string!(get!(split(to_string!(get!(lines, [1])), ","), [22])))
+
+  # Parse first data row (line 1) into individual fields
+  first_row = split(to_string!(get!(lines, [1])), ",")
+  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
+  .data.DEVICE = strip_whitespace(to_string!(get!(first_row, [1])))
+  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [2])))
+  .data.MODEL = strip_whitespace(to_string!(get!(first_row, [3])))
+  .data.DATE = strip_whitespace(to_string!(get!(first_row, [4])))
+  .data.TIME = strip_whitespace(to_string!(get!(first_row, [5])))
+  .data.TYPE = strip_whitespace(to_string!(get!(first_row, [6])))
+  .data.VOLT_INPUT_V = strip_whitespace(to_string!(get!(first_row, [7])))
+  .data.VOLT_VALUE_V = strip_whitespace(to_string!(get!(first_row, [8])))
+  .data.CURR_RESULT = strip_whitespace(to_string!(get!(first_row, [9])))
+  .data.CURR_MIN_MA = strip_whitespace(to_string!(get!(first_row, [10])))
+  .data.CURR_MAX_MA = strip_whitespace(to_string!(get!(first_row, [11])))
+  .data.CURR_VALUE_MA = strip_whitespace(to_string!(get!(first_row, [12])))
+
+  # Parse all data rows into RESULTS array
+  .data.RESULTS = []
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      item = {
+        "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+        "DEVICE": strip_whitespace(to_string!(get!(cols, [1]))),
+        "RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
+        "MODEL": strip_whitespace(to_string!(get!(cols, [3]))),
+        "DATE": strip_whitespace(to_string!(get!(cols, [4]))),
+        "TIME": strip_whitespace(to_string!(get!(cols, [5]))),
+        "TYPE": strip_whitespace(to_string!(get!(cols, [6]))),
+        "VOLT_INPUT_V": strip_whitespace(to_string!(get!(cols, [7]))),
+        "VOLT_VALUE_V": strip_whitespace(to_string!(get!(cols, [8]))),
+        "CURR_RESULT": strip_whitespace(to_string!(get!(cols, [9]))),
+        "CURR_MIN_MA": strip_whitespace(to_string!(get!(cols, [10]))),
+        "CURR_MAX_MA": strip_whitespace(to_string!(get!(cols, [11]))),
+        "CURR_VALUE_MA": strip_whitespace(to_string!(get!(cols, [12]))),
+        "LED_RESULT": strip_whitespace(to_string!(get!(cols, [13]))),
+        "LED_NAME": strip_whitespace(to_string!(get!(cols, [14]))),
+        "SCORE_MIN": strip_whitespace(to_string!(get!(cols, [15]))),
+        "SCORE_MAX": strip_whitespace(to_string!(get!(cols, [16]))),
+        "SCORE_VALUE": strip_whitespace(to_string!(get!(cols, [17]))),
+        "SCORE_RESULT": strip_whitespace(to_string!(get!(cols, [18]))),
+        "HUE_MIN": strip_whitespace(to_string!(get!(cols, [19]))),
+        "HUE_MAX": strip_whitespace(to_string!(get!(cols, [20]))),
+        "HUE_VALUE": strip_whitespace(to_string!(get!(cols, [21]))),
+        "HUE_RESULT": strip_whitespace(to_string!(get!(cols, [22]))),
+        "SAT_MIN": strip_whitespace(to_string!(get!(cols, [23]))),
+        "SAT_MAX": strip_whitespace(to_string!(get!(cols, [24]))),
+        "SAT_VALUE": strip_whitespace(to_string!(get!(cols, [25]))),
+        "SAT_RESULT": strip_whitespace(to_string!(get!(cols, [26]))),
+        "LUM_MIN": strip_whitespace(to_string!(get!(cols, [27]))),
+        "LUM_MAX": strip_whitespace(to_string!(get!(cols, [28]))),
+        "LUM_VALUE": strip_whitespace(to_string!(get!(cols, [29]))),
+        "LUM_RESULT": strip_whitespace(to_string!(get!(cols, [30])))
+      }
+      .data.RESULTS = push(.data.RESULTS, item)
+    }
+  }
+} else if .equipment_type == "DOWNLOAD" {
+  lines = split!(to_string!(.message), "\n")
+  .target_table = "LOG_DOWNLOAD"
+  .data.BARCODE = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [0])))
+  .data.PCB_NO = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [1])))
+  .data.RESULT = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [2])))
+  .data.MODEL = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [3])))
+  .data.DAY = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [4])))
+  .data.TIME = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [5])))
+  .data.SW_VER = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [6])))
+  .data.MCU_HEX_CRC_1 = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [7])))
+  .data.MCU_HEX_CRC_2 = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [8])))
+  .data.MCU_HEX_CRC_3 = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [9])))
+  .data.MCU_HEX_CRC_4 = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [10])))
+  .data.MCU_HEX_CRC_5 = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [11])))
+  .data.MCU_HEX_CRC_6 = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [12])))
+  .data.MCU_HEX_CRC_7 = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [13])))
+  .data.ROM_CRC = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [14])))
+  .data.NAME = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [15])))
+  .data.MCU_CHKSUM = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [16])))
+  .data.ROM_CHKSUM = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [17])))
+  .data.MCU_READ_CHKSUM = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [18])))
+  .data.ROM_READ_CHKSUM = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [19])))
+  .data.MCU_RESULT = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [20])))
+  .data.ROM_RESULT = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [21])))
+  .data.DRV_IC_RESULT = strip_whitespace(to_string!(get!(split!(to_string!(get!(lines, [1])), ","), [22])))
 
   .data.DETAILS = []
   detail_lines = slice!(lines, 1)
@@ -554,10 +774,9 @@ if .equipment_type == "SP" {
     }
   }
 } else if .equipment_type == "LOWCURRENT" {
+  lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_LOWCURRENT"
-  lines = split!(.message, "\n")
-  header = split(to_string!(get!(lines, [0])), ",")
-  first_row = split(to_string!(get!(lines, [1])), ",")
+  first_row = split!(to_string!(get!(lines, [1])), ",")
 
   .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
   .data.MODEL_NAME = strip_whitespace(to_string!(get!(first_row, [1])))
@@ -600,6 +819,54 @@ if .equipment_type == "SP" {
       .data.DETAILS = push(.data.DETAILS, item)
     }
   }
+} else if .equipment_type == "COATING1" {
+  # ── COATING1 ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "COATING2" {
+  # ── COATING2 ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "COATINGVISION" {
+  # ── COATINGVISION ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else if .equipment_type == "COATINGREVIEW" {
+  # ── COATINGREVIEW ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
 } else {
   log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
   .data = {}
@@ -619,12 +886,13 @@ if .equipment_type == "SP" {
 type = "remap"
 inputs = ["parse_logs"]
 source = '''
+ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
 . = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)
   "target_type": .target_type,         # 저장 방식 (TABLE/PROCEDURE)
   "target_table": .target_table,       # 저장 대상 (테이블명 또는 프로시져 레지스트리 키)
-  "timestamp": to_string(.timestamp) ?? to_string!(now()), # 타임스탬프 (문자열로 변환)
+  "timestamp": ts,                     # 타임스탬프 (문자열로 변환)
   "data": .data                        # 파싱된 데이터 객체
 }
 '''
@@ -665,7 +933,7 @@ source = '''
 type = "remap"
 inputs = ["route_events._unmatched"]
 source = '''
-.filename = replace!(.file, r'.*[\\/]', "")
+.filename = replace!(to_string!(.file), r'.*[\\/]', "")
 '''
 
 # -----------------------------------------------------------------------------
@@ -680,14 +948,14 @@ source = '''
   "equipment_id": .equipment_id,
   "equipment_type": .equipment_type,
   "log_type": .log_type,
-  "filename": replace!(.file, r'.*[\\/]', "")
+  "filename": replace!(to_string!(.file), r'.*[\\/]', "")
 }
 '''
 
 [sinks.to_file_notify]
 type = "http"
 inputs = ["file_receive_notify"]
-uri = "http://127.0.0.1:3100/api/logs/file-received"
+uri = "http://127.0.0.1:3110/api/logs/file-received"
 method = "post"
 
 [sinks.to_file_notify.encoding]
@@ -707,7 +975,7 @@ Content-Type = "application/json"
 [sinks.raw_file]
 type = "file"
 inputs = ["tag_filename"]         # 파싱 전 원본 + 파일명 태그
-path = "C:\\data\\raw-logs\\{{ equipment_type }}\\{{ equipment_id }}\\%Y-%m-%d\\{{ filename }}"
+path = 'C:\data\raw-logs\{{ equipment_type }}\{{ equipment_id }}\%Y-%m-%d\{{ filename }}'
 
 [sinks.raw_file.encoding]
 codec = "text"
@@ -726,7 +994,7 @@ when_full = "block"
 #  Node.js 서버가 이 데이터를 받아서 Oracle DB에 저장합니다.
 #
 #  uri:
-#    http://127.0.0.1:3100/api/logs → Node.js API의 로그 수신 엔드포인트
+#    http://127.0.0.1:3110/api/logs → Node.js API의 로그 수신 엔드포인트
 #    서버가 다른 호스트에 있으면 IP를 변경하세요
 #
 #  batch (배치 처리):
@@ -747,7 +1015,7 @@ when_full = "block"
 [sinks.to_api]
 type = "http"
 inputs = ["format_for_api"]       # format_for_api에서 정리된 데이터를 전송
-uri = "http://127.0.0.1:3100/api/logs"    # ← Node.js API 서버 주소
+uri = "http://127.0.0.1:3110/api/logs"    # ← Node.js API 서버 주소
 method = "post"
 
 [sinks.to_api.encoding]

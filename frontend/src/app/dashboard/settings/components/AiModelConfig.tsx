@@ -211,7 +211,7 @@ export function AiModelConfig() {
                     </label>
                   ) : (
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                      m.enabled && m.apiKey ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                      m.enabled && m.apiKey ? 'bg-success/10 text-text dark:text-white' : 'bg-muted text-muted-foreground'
                     }`}>
                       {m.enabled && m.apiKey ? t('ai.active') : t('ai.inactive')}
                     </span>
@@ -254,8 +254,8 @@ export function AiModelConfig() {
               {tr && (
                 <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] ${
                   tr.success
-                    ? 'bg-success/5 border border-success/20 text-success'
-                    : 'bg-error/5 border border-error/20 text-error'
+                    ? 'bg-success/5 border border-success/20 text-text dark:text-white'
+                    : 'bg-error/5 border border-error/20 text-text dark:text-white'
                 }`}>
                   <Icon name={tr.success ? 'check_circle' : 'error'} size="xs" />
                   <span className="font-medium">

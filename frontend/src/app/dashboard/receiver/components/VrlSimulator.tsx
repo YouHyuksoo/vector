@@ -351,7 +351,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
                         onClick={() => setMultiRowMode(m)}
                         className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
                           multiRowMode === m
-                            ? 'bg-info/20 text-info border border-info/40'
+                            ? 'bg-info/20 text-text dark:text-white border border-info/40'
                             : 'text-muted-foreground hover:text-text'
                         }`}
                       >
@@ -370,7 +370,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
                           onClick={() => setKvDelimiter(d)}
                           className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
                             kvDelimiter === d
-                              ? 'bg-info/20 text-info border border-info/40'
+                              ? 'bg-info/20 text-text dark:text-white border border-info/40'
                               : 'text-muted-foreground hover:text-text'
                           }`}
                         >
@@ -408,7 +408,7 @@ export function VrlSimulator({ onApplied }: VrlSimulatorProps) {
                         onClick={() => setHasHeader(v)}
                         className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
                           hasHeader === v
-                            ? 'bg-info/20 text-info border border-info/40'
+                            ? 'bg-info/20 text-text dark:text-white border border-info/40'
                             : 'text-muted-foreground hover:text-text'
                         }`}
                       >

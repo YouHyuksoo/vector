@@ -28,7 +28,7 @@ export default function DocTopicList({ selectedId, onSelect }: DocTopicListProps
         onClick={() => onSelect(topic.id)}
         className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200
           ${active
-            ? 'bg-primary/10 text-primary border border-primary/20 font-bold'
+            ? 'bg-primary/10 text-text dark:text-white border border-primary/20 font-bold'
             : 'text-text dark:text-white hover:bg-surface dark:hover:bg-surface-dark'
           }`}
       >

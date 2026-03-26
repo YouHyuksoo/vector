@@ -234,9 +234,9 @@ export default function MappingPage() {
                       <Icon name="table_chart" size="xs" className="text-muted-foreground" />
                       <span className="font-mono text-base font-bold text-primary">{tbl.selected}</span>
                       <span className="text-sm text-muted-foreground">{tbl.columns.length} {t('mapping.columns')}</span>
-                      {logType && <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary">{logType}</span>}
+                      {logType && <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-text dark:text-white">{logType}</span>}
                       {mappedCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-success/10 text-success">
+                        <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-success/10 text-text dark:text-white">
                           {mappedCount} {t('mapping.mapped')}
                         </span>
                       )}

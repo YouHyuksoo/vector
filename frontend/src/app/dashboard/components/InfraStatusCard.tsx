@@ -79,9 +79,9 @@ export function InfraStatusCard({ data }: Props) {
           </span>
           <button onClick={toggleVector} disabled={vecLoading}
             className={`font-mono text-xs font-bold px-2.5 py-1 rounded-md border transition-all
-              ${vecLoading ? 'bg-warning/10 text-warning border-warning/30 cursor-wait'
-                : data.vector.running ? 'bg-error/10 text-error border-error/30 hover:bg-error/20'
-                : 'bg-success/10 text-success border-success/30 hover:bg-success/20'}`}>
+              ${vecLoading ? 'bg-warning/10 text-text dark:text-white border-warning/30 cursor-wait'
+                : data.vector.running ? 'bg-error/10 text-text dark:text-white border-error/30 hover:bg-error/20'
+                : 'bg-success/10 text-text dark:text-white border-success/30 hover:bg-success/20'}`}>
             {vecLoading ? t('infra.loading') : data.vector.running ? t('infra.stop') : t('infra.start')}
           </button>
         </div>

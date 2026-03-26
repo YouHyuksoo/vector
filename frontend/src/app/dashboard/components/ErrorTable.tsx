@@ -75,10 +75,10 @@ export function ErrorTable({ logs }: { logs: ProcessLogRow[] }) {
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-bold font-mono bg-primary/10 text-primary">{e.SOURCE_TABLE}</span>
+                    <span className="inline-block px-2 py-0.5 rounded text-xs font-bold font-mono bg-primary/10 text-text dark:text-white">{e.SOURCE_TABLE}</span>
                   </td>
                   <td className="px-4 py-2.5 whitespace-nowrap">
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-bold font-mono bg-info/10 text-info">{e.EQUIPMENT_ID}</span>
+                    <span className="inline-block px-2 py-0.5 rounded text-xs font-bold font-mono bg-info/10 text-text dark:text-white">{e.EQUIPMENT_ID}</span>
                   </td>
                   <td className={`px-4 py-2.5 text-sm max-w-xs truncate ${e.STATUS === 'ERROR' ? 'text-error' : 'text-muted-foreground'}`} title={e.MESSAGE}>{e.MESSAGE}</td>
                 </tr>
