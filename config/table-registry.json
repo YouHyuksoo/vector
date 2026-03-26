@@ -1964,11 +1964,39 @@
       "COLUMN_ORDER": 2
     },
     {
-      "COLUMN_NAME": "LOG_ROWS",
+      "COLUMN_NAME": "WORK_ORDER_NO",
       "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.ROWS",
+      "SOURCE_FIELD": "data.WORK_ORDER_NO",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 3
+    },
+    {
+      "COLUMN_NAME": "MAIN_BARCODE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MAIN_BARCODE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 4
+    },
+    {
+      "COLUMN_NAME": "MARKED_BARCODE",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.MARKED_BARCODE",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 5
+    },
+    {
+      "COLUMN_NAME": "MARKING_DT",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.MARKING_DT",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 6
+    },
+    {
+      "COLUMN_NAME": "EQUIPMENT_CD",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.EQUIPMENT_CD",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 7
     }
   ]
 }
