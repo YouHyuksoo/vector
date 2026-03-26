@@ -11,7 +11,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const [clock, setClock] = useState('');
 
   useEffect(() => {
-    const tick = () => setClock(new Date().toLocaleTimeString('ko-KR', { hour12: false }));
+    const tick = () => setClock(new Date().toLocaleTimeString([], { hour12: false }));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);

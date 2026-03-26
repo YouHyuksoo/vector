@@ -59,9 +59,7 @@ function FileTable({ files, t }: { files: FileEntry[]; t: (k: string) => string 
                 <td className="py-1 pr-2 truncate max-w-[200px]" title={`${f.dir}\\${f.name}`}>{f.name}</td>
                 <td className="py-1 pr-2 text-right text-muted-foreground">{formatBytes(bytes)}</td>
                 <td className="py-1 text-right text-muted-foreground whitespace-nowrap">
-                  {mod ? new Date(mod).toLocaleString('ko-KR', {
-                    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
-                  }) : '—'}
+                  {mod ?? '—'}
                 </td>
               </tr>
             );

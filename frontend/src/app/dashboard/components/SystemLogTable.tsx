@@ -116,15 +116,6 @@ export function SystemLogTable({ entries, loading }: SystemLogTableProps) {
 
 /** ISO 타임스탬프를 HH:mm:ss.SSS 형식으로 변환 */
 function formatTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
-  } catch {
-    return iso;
-  }
+  if (!iso) return '—';
+  return iso.replace('T', ' ').replace(/\.\d+Z$/, '').replace('Z', '');
 }

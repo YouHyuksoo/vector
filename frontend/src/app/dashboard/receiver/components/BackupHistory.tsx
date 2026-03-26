@@ -82,11 +82,8 @@ export function BackupHistory({ refreshKey, onRestored }: BackupHistoryProps) {
   };
 
   const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleString('ko-KR', {
-      month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-    });
+    if (!iso) return '—';
+    return iso.replace('T', ' ').replace(/\.\d+Z$/, '').replace('Z', '');
   };
 
   const formatSize = (bytes: number) => {

@@ -253,7 +253,7 @@ export default function UploadPage() {
                     <td className="py-2 px-3 font-mono text-text dark:text-white">{f.equipmentId}</td>
                     <td className="py-2 px-3 text-text dark:text-white">{f.filename}</td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{formatSize(f.size)}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{new Date(f.uploadedAt).toLocaleString('ko-KR')}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{f.uploadedAt ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -60,7 +60,7 @@ function ActivityPanel({ logs, t }: { logs: LogEntry[]; t: (k: string) => string
           {logs.map((log, i) => (
             <tr key={log.LOG_ID ?? i} className="border-b border-border/10 dark:border-border-dark/10 last:border-0">
               <td className="py-1 pr-2 text-muted-foreground whitespace-nowrap">
-                {log.CREATED_AT ? new Date(log.CREATED_AT).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '—'}
+                {log.CREATED_AT ?? '—'}
               </td>
               <td className="py-1 pr-2 text-muted-foreground truncate max-w-[80px]">{log.SOURCE_TABLE || '—'}</td>
               <td className="py-1 pr-2">

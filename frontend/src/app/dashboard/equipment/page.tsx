@@ -39,7 +39,7 @@ export default function EquipmentDashboardPage() {
       <div className="flex items-center justify-between text-sm text-muted-foreground pt-4 border-t border-border dark:border-border-dark">
         <span>{t('dashboard.copyright')} &copy; 2026</span>
         <div className="flex items-center gap-3">
-          {lastUpdate && <span>{t('dashboard.updated')} {lastUpdate.toLocaleTimeString('ko-KR', { hour12: false })}</span>}
+          {lastUpdate && <span>{t('dashboard.updated')} {lastUpdate.toLocaleTimeString([], { hour12: false })}</span>}
           {error && <span className="text-error">{error}</span>}
           <span className="px-2 py-0.5 rounded bg-primary/10 text-text dark:text-white font-mono text-xs font-bold">
             {data.server.nodeEnv}
