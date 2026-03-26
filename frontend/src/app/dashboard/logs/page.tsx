@@ -32,12 +32,10 @@ export default function LogsPage() {
   }, []);
 
   const fetchLogs = async (table: string) => {
-    if (!table) return;
+    if (!table || !startDate || !endDate) return;
     setLoading(true);
     try {
-      let url = `/api/monitor/logs?table=${table}&limit=${limit}`;
-      if (startDate) url += `&startDate=${startDate}`;
-      if (endDate) url += `&endDate=${endDate}`;
+      const url = `/api/monitor/logs?table=${table}&limit=${limit}&startDate=${startDate}&endDate=${endDate}`;
       const d = await apiFetch<LogData>(url);
       setLogData(d);
     } catch { setLogData(null); }
@@ -46,7 +44,7 @@ export default function LogsPage() {
 
   const handleSelect = (tbl: string) => {
     setSelected(tbl);
-    fetchLogs(tbl);
+    setLogData(null);
   };
 
   return (
@@ -84,7 +82,7 @@ export default function LogsPage() {
         <div className="w-24">
           <Input label={t('logs.limit')} type="number" value={limit} onChange={e => setLimit(Number(e.target.value))} />
         </div>
-        <Button variant="secondary" leftIcon="refresh" onClick={() => fetchLogs(selected)} disabled={!selected}>
+        <Button variant="secondary" leftIcon="refresh" onClick={() => fetchLogs(selected)} disabled={!selected || !startDate || !endDate}>
           {t('logs.reload')}
         </Button>
       </div>
