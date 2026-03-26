@@ -21,8 +21,8 @@ export default function LogsPage() {
   const [logData, setLogData] = useState<LogData | null>(null);
   const [loading, setLoading] = useState(false);
   const [limit, setLimit] = useState(50);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { t } = useI18n();
 
   useEffect(() => {
