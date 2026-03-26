@@ -21,6 +21,8 @@ export default function LogsPage() {
   const [logData, setLogData] = useState<LogData | null>(null);
   const [loading, setLoading] = useState(false);
   const [limit, setLimit] = useState(50);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const { t } = useI18n();
 
   useEffect(() => {
@@ -33,7 +35,10 @@ export default function LogsPage() {
     if (!table) return;
     setLoading(true);
     try {
-      const d = await apiFetch<LogData>(`/api/monitor/logs?table=${table}&limit=${limit}`);
+      let url = `/api/monitor/logs?table=${table}&limit=${limit}`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
+      const d = await apiFetch<LogData>(url);
       setLogData(d);
     } catch { setLogData(null); }
     setLoading(false);
@@ -63,6 +68,18 @@ export default function LogsPage() {
             <option value="">{t('logs.selectTable')}</option>
             {tables.map(tbl => <option key={tbl} value={tbl}>{tbl}</option>)}
           </select>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1.5">{t('logs.startDate')}</label>
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+            className="px-3 py-2.5 rounded-lg bg-surface dark:bg-surface-dark border border-border dark:border-border-dark
+              text-sm text-text dark:text-white" />
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1.5">{t('logs.endDate')}</label>
+          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+            className="px-3 py-2.5 rounded-lg bg-surface dark:bg-surface-dark border border-border dark:border-border-dark
+              text-sm text-text dark:text-white" />
         </div>
         <div className="w-24">
           <Input label={t('logs.limit')} type="number" value={limit} onChange={e => setLimit(Number(e.target.value))} />

@@ -571,6 +571,8 @@
     "selectTable": "테이블 선택...",
     "limit": "제한",
     "reload": "새로고침",
+    "startDate": "시작일",
+    "endDate": "종료일",
     "selectPrompt": "테이블을 선택하여 로그를 조회하세요",
     "noData": "데이터 없음",
     "rows": "행"

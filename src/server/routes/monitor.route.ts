@@ -1165,7 +1165,9 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   /** 로그 데이터 조회 */
   app.get('/api/monitor/logs', async (request, reply) => {
-    const { table, limit: limitStr } = request.query as { table?: string; limit?: string };
+    const { table, limit: limitStr, startDate, endDate } = request.query as {
+      table?: string; limit?: string; startDate?: string; endDate?: string;
+    };
     if (!table || !/^[A-Z_][A-Z0-9_]*$/i.test(table)) {
       return reply.status(400).send({ error: 'Invalid or missing table name' });
     }
@@ -1185,10 +1187,25 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         return reply.send({ columns: [], rows: [] });
       }
 
-      // 데이터 조회 (최신순)
+      // 날짜 필터 컬럼 결정 (LOG_TIMESTAMP 또는 CREATED_AT)
+      const dateCol = columns.includes('LOG_TIMESTAMP') ? 'LOG_TIMESTAMP'
+        : columns.includes('CREATED_AT') ? 'CREATED_AT' : null;
+
+      // 데이터 조회 (최신순 + 날짜 필터)
+      const binds: Record<string, unknown> = { lim: rowLimit };
+      const whereClauses: string[] = [];
+      if (dateCol && startDate) {
+        whereClauses.push(`${dateCol} >= TO_TIMESTAMP(:sd, 'YYYY-MM-DD HH24:MI:SS')`);
+        binds.sd = startDate.length === 10 ? `${startDate} 00:00:00` : startDate;
+      }
+      if (dateCol && endDate) {
+        whereClauses.push(`${dateCol} <= TO_TIMESTAMP(:ed, 'YYYY-MM-DD HH24:MI:SS')`);
+        binds.ed = endDate.length === 10 ? `${endDate} 23:59:59` : endDate;
+      }
+      const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
       const sql = `SELECT ${columns.join(', ')} FROM ${tableName}
-                    ORDER BY ROWID DESC FETCH FIRST :lim ROWS ONLY`;
-      const result = await conn.execute(sql, { lim: rowLimit });
+                    ${whereStr} ORDER BY ROWID DESC FETCH FIRST :lim ROWS ONLY`;
+      const result = await conn.execute(sql, binds);
       return reply.send({ columns, rows: result.rows ?? [] });
     } catch (err) {
       return reply.status(500).send({ error: String(err) });

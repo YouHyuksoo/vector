@@ -571,6 +571,8 @@
     "selectTable": "Select table...",
     "limit": "Limit",
     "reload": "Reload",
+    "startDate": "Start Date",
+    "endDate": "End Date",
     "selectPrompt": "Select a table to view logs",
     "noData": "No data",
     "rows": "rows"

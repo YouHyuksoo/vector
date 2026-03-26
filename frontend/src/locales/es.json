@@ -571,6 +571,8 @@
     "selectTable": "Seleccionar tabla...",
     "limit": "Límite",
     "reload": "Recargar",
+    "startDate": "Fecha Inicio",
+    "endDate": "Fecha Fin",
     "selectPrompt": "Seleccione una tabla para ver los logs",
     "noData": "Sin datos",
     "rows": "filas"
