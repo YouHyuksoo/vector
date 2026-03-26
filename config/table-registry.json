@@ -1920,15 +1920,15 @@
       "COLUMN_ORDER": 3
     },
     {
-      "COLUMN_NAME": "PCB_NO",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.PCB_NO",
+      "COLUMN_NAME": "ARRAY_NO",
+      "DATA_TYPE": "VARCHAR2(50)",
+      "SOURCE_FIELD": "data.ARRAY_NO",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 4
     },
     {
       "COLUMN_NAME": "RESULT",
-      "DATA_TYPE": "VARCHAR2(500)",
+      "DATA_TYPE": "VARCHAR2(50)",
       "SOURCE_FIELD": "data.RESULT",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 5
@@ -1941,137 +1941,11 @@
       "COLUMN_ORDER": 6
     },
     {
-      "COLUMN_NAME": "DAY",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.DAY",
+      "COLUMN_NAME": "TEST_TIME",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.TEST_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 7
-    },
-    {
-      "COLUMN_NAME": "LOG_TIME",
-      "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.TIME",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 8
-    },
-    {
-      "COLUMN_NAME": "SW_VER",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.SW_VER",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 9
-    },
-    {
-      "COLUMN_NAME": "MCU_HEX_CRC_1",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_HEX_CRC_1",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 10
-    },
-    {
-      "COLUMN_NAME": "MCU_HEX_CRC_2",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_HEX_CRC_2",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 11
-    },
-    {
-      "COLUMN_NAME": "MCU_HEX_CRC_3",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_HEX_CRC_3",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 12
-    },
-    {
-      "COLUMN_NAME": "MCU_HEX_CRC_4",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_HEX_CRC_4",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 13
-    },
-    {
-      "COLUMN_NAME": "MCU_HEX_CRC_5",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_HEX_CRC_5",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 14
-    },
-    {
-      "COLUMN_NAME": "MCU_HEX_CRC_6",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_HEX_CRC_6",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 15
-    },
-    {
-      "COLUMN_NAME": "MCU_HEX_CRC_7",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_HEX_CRC_7",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 16
-    },
-    {
-      "COLUMN_NAME": "ROM_CRC",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.ROM_CRC",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 17
-    },
-    {
-      "COLUMN_NAME": "NAME",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.NAME",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 18
-    },
-    {
-      "COLUMN_NAME": "MCU_CHKSUM",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_CHKSUM",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 19
-    },
-    {
-      "COLUMN_NAME": "ROM_CHKSUM",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.ROM_CHKSUM",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 20
-    },
-    {
-      "COLUMN_NAME": "MCU_READ_CHKSUM",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MCU_READ_CHKSUM",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 21
-    },
-    {
-      "COLUMN_NAME": "ROM_READ_CHKSUM",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.ROM_READ_CHKSUM",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 22
-    },
-    {
-      "COLUMN_NAME": "MCU_RESULT",
-      "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "data.MCU_RESULT",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 23
-    },
-    {
-      "COLUMN_NAME": "ROM_RESULT",
-      "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "data.ROM_RESULT",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 24
-    },
-    {
-      "COLUMN_NAME": "DRV_IC_RESULT",
-      "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "data.DRV_IC_RESULT",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 25
     }
   ],
   "LOG_MARKING": [
