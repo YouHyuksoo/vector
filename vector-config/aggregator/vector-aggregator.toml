@@ -472,42 +472,8 @@ if .equipment_type == "SP" {
 
   lines = split!(.message, "\n")
 
-  # Parse first data row (line 1) into individual .data.FIELD values
-  first_row = split(to_string!(get!(lines, [1])), ",")
-  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
-  .data.LABEL = strip_whitespace(to_string!(get!(first_row, [1])))
-  .data.ARRAY_RESULT = strip_whitespace(to_string!(get!(first_row, [2])))
-  .data.PCB_NO = strip_whitespace(to_string!(get!(first_row, [3])))
-  .data.STEP_RESULT = strip_whitespace(to_string!(get!(first_row, [4])))
-  .data.MODEL = strip_whitespace(to_string!(get!(first_row, [5])))
-  .data.START_TIME = strip_whitespace(to_string!(get!(first_row, [6])))
-  .data.END_TIME = strip_whitespace(to_string!(get!(first_row, [7])))
-  .data.NO = strip_whitespace(to_string!(get!(first_row, [8])))
-  .data.NAME = strip_whitespace(to_string!(get!(first_row, [9])))
-  .data.NAME_DETAIL = strip_whitespace(to_string!(get!(first_row, [10])))
-  .data.VOLT_V = strip_whitespace(to_string!(get!(first_row, [11])))
-  .data.MIN_1 = strip_whitespace(to_string!(get!(first_row, [12])))
-  .data.TYP_1 = strip_whitespace(to_string!(get!(first_row, [13])))
-  .data.MAX_2 = strip_whitespace(to_string!(get!(first_row, [14])))
-  .data.MEAS_1 = strip_whitespace(to_string!(get!(first_row, [15])))
-  .data.MIN_2 = strip_whitespace(to_string!(get!(first_row, [16])))
-  .data.TYP_2 = strip_whitespace(to_string!(get!(first_row, [17])))
-  .data.MAX_2_2 = strip_whitespace(to_string!(get!(first_row, [18])))
-  .data.MEAS_2 = strip_whitespace(to_string!(get!(first_row, [19])))
-  .data.CAN_STD = strip_whitespace(to_string!(get!(first_row, [20])))
-  .data.MEAS_CAN = strip_whitespace(to_string!(get!(first_row, [21])))
-  .data.DTC_CODE = strip_whitespace(to_string!(get!(first_row, [22])))
-  .data.MEAS_DTC_CODE = strip_whitespace(to_string!(get!(first_row, [23])))
-  .data.LABEL_BCODE_1 = strip_whitespace(to_string!(get!(first_row, [24])))
-  .data.LABEL_BCODE_2 = strip_whitespace(to_string!(get!(first_row, [25])))
-  .data.STEP_TIME = strip_whitespace(to_string!(get!(first_row, [26])))
-  .data.CAN_TX_1 = strip_whitespace(to_string!(get!(first_row, [27])))
-  .data.CAN_RX_1 = strip_whitespace(to_string!(get!(first_row, [28])))
-  .data.CAN_TX_2 = strip_whitespace(to_string!(get!(first_row, [29])))
-  .data.DATA_RX_2 = strip_whitespace(to_string!(get!(first_row, [30])))
-
-  # Parse ALL data rows into .data.TEST_RESULTS array
-  .data.TEST_RESULTS = []
+  # CSV 모든 데이터 행을 .data.ROWS 배열로 파싱 — Node.js가 행별로 INSERT
+  .data.ROWS = []
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
     if row != "" {
@@ -545,7 +511,7 @@ if .equipment_type == "SP" {
         "CAN_TX_2": strip_whitespace(to_string!(get!(cols, [29]))),
         "DATA_RX_2": strip_whitespace(to_string!(get!(cols, [30])))
       }
-      .data.TEST_RESULTS = push(.data.TEST_RESULTS, item)
+      .data.ROWS = push(.data.ROWS, item)
     }
   }
 } else if .equipment_type == "METALMASK" {
