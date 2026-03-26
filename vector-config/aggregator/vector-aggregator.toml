@@ -323,37 +323,7 @@ if .equipment_type == "SP" {
 
   lines = split!(.message, "\n")
 
-  # Parse header row (line 0) — not used for field names, but we know column count
-  header = split(to_string!(get!(lines, [0])), ",")
-  # Expected columns: 24
-
-  # Parse first data row (line 1) into individual .data.FIELD values
-  first_row = split(to_string!(get!(lines, [1])), ",")
-  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
-  .data.PCB_NO = strip_whitespace(to_string!(get!(first_row, [1])))
-  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [2])))
-  .data.MODEL = strip_whitespace(to_string!(get!(first_row, [3])))
-  .data.DAY = strip_whitespace(to_string!(get!(first_row, [4])))
-  .data.TIME = strip_whitespace(to_string!(get!(first_row, [5])))
-  .data.SW_VER = strip_whitespace(to_string!(get!(first_row, [6])))
-  .data.MCU_HEX_CRC_1 = strip_whitespace(to_string!(get!(first_row, [7])))
-  .data.MCU_HEX_CRC_2 = strip_whitespace(to_string!(get!(first_row, [8])))
-  .data.MCU_HEX_CRC_3 = strip_whitespace(to_string!(get!(first_row, [9])))
-  .data.MCU_HEX_CRC_4 = strip_whitespace(to_string!(get!(first_row, [10])))
-  .data.MCU_HEX_CRC_5 = strip_whitespace(to_string!(get!(first_row, [11])))
-  .data.MCU_HEX_CRC_6 = strip_whitespace(to_string!(get!(first_row, [12])))
-  .data.MCU_HEX_CRC_7 = strip_whitespace(to_string!(get!(first_row, [13])))
-  .data.ROM_CRC = strip_whitespace(to_string!(get!(first_row, [14])))
-  .data.NAME = strip_whitespace(to_string!(get!(first_row, [15])))
-  .data.MCU_CHKSUM = strip_whitespace(to_string!(get!(first_row, [16])))
-  .data.ROM_CHKSUM = strip_whitespace(to_string!(get!(first_row, [17])))
-  .data.MCU_READ_CHKSUM = strip_whitespace(to_string!(get!(first_row, [18])))
-  .data.ROM_READ_CHKSUM = strip_whitespace(to_string!(get!(first_row, [19])))
-  .data.MCU_RESULT = strip_whitespace(to_string!(get!(first_row, [20])))
-  .data.ROM_RESULT = strip_whitespace(to_string!(get!(first_row, [21])))
-  .data.DRV_IC_RESULT = strip_whitespace(to_string!(get!(first_row, [22])))
-
-  # Parse ALL data rows (lines 1+) into .data.ROWS array
+  # CSV 모든 데이터 행을 .data.ROWS 배열로 파싱 — Node.js가 행별로 INSERT
   .data.ROWS = []
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
@@ -622,26 +592,8 @@ if .equipment_type == "SP" {
   # - All data rows are parsed into .data.RESULTS array for detailed records
 
   lines = split!(.message, "\n")
-  header = split(to_string!(get!(lines, [0])), ",")
-
-  # Parse first data row (line 1) into individual fields
-  first_row = split(to_string!(get!(lines, [1])), ",")
-  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
-  .data.DEVICE = strip_whitespace(to_string!(get!(first_row, [1])))
-  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [2])))
-  .data.MODEL = strip_whitespace(to_string!(get!(first_row, [3])))
-  .data.DATE = strip_whitespace(to_string!(get!(first_row, [4])))
-  .data.TIME = strip_whitespace(to_string!(get!(first_row, [5])))
-  .data.TYPE = strip_whitespace(to_string!(get!(first_row, [6])))
-  .data.VOLT_INPUT_V = strip_whitespace(to_string!(get!(first_row, [7])))
-  .data.VOLT_VALUE_V = strip_whitespace(to_string!(get!(first_row, [8])))
-  .data.CURR_RESULT = strip_whitespace(to_string!(get!(first_row, [9])))
-  .data.CURR_MIN_MA = strip_whitespace(to_string!(get!(first_row, [10])))
-  .data.CURR_MAX_MA = strip_whitespace(to_string!(get!(first_row, [11])))
-  .data.CURR_VALUE_MA = strip_whitespace(to_string!(get!(first_row, [12])))
-
-  # Parse all data rows into RESULTS array
-  .data.RESULTS = []
+  # CSV 모든 데이터 행을 .data.ROWS 배열로 파싱 — Node.js가 행별로 INSERT
+  .data.ROWS = []
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
     if row != "" {
@@ -679,7 +631,7 @@ if .equipment_type == "SP" {
         "LUM_VALUE": strip_whitespace(to_string!(get!(cols, [29]))),
         "LUM_RESULT": strip_whitespace(to_string!(get!(cols, [30])))
       }
-      .data.RESULTS = push(.data.RESULTS, item)
+      .data.ROWS = push(.data.ROWS, item)
     }
   }
 } else if .equipment_type == "DOWNLOAD" {
@@ -745,24 +697,7 @@ if .equipment_type == "SP" {
 } else if .equipment_type == "LOWCURRENT" {
   lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_LOWCURRENT"
-  first_row = split!(to_string!(get!(lines, [1])), ",")
-
-  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
-  .data.MODEL_NAME = strip_whitespace(to_string!(get!(first_row, [1])))
-  .data.DATE = strip_whitespace(to_string!(get!(first_row, [2])))
-  .data.START_TIME = strip_whitespace(to_string!(get!(first_row, [3])))
-  .data.END_TIME = strip_whitespace(to_string!(get!(first_row, [4])))
-  .data.CHANNEL = strip_whitespace(to_string!(get!(first_row, [5])))
-  .data.MODE = strip_whitespace(to_string!(get!(first_row, [6])))
-  .data.SET_CURRENT_UA = strip_whitespace(to_string!(get!(first_row, [7])))
-  .data.SET_VOLTAGE_V = strip_whitespace(to_string!(get!(first_row, [8])))
-  .data.MIN_RANGE = strip_whitespace(to_string!(get!(first_row, [9])))
-  .data.MAX_RANGE = strip_whitespace(to_string!(get!(first_row, [10])))
-  .data.MEASURED_VALUE = strip_whitespace(to_string!(get!(first_row, [11])))
-  .data.MEASURE_RESULT = strip_whitespace(to_string!(get!(first_row, [12])))
-  .data.DASH = strip_whitespace(to_string!(get!(first_row, [13])))
-  .data.OVERALL_RESULT = strip_whitespace(to_string!(get!(first_row, [14])))
-
+  # CSV 모든 데이터 행을 .data.ROWS 배열로 파싱 — Node.js가 행별로 INSERT
   .data.ROWS = []
   detail_lines = slice!(lines, 1)
   for_each(array!(detail_lines)) -> |_idx, row| {
@@ -807,16 +742,7 @@ if .equipment_type == "SP" {
   # Column 4: Flow Max(g) -> FLOW_MAX_G
   # Column 5: Result -> RESULT
 
-  # Parse first data row (line 1) into individual .data fields
-  first_row = split(to_string!(get!(lines, [1])), ",")
-  .data.DATETIME = strip_whitespace(to_string!(get!(first_row, [0])))
-  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [1])))
-  .data.FLOW_METER_G = strip_whitespace(to_string!(get!(first_row, [2])))
-  .data.FLOW_MIN_G = strip_whitespace(to_string!(get!(first_row, [3])))
-  .data.FLOW_MAX_G = strip_whitespace(to_string!(get!(first_row, [4])))
-  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [5])))
-
-  # Parse ALL data rows into .data.ROWS array (including first row)
+  # CSV 모든 데이터 행을 .data.ROWS 배열로 파싱 — Node.js가 행별로 INSERT
   .data.ROWS = []
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
