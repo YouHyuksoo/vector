@@ -267,10 +267,8 @@ if .equipment_type == "SP" {
     .data.RESULT       = strip_whitespace(to_string!(get!(board, [4])))
     .data.START_DATE   = strip_whitespace(to_string!(get!(board, [5])))
     .data.END_DATE     = strip_whitespace(to_string!(get!(board, [6])))
-    .data.REVIEWED_DATE = strip_whitespace(to_string!(get!(board, [7])))
-    .data.OPERATOR     = strip_whitespace(to_string!(get!(board, [8])))
-    .data.BOARD_SIDE   = strip_whitespace(to_string!(get!(board, [9])))
-    .data.LANE         = strip_whitespace(to_string!(get!(board, [10])))
+    .data.OPERATOR     = strip_whitespace(to_string!(get!(board, [7])))
+    .data.LANE         = strip_whitespace(to_string!(get!(board, [8])))
 
     # ── Inspection 상세 파싱 (줄6~) ──
     .data.INSPECTIONS = []
@@ -278,15 +276,13 @@ if .equipment_type == "SP" {
     for_each(array!(detail_lines)) -> |_idx, row| {
       if row != "" {
         cols = split(to_string!(row), ",")
-        if length(cols) >= 7 {
+        if length(cols) >= 5 {
           inspection = {
             "MODULE_ID":   strip_whitespace(to_string!(get!(cols, [0]))),
             "REF_ID":      strip_whitespace(to_string!(get!(cols, [1]))),
             "WINDOW_NO":   strip_whitespace(to_string!(get!(cols, [2]))),
             "DEFECT_TYPE": strip_whitespace(to_string!(get!(cols, [3]))),
             "PART_NAME":   strip_whitespace(to_string!(get!(cols, [4]))),
-            "REVIEW":      strip_whitespace(to_string!(get!(cols, [5]))),
-            "FALSE_CALL":  strip_whitespace(to_string!(get!(cols, [6]))),
           }
           .data.INSPECTIONS = push(.data.INSPECTIONS, inspection)
         }
@@ -473,13 +469,11 @@ if .equipment_type == "SP" {
         "MEAS_CAN": strip_whitespace(to_string!(get!(cols, [21]))),
         "DTC_CODE": strip_whitespace(to_string!(get!(cols, [22]))),
         "MEAS_DTC_CODE": strip_whitespace(to_string!(get!(cols, [23]))),
-        "LABEL_BCODE_1": strip_whitespace(to_string!(get!(cols, [24]))),
-        "LABEL_BCODE_2": strip_whitespace(to_string!(get!(cols, [25]))),
-        "STEP_TIME": strip_whitespace(to_string!(get!(cols, [26]))),
-        "CAN_TX_1": strip_whitespace(to_string!(get!(cols, [27]))),
-        "CAN_RX_1": strip_whitespace(to_string!(get!(cols, [28]))),
-        "CAN_TX_2": strip_whitespace(to_string!(get!(cols, [29]))),
-        "DATA_RX_2": strip_whitespace(to_string!(get!(cols, [30])))
+        "STEP_TIME": strip_whitespace(to_string!(get!(cols, [24]))),
+        "CAN_TX_1": strip_whitespace(to_string!(get!(cols, [25]))),
+        "CAN_RX_1": strip_whitespace(to_string!(get!(cols, [26]))),
+        "CAN_TX_2": strip_whitespace(to_string!(get!(cols, [27]))),
+        "DATA_RX_2": strip_whitespace(to_string!(get!(cols, [28])))
       }
       .data.ROWS = push(.data.ROWS, item)
     }
