@@ -2417,23 +2417,20 @@ PATTERN 1 — Single-line CSV (no header):
 
 PATTERN 2 — Multi-line CSV with header row (MOST COMMON for equipment logs):
   lines = split!(.message, "\\n")
-  # Skip header (line 0), parse first data row (line 1)
-  first_row = split(to_string!(get!(lines, [1])), ",")
-  .data.BARCODE = strip_whitespace(to_string!(get!(first_row, [0])))
-  .data.RESULT = strip_whitespace(to_string!(get!(first_row, [2])))
-  .data.VALUE = strip_whitespace(to_string!(get!(first_row, [5])))
-
-  # Parse ALL data rows into array:
-  .data.DETAILS = []
-  detail_lines = slice!(lines, 1)
-  for_each(array!(detail_lines)) -> |_idx, row| {
+  # Skip header (line 0), parse ALL data rows (lines 1+) into .data.ROWS array
+  # CRITICAL: Node.js processLog detects .data.ROWS array and INSERTs each row individually.
+  # NEVER use .data.DETAILS, .data.TEST_RESULTS, or any other name — ONLY .data.ROWS.
+  # NEVER parse the first row into individual .data.FIELD values — it's redundant with ROWS[0].
+  .data.ROWS = []
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
     if row != "" {
       cols = split(to_string!(row), ",")
       item = {
         "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
         "RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
       }
-      .data.DETAILS = push(.data.DETAILS, item)
+      .data.ROWS = push(.data.ROWS, item)
     }
   }
 
@@ -2451,13 +2448,14 @@ PATTERN 4 — Multi-section log (sections separated by section headers like "Pan
   .data.PANEL_RESULT = strip_whitespace(to_string!(get!(panel, [1])))
 
   # Section 3: Components (line 5 = header, line 6+ = data rows)
-  .data.COMPONENTS = []
+  # Use .data.ROWS for multi-row data — Node.js will INSERT each row individually
+  .data.ROWS = []
   component_lines = slice!(lines, 6)
   for_each(array!(component_lines)) -> |_idx, row| {
     if row != "" {
       cols = split(to_string!(row), ",")
       item = { "ID": strip_whitespace(to_string!(get!(cols, [0]))) }
-      .data.COMPONENTS = push(.data.COMPONENTS, item)
+      .data.ROWS = push(.data.ROWS, item)
     }
   }
 
@@ -2470,9 +2468,10 @@ STRATEGY:
 3. Use exact line indices: count from line 0 and verify which line contains actual data.
 4. For CSV with headers: use PATTERN 2. Map EVERY column from the header to a .data.FIELD.
 5. For multi-section logs: use PATTERN 4. Each section has label + header + data lines.
-6. Parse the first data row into individual .data.FIELD values for the board/summary info.
-7. If multiple data rows exist, also parse them into a .data.DETAILS or .data.ITEMS array.
+6. If multiple data rows exist, parse them ALL into .data.ROWS array. NEVER use .data.DETAILS, .data.ITEMS, .data.TEST_RESULTS — ONLY .data.ROWS.
+7. Do NOT parse the first row into individual .data.FIELD values separately — it creates duplicates. All rows go into .data.ROWS only.
 8. Name fields exactly matching the header column names (converted to UPPERCASE_SNAKE_CASE, spaces/special chars replaced with _).
+9. NEVER put an array into a single DB column — Oracle VARCHAR2(500) will overflow. The .data.ROWS array is handled specially by Node.js (row-by-row INSERT).
 9. ALL columns are parsed as strings — no numeric conversion. DB handles type casting at insert time.
 10. NEVER use dot prefix for local variables. ".panel_line" stores to the event — use "panel_line" instead.
 
