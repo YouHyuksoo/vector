@@ -86,6 +86,11 @@ jobs:
             /XF ".env" "ai-config.json" "ai-system-prompt.txt" "parse-fields.json" `
             /XD ".git" "vector-config" "config" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
 
+          # config/table-registry.json 강제 동기화 (VRL 컬럼 매핑 변경 시 필수)
+          if (!(Test-Path "$dst\config")) { New-Item -ItemType Directory -Path "$dst\config" -Force }
+          Copy-Item "$src\config\table-registry.json" "$dst\config\table-registry.json" -Force
+          Write-Host "table-registry.json synced"
+
           # vector-config: 서버에 없는 파일만 복사 (기존 파일 절대 덮어쓰지 않음)
           robocopy "$src\vector-config" "$dst\vector-config" /S /NFL /NDL /NJH /NJS /NC /NS /XN /XO /XC `
             /XD "backups"
