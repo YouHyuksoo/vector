@@ -91,8 +91,8 @@ jobs:
           Copy-Item "$src\config\table-registry.json" "$dst\config\table-registry.json" -Force
           Write-Host "table-registry.json synced"
 
-          # vector-config: 서버에 없는 파일만 복사 (기존 파일 절대 덮어쓰지 않음)
-          robocopy "$src\vector-config" "$dst\vector-config" /S /NFL /NDL /NJH /NJS /NC /NS /XN /XO /XC `
+          # vector-config: 항상 최신으로 덮어쓰기
+          robocopy "$src\vector-config" "$dst\vector-config" /S /NFL /NDL /NJH /NJS /NC /NS `
             /XD "backups"
 
           # vector-bin에서 다운로드용 파일만 동기화
