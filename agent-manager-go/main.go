@@ -1607,6 +1607,7 @@ func sendHeartbeat() {
 			"log_type":       logType,
 			"vector_running": running,
 			"pid":            pid,
+			"ip":             getLocalIP(),
 		},
 	}
 	data, _ := json.Marshal(payload)
@@ -1617,6 +1618,17 @@ func sendHeartbeat() {
 		return
 	}
 	resp.Body.Close()
+}
+
+// getLocalIP는 외부 연결 가능한 로컬 IPv4 주소를 반환한다
+func getLocalIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return ""
+	}
+	defer conn.Close()
+	addr := conn.LocalAddr().(*net.UDPAddr)
+	return addr.IP.String()
 }
 
 func httpGet(url string) (*http.Response, error) {
