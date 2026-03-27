@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { labelKey: 'nav.receiver', icon: 'download', href: '/dashboard/receiver' },
   { labelKey: 'nav.simulator', icon: 'science', href: '/dashboard/simulator' },
   { labelKey: 'nav.targetMapping', icon: 'swap_horiz', href: '/dashboard/mapping' },
-  { labelKey: 'nav.logViewer', icon: 'description', href: '/dashboard/logs' },
   { labelKey: 'nav.errors', icon: 'error', href: '/dashboard/errors' },
   { labelKey: 'nav.retry', icon: 'replay', href: '/dashboard/retry' },
   { labelKey: 'nav.logFileSearch', icon: 'folder_open', href: '/dashboard/log-files' },

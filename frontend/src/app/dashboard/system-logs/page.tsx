@@ -15,10 +15,11 @@ import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import { SystemLogTable, type LogEntry } from '../components/SystemLogTable';
 import { Pm2LogPanel } from '../components/Pm2LogPanel';
+import { ProcessLogPanel } from '../components/ProcessLogPanel';
 
 const POLL_INTERVAL = 5000;
 const LEVELS = ['all', 'debug', 'info', 'warn', 'error', 'fatal'] as const;
-type Tab = 'realtime' | 'pm2';
+type Tab = 'process' | 'realtime' | 'pm2';
 
 /** API 응답 타입 */
 interface SystemLogsResponse {
@@ -29,7 +30,7 @@ interface SystemLogsResponse {
 
 export default function SystemLogsPage() {
   const { t } = useI18n();
-  const [activeTab, setActiveTab] = useState<Tab>('realtime');
+  const [activeTab, setActiveTab] = useState<Tab>('process');
 
   const [level, setLevel] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -127,6 +128,13 @@ export default function SystemLogsPage() {
       {/* 탭 */}
       <div className="flex gap-6 border-b border-border dark:border-border-dark">
         <button
+          onClick={() => setActiveTab('process')}
+          className={`pb-2 px-1 text-sm transition-colors ${tabClass('process')}`}
+        >
+          <Icon name="table_chart" size="xs" className="inline mr-1" />
+          {t('systemLogs.tabProcess')}
+        </button>
+        <button
           onClick={() => setActiveTab('realtime')}
           className={`pb-2 px-1 text-sm transition-colors ${tabClass('realtime')}`}
         >
@@ -143,7 +151,9 @@ export default function SystemLogsPage() {
       </div>
 
       {/* 탭 내용 */}
-      {activeTab === 'realtime' ? (
+      {activeTab === 'process' ? (
+        <ProcessLogPanel />
+      ) : activeTab === 'realtime' ? (
         <>
           {/* 필터 바 */}
           <Card>

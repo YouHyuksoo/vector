@@ -822,6 +822,7 @@
     "autoOn": "Actualización automática",
     "autoOff": "Pausado",
     "searchPlaceholder": "Buscar mensajes de registro...",
+    "tabProcess": "Registros de Proceso",
     "tabRealtime": "Registros en Tiempo Real",
     "tabPm2Files": "Archivos de Registro PM2",
     "pm2File": "Archivo",

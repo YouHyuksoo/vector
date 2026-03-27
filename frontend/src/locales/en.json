@@ -822,6 +822,7 @@
     "autoOn": "Auto refresh",
     "autoOff": "Paused",
     "searchPlaceholder": "Search log messages...",
+    "tabProcess": "Process Logs",
     "tabRealtime": "Realtime Logs",
     "tabPm2Files": "PM2 Log Files",
     "pm2File": "File",
