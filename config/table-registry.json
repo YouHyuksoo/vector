@@ -1997,6 +1997,13 @@
       "SOURCE_FIELD": "data.EQUIPMENT_CD",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 7
+    },
+    {
+      "COLUMN_NAME": "ARRAY_NO",
+      "DATA_TYPE": "VARCHAR2(100)",
+      "SOURCE_FIELD": "data.ARRAY_NO",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 8
     }
   ]
 }

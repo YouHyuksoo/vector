@@ -817,7 +817,7 @@ if .equipment_type == "SP" {
 } else if .equipment_type == "MARKING" {
   .target_table = "LOG_MARKING"
   # Log Structure: MARKING equipment log (MULTI_ROW BATCH mode)
-  # Line 0: CSV header row (WORK_ORDER_NO,MAIN_BARCODE,MARKED_BARCODE,MARKING_DT,EQUIPMENT_CD)
+  # Line 0: CSV header row (WORK_ORDER_NO,MAIN_BARCODE,MARKED_BARCODE,MARKING_DT,EQUIPMENT_CD,ARRAY_NO)
   # Lines 1+: Data rows (multiple rows per batch)
   # All data rows must be parsed into .data.ROWS array — Node.js will INSERT each row individually
 
@@ -835,6 +835,7 @@ if .equipment_type == "SP" {
         "MARKED_BARCODE": strip_whitespace(to_string!(get!(cols, [2]))),
         "MARKING_DT": strip_whitespace(to_string!(get!(cols, [3]))),
         "EQUIPMENT_CD": strip_whitespace(to_string!(get!(cols, [4]))),
+        "ARRAY_NO": strip_whitespace(to_string!(get!(cols, [5]))),
       }
       .data.ROWS = push(.data.ROWS, item)
     }
