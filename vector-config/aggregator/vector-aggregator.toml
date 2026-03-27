@@ -310,13 +310,12 @@ if .equipment_type == "SP" {
 
 } else if .equipment_type == "ICT" {
   .target_table = "LOG_ICT"
-  # Log Structure: ICT 검사 로그
-  # Line 0: CSV header row (BARCODE,ARRAY,RESULT,MODEL,TIME)
-  # Lines 1+: data rows (5 columns)
+  # Log Structure: ICT multi-row CSV with header
+  # Line 0: header row (BARCODE,PCB NO,RESULT,MODEL,DAY,TIME,S/W VER,...)
+  # Lines 1+: data rows (23 columns, same as DOWNLOAD format)
 
   lines = split!(.message, "\n")
 
-  # CSV 모든 데이터 행을 .data.ROWS 배열로 파싱 — Node.js가 행별로 INSERT
   .data.ROWS = []
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
@@ -324,10 +323,28 @@ if .equipment_type == "SP" {
       cols = split(to_string!(row), ",")
       item = {
         "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
-        "ARRAY_NO": strip_whitespace(to_string!(get!(cols, [1]))),
+        "PCB_NO": strip_whitespace(to_string!(get!(cols, [1]))),
         "RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
         "MODEL": strip_whitespace(to_string!(get!(cols, [3]))),
-        "TEST_TIME": strip_whitespace(to_string!(get!(cols, [4]))),
+        "DAY": strip_whitespace(to_string!(get!(cols, [4]))),
+        "TIME": strip_whitespace(to_string!(get!(cols, [5]))),
+        "SW_VER": strip_whitespace(to_string!(get!(cols, [6]))),
+        "MCU_HEX_CRC_1": strip_whitespace(to_string!(get!(cols, [7]))),
+        "MCU_HEX_CRC_2": strip_whitespace(to_string!(get!(cols, [8]))),
+        "MCU_HEX_CRC_3": strip_whitespace(to_string!(get!(cols, [9]))),
+        "MCU_HEX_CRC_4": strip_whitespace(to_string!(get!(cols, [10]))),
+        "MCU_HEX_CRC_5": strip_whitespace(to_string!(get!(cols, [11]))),
+        "MCU_HEX_CRC_6": strip_whitespace(to_string!(get!(cols, [12]))),
+        "MCU_HEX_CRC_7": strip_whitespace(to_string!(get!(cols, [13]))),
+        "ROM_CRC": strip_whitespace(to_string!(get!(cols, [14]))),
+        "NAME": strip_whitespace(to_string!(get!(cols, [15]))),
+        "MCU_CHKSUM": strip_whitespace(to_string!(get!(cols, [16]))),
+        "ROM_CHKSUM": strip_whitespace(to_string!(get!(cols, [17]))),
+        "MCU_READ_CHKSUM": strip_whitespace(to_string!(get!(cols, [18]))),
+        "ROM_READ_CHKSUM": strip_whitespace(to_string!(get!(cols, [19]))),
+        "MCU_RESULT": strip_whitespace(to_string!(get!(cols, [20]))),
+        "ROM_RESULT": strip_whitespace(to_string!(get!(cols, [21]))),
+        "DRV_IC_RESULT": strip_whitespace(to_string!(get!(cols, [22]))),
       }
       .data.ROWS = push(.data.ROWS, item)
     }
