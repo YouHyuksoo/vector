@@ -803,8 +803,13 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       const exists = Number((chk.rows as Array<{ CNT: number }>)?.[0]?.CNT ?? 0) > 0;
 
       let created = false;
+      let renamedFrom: string | undefined;
       if (exists && body.forceRecreate) {
-        await conn.execute(`DROP TABLE ${upperName} CASCADE CONSTRAINTS PURGE`).catch(() => {});
+        const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+        const backupName = `${upperName}_BK_${ts}`;
+        await conn.execute(`ALTER TABLE ${upperName} RENAME TO ${backupName}`);
+        renamedFrom = backupName;
+        logger.info({ original: upperName, backup: backupName }, 'Table renamed as backup before recreate');
         await conn.execute(ddl);
         created = true;
       } else if (!exists) {
@@ -823,8 +828,8 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       let tomlSync: { success: boolean; backupName?: string } | undefined;
       tomlSync = syncTomlRouting(body.logType, 'TABLE', upperName, createTomlBackup);
 
-      logger.info({ tableName: upperName, logType: body.logType, existed: exists, created }, 'Auto-created/synced Oracle table + registry');
-      return reply.send({ success: true, tableName: upperName, ddl, columns, tomlSync, alreadyExisted: exists && !body.forceRecreate });
+      logger.info({ tableName: upperName, logType: body.logType, existed: exists, created, renamedFrom }, 'Auto-created/synced Oracle table + registry');
+      return reply.send({ success: true, tableName: upperName, ddl, columns, tomlSync, alreadyExisted: exists && !body.forceRecreate, renamedFrom });
     } catch (err) {
       const parsed = parseOracleError(err);
       logger.error({ err, tableName: upperName }, 'Failed to auto-create Oracle table');
