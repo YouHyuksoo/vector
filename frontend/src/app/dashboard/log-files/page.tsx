@@ -221,6 +221,27 @@ export default function LogFilesPage() {
     setDeleting(false);
   };
 
+  /** 단일 파일 다운로드 */
+  const handleDownload = (filePath: string) => {
+    const url = `/api/monitor/log-files/download?path=${encodeURIComponent(filePath)}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  /** 선택된 파일 일괄 다운로드 */
+  const handleDownloadSelected = () => {
+    const files = entries.filter(e => checked.has(e.name) && e.type === 'file');
+    if (files.length === 0) return;
+    files.forEach((file, i) => {
+      const filePath = currentPath ? `${currentPath}/${file.name}` : file.name;
+      setTimeout(() => handleDownload(filePath), i * 200);
+    });
+  };
+
   /** 경로를 breadcrumb 세그먼트로 분리 */
   const pathSegments = currentPath ? currentPath.split('/') : [];
 
@@ -289,9 +310,14 @@ export default function LogFilesPage() {
           </button>
         )}
         {checked.size > 0 && (
-          <Button variant="danger" leftIcon="delete" size="sm" onClick={handleDelete} disabled={deleting}>
-            {deleting ? '...' : `${t('logFiles.deleteSelected')} (${checked.size})`}
-          </Button>
+          <>
+            <Button variant="primary" leftIcon="download" size="sm" onClick={handleDownloadSelected}>
+              {t('logFiles.downloadSelected')} ({entries.filter(e => checked.has(e.name) && e.type === 'file').length})
+            </Button>
+            <Button variant="danger" leftIcon="delete" size="sm" onClick={handleDelete} disabled={deleting}>
+              {deleting ? '...' : `${t('logFiles.deleteSelected')} (${checked.size})`}
+            </Button>
+          </>
         )}
       </Card>
 
@@ -401,10 +427,19 @@ export default function LogFilesPage() {
                 <Icon name="description" size="xs" />
                 <span className="font-mono">{selectedFile}</span>
                 {fileContent && (
-                  <span className="ml-auto">
+                  <span className="ml-auto flex items-center gap-2">
                     {t('logFiles.total')
                       .replace('{total}', String(fileContent.total))
                       .replace('{filtered}', String(fileContent.filtered))}
+                    <button
+                      onClick={() => handleDownload(selectedFile!)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+                        text-primary hover:bg-primary/10 border border-primary/30 transition-colors"
+                      title={t('logFiles.download')}
+                    >
+                      <Icon name="download" size="xs" />
+                      {t('logFiles.download')}
+                    </button>
                   </span>
                 )}
               </div>
