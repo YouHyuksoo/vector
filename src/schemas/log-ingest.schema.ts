@@ -11,11 +11,14 @@ import { z } from 'zod';
 
 export const logRecordSchema = z.object({
   equipment_id: z.string().min(1),
+  equipment_type: z.string().optional(),
   log_type: z.string().min(1),
   target_type: z.enum(['TABLE', 'PROCEDURE']).default('TABLE'),
   target_table: z.string().min(1),
   timestamp: z.string(),
   data: z.record(z.unknown()),
+  raw_message: z.string().optional(),
+  filename: z.string().optional(),
 });
 
 /** Vector HTTP sink는 단일 객체 또는 JSON 배열로 전송, 수동 호출은 { logs: [...] } 형식 */

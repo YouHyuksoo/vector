@@ -13,11 +13,14 @@ export type TargetType = 'TABLE' | 'PROCEDURE';
 /** Vector에서 전송되는 개별 로그 레코드 */
 export interface LogRecord {
   equipment_id: string;
+  equipment_type?: string;
   log_type: string;
   target_type: TargetType;
   target_table: string;
   timestamp: string;
   data: Record<string, unknown>;
+  raw_message?: string;
+  filename?: string;
 }
 
 /** POST /api/logs 요청 배치 페이로드 */

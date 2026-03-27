@@ -862,11 +862,14 @@ source = '''
 ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
 . = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
+  "equipment_type": .equipment_type,   # 설비 유형 (raw 파일 저장 경로용)
   "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)
   "target_type": .target_type,         # 저장 방식 (TABLE/PROCEDURE)
   "target_table": .target_table,       # 저장 대상 (테이블명 또는 프로시져 레지스트리 키)
   "timestamp": ts,                     # 타임스탬프 (문자열로 변환)
-  "data": .data                        # 파싱된 데이터 객체
+  "data": .data,                       # 파싱된 데이터 객체
+  "raw_message": .raw_message,         # 원본 메시지 (파일 저장용)
+  "filename": .filename                # 원본 파일명
 }
 '''
 
@@ -901,62 +904,9 @@ ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
 #
 # -----------------------------------------------------------------------------
 
-# 원본 저장용 파일명 추출 (데이터 내용은 변경하지 않고 .filename만 추가)
-[transforms.tag_filename]
-type = "remap"
-inputs = ["route_events._unmatched"]
-source = '''
-.filename = replace!(to_string!(.file), r'.*[\\/]', "")
-'''
-
-# -----------------------------------------------------------------------------
-# 파일 수신 알림: Agent로부터 데이터 수신 시 Node.js에 알림 전송
-# - 파이프라인 첫 번째 단계(FILE_RECEIVE) 로그 기록용
-# -----------------------------------------------------------------------------
-[transforms.file_receive_notify]
-type = "remap"
-inputs = ["route_events._unmatched"]
-source = '''
-. = {
-  "equipment_id": .equipment_id,
-  "equipment_type": .equipment_type,
-  "log_type": .log_type,
-  "filename": replace!(to_string!(.file), r'.*[\\/]', "")
-}
-'''
-
-[sinks.to_file_notify]
-type = "http"
-inputs = ["file_receive_notify"]
-uri = "http://127.0.0.1:3110/api/logs/file-received"
-method = "post"
-
-[sinks.to_file_notify.encoding]
-codec = "json"
-
-[sinks.to_file_notify.batch]
-max_events = 100
-timeout_secs = 2
-
-[sinks.to_file_notify.request]
-retry_initial_backoff_secs = 1
-retry_max_duration_secs = 10
-
-[sinks.to_file_notify.request.headers]
-Content-Type = "application/json"
-
-[sinks.raw_file]
-type = "file"
-inputs = ["tag_filename"]         # 파싱 전 원본 + 파일명 태그
-path = 'C:\data\raw-logs\{{ equipment_type }}\{{ equipment_id }}\%Y-%m-%d\{{ filename }}'
-
-[sinks.raw_file.encoding]
-codec = "text"
-
-[sinks.raw_file.buffer]
-type = "disk"
-max_size = 536870912              # 512MB
-when_full = "block"
+# (Sink 1 제거됨: raw 파일 저장 + 수신 알림을 Node.js에서 일괄 처리)
+# - raw_message, filename을 format_for_api에 포함하여 Node.js API로 전달
+# - Node.js가 기존 파일 삭제 → 새 파일 생성 → DB INSERT 순차 처리
 
 
 # -----------------------------------------------------------------------------
