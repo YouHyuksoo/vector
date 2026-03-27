@@ -655,6 +655,21 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 서버 Aggregator(sink) 연결 상태 체크
+	cfgPath := findTomlConfig()
+	if content, err := os.ReadFile(cfgPath); err == nil {
+		ip, port := tomlGetSinkAddr(string(content))
+		if ip != "" {
+			conn, err := net.DialTimeout("tcp", ip+":"+port, 3*time.Second)
+			serverUp := err == nil
+			if serverUp {
+				conn.Close()
+			}
+			result["serverConnected"] = serverUp
+			result["serverAddress"] = ip + ":" + port
+		}
+	}
+
 	jsonResp(w, result)
 }
 

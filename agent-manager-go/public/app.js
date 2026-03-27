@@ -22,6 +22,7 @@ const I18N = {
     'status.recentFiles': '최근 감시 파일', 'status.fileName': '파일명', 'status.directory': '디렉토리',
     'status.modifiedAt': '수정 시간', 'status.size': '크기', 'status.loadingFiles': '파일 정보를 불러오는 중...',
     'status.running': '실행 중', 'status.stopped': '중지됨', 'status.noFiles': '감시 중인 파일이 없습니다',
+    'status.server': '서버', 'status.serverOk': '연결됨', 'status.serverDown': '연결 안됨',
     'status.resendFiles': '재전송 폴더', 'status.noResendFiles': '재전송 대기 파일 없음',
     'settings.resendPath': '재전송 폴더 경로', 'settings.resendDeleteSecs': '전송 후 삭제(초)', 'settings.serverAddr': '서버 주소',
     'settings.formMode': '폼 모드', 'settings.tomlMode': 'TOML 편집', 'settings.equipInfo': '설비 정보',
@@ -64,6 +65,7 @@ const I18N = {
     'status.recentFiles': 'Recent Watched Files', 'status.fileName': 'File Name', 'status.directory': 'Directory',
     'status.modifiedAt': 'Modified', 'status.size': 'Size', 'status.loadingFiles': 'Loading file info...',
     'status.running': 'Running', 'status.stopped': 'Stopped', 'status.noFiles': 'No watched files',
+    'status.server': 'Server', 'status.serverOk': 'Connected', 'status.serverDown': 'Disconnected',
     'status.resendFiles': 'Resend Folder', 'status.noResendFiles': 'No resend files',
     'settings.resendPath': 'Resend Folder Path', 'settings.resendDeleteSecs': 'Delete after (sec)', 'settings.serverAddr': 'Server Address',
     'settings.formMode': 'Form Mode', 'settings.tomlMode': 'TOML Edit', 'settings.equipInfo': 'Equipment Info',
@@ -106,6 +108,7 @@ const I18N = {
     'status.recentFiles': 'Archivos recientes', 'status.fileName': 'Nombre', 'status.directory': 'Directorio',
     'status.modifiedAt': 'Modificado', 'status.size': 'Tamaño', 'status.loadingFiles': 'Cargando archivos...',
     'status.running': 'Ejecutando', 'status.stopped': 'Detenido', 'status.noFiles': 'Sin archivos monitoreados',
+    'status.server': 'Servidor', 'status.serverOk': 'Conectado', 'status.serverDown': 'Desconectado',
     'settings.formMode': 'Modo formulario', 'settings.tomlMode': 'Editar TOML', 'settings.equipInfo': 'Info del equipo',
     'settings.equipId': 'ID del equipo', 'settings.equipType': 'Tipo de equipo',
     'settings.ipAddr': 'Dirección IP', 'settings.lineCode': 'Código de línea',
@@ -145,6 +148,7 @@ const I18N = {
     'status.recentFiles': 'File theo dõi gần đây', 'status.fileName': 'Tên file', 'status.directory': 'Thư mục',
     'status.modifiedAt': 'Sửa đổi', 'status.size': 'Kích thước', 'status.loadingFiles': 'Đang tải thông tin file...',
     'status.running': 'Đang chạy', 'status.stopped': 'Đã dừng', 'status.noFiles': 'Không có file theo dõi',
+    'status.server': 'Máy chủ', 'status.serverOk': 'Đã kết nối', 'status.serverDown': 'Mất kết nối',
     'settings.formMode': 'Chế độ biểu mẫu', 'settings.tomlMode': 'Sửa TOML', 'settings.equipInfo': 'Thông tin thiết bị',
     'settings.equipId': 'ID thiết bị', 'settings.equipType': 'Loại thiết bị',
     'settings.ipAddr': 'Địa chỉ IP', 'settings.lineCode': 'Mã dây chuyền',
@@ -666,6 +670,21 @@ function updateStatusCards() {
   if (s.version) {
     const hv = document.getElementById('header-version');
     hv.textContent = s.version; hv.classList.remove('hidden');
+  }
+
+  // 서버 Aggregator 연결 상태
+  const dotSrv = document.getElementById('dot-server');
+  const txtSrv = document.getElementById('txt-server');
+  if (dotSrv && txtSrv) {
+    if (s.serverConnected) {
+      dotSrv.className = 'dot dot-g';
+      txtSrv.textContent = s.serverAddress ?? '';
+      txtSrv.style.color = 'var(--green)';
+    } else {
+      dotSrv.className = 'dot dot-r';
+      txtSrv.textContent = s.serverAddress ? s.serverAddress + ' ' + t('status.serverDown') : t('status.serverDown');
+      txtSrv.style.color = 'var(--red)';
+    }
   }
 }
 
