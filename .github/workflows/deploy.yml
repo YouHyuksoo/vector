@@ -88,6 +88,23 @@ jobs:
 
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
 
+      - name: Extract vector-x64.zip to vector-bin/bin
+        run: |
+          $zip = "$env:DEPLOY_DIR\vector-bin\vector-x64.zip"
+          $dst = "$env:DEPLOY_DIR\vector-bin"
+          if (Test-Path $zip) {
+            Expand-Archive -Path $zip -DestinationPath "$dst\temp" -Force
+            # zip 안에 bin/vector.exe 가 있음 → vector-bin/bin/vector.exe 로 이동
+            if (Test-Path "$dst\temp\bin") {
+              if (!(Test-Path "$dst\bin")) { New-Item -ItemType Directory -Path "$dst\bin" -Force }
+              Copy-Item "$dst\temp\bin\*" "$dst\bin\" -Force
+              Write-Host "vector.exe extracted to $dst\bin"
+            }
+            Remove-Item "$dst\temp" -Recurse -Force
+          } else {
+            Write-Host "##[warning]vector-x64.zip not found — skipping"
+          }
+
       - name: Fix TOML line endings (CRLF to LF)
         run: |
           Get-ChildItem "$env:DEPLOY_DIR\vector-config" -Recurse -Filter "*.toml" | ForEach-Object {
