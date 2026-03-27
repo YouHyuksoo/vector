@@ -584,6 +584,7 @@
     "targetTable": "테이블",
     "targetProcedure": "프로시져",
     "oracleTables": "Oracle 테이블",
+    "registeredTables": "등록된 테이블",
     "oracleProcedures": "Oracle 프로시져",
     "noTables": "테이블을 찾을 수 없음",
     "noProcedures": "프로시져를 찾을 수 없음",

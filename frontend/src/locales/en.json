@@ -584,6 +584,7 @@
     "targetTable": "Table",
     "targetProcedure": "Procedure",
     "oracleTables": "Oracle Tables",
+    "registeredTables": "Registered Tables",
     "oracleProcedures": "Oracle Procedures",
     "noTables": "No tables found",
     "noProcedures": "No procedures found",

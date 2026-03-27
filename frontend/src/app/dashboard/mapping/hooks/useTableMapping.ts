@@ -36,8 +36,8 @@ export function useTableMapping({ logType, parseRules, setLoading, setSaving, se
     : tables;
 
   useEffect(() => {
-    apiFetch<{ tables: Array<{ TABLE_NAME: string }> }>('/api/monitor/tables/oracle/all')
-      .then(d => setTables(d.tables.map((tbl: any) => tbl.TABLE_NAME || tbl[0])))
+    apiFetch<{ tables: string[] }>('/api/monitor/registry-keys')
+      .then(d => setTables(d.tables))
       .catch(() => {});
   }, []);
 
@@ -128,8 +128,8 @@ export function useTableMapping({ logType, parseRules, setLoading, setSaving, se
 
   const refreshTables = async () => {
     try {
-      const d = await apiFetch<{ tables: Array<{ TABLE_NAME: string }> }>('/api/monitor/tables/oracle/all');
-      setTables(d.tables.map((tbl: any) => tbl.TABLE_NAME || tbl[0]));
+      const d = await apiFetch<{ tables: string[] }>('/api/monitor/registry-keys');
+      setTables(d.tables);
     } catch { /* ignore */ }
   };
 

@@ -584,6 +584,7 @@
     "targetTable": "Tabla",
     "targetProcedure": "Procedimiento",
     "oracleTables": "Tablas Oracle",
+    "registeredTables": "Tablas Registradas",
     "oracleProcedures": "Procedimientos Oracle",
     "noTables": "No se encontraron tablas",
     "noProcedures": "No se encontraron procedimientos",

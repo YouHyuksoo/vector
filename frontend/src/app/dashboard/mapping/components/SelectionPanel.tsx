@@ -43,7 +43,7 @@ export default function SelectionPanel({
   return (
     <Card noPadding className="p-4 lg:col-span-1">
       <p className="text-sm font-bold text-text-secondary uppercase tracking-wider mb-3 px-1">
-        {targetType === 'TABLE' ? t('mapping.oracleTables') : t('mapping.oracleProcedures')}
+        {targetType === 'TABLE' ? t('mapping.registeredTables') : t('mapping.oracleProcedures')}
       </p>
       {onAutoCreate && (
         <button onClick={onAutoCreate}
