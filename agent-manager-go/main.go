@@ -1452,7 +1452,11 @@ func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
 		for _, p := range strings.Split(raw, "\n") {
 			p = strings.TrimSpace(p)
 			if p != "" {
-				dir := filepath.Dir(p)
+				// glob 패턴(**,*)을 제거하고 실제 디렉토리만 체크
+				dir := p
+				for strings.Contains(filepath.Base(dir), "*") {
+					dir = filepath.Dir(dir)
+				}
 				_, dirErr := os.Stat(dir)
 				watchPaths = append(watchPaths, watchInfo{Path: p, Exists: dirErr == nil})
 				globPatterns = append(globPatterns, p)
