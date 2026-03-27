@@ -807,6 +807,37 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       if (exists && body.forceRecreate) {
         const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
         const backupName = `${upperName}_BK_${ts}`;
+
+        /* 1) 백업 테이블의 제약조건 이름 변경 (PK 등) — 새 테이블 생성 시 이름 충돌 방지 */
+        const conRows = await conn.execute(
+          `SELECT CONSTRAINT_NAME FROM USER_CONSTRAINTS WHERE TABLE_NAME = :t`,
+          { t: upperName },
+        );
+        for (const row of (conRows.rows as Array<{ CONSTRAINT_NAME: string }>) || []) {
+          const newConName = `${row.CONSTRAINT_NAME}_BK`.slice(0, 30);
+          await conn.execute(`ALTER TABLE ${upperName} RENAME CONSTRAINT ${row.CONSTRAINT_NAME} TO ${newConName}`).catch(() => {});
+        }
+
+        /* 2) 백업 테이블의 인덱스 이름 변경 */
+        const idxRows = await conn.execute(
+          `SELECT INDEX_NAME FROM USER_INDEXES WHERE TABLE_NAME = :t`,
+          { t: upperName },
+        );
+        for (const row of (idxRows.rows as Array<{ INDEX_NAME: string }>) || []) {
+          const newIdxName = `${row.INDEX_NAME}_BK`.slice(0, 30);
+          await conn.execute(`ALTER INDEX ${row.INDEX_NAME} RENAME TO ${newIdxName}`).catch(() => {});
+        }
+
+        /* 3) 백업 테이블의 트리거 삭제 — RENAME 불가하므로 DROP */
+        const trgRows = await conn.execute(
+          `SELECT TRIGGER_NAME FROM USER_TRIGGERS WHERE TABLE_NAME = :t`,
+          { t: upperName },
+        );
+        for (const row of (trgRows.rows as Array<{ TRIGGER_NAME: string }>) || []) {
+          await conn.execute(`DROP TRIGGER ${row.TRIGGER_NAME}`).catch(() => {});
+        }
+
+        /* 4) 테이블 RENAME */
         await conn.execute(`ALTER TABLE ${upperName} RENAME TO ${backupName}`);
         renamedFrom = backupName;
         logger.info({ original: upperName, backup: backupName }, 'Table renamed as backup before recreate');
