@@ -771,7 +771,9 @@
     "deleteSelected": "Eliminar Seleccionados",
     "confirmDelete": "¿Eliminar {count} elemento(s)? Esto no se puede deshacer.",
     "deleted": "{count} elemento(s) eliminado(s)",
-    "deleteFailed": "{count} elemento(s) no se pudieron eliminar"
+    "deleteFailed": "{count} elemento(s) no se pudieron eliminar",
+    "download": "Descargar",
+    "downloadSelected": "Descargar Seleccionados"
   },
   "vrlSim": {
     "title": "Simulador VRL",
@@ -818,7 +820,17 @@
     "bufferSize": "Tamaño del búfer",
     "autoOn": "Actualización automática",
     "autoOff": "Pausado",
-    "searchPlaceholder": "Buscar mensajes de registro..."
+    "searchPlaceholder": "Buscar mensajes de registro...",
+    "tabRealtime": "Registros en Tiempo Real",
+    "tabPm2Files": "Archivos de Registro PM2",
+    "pm2File": "Archivo",
+    "pm2Tail": "Líneas a mostrar",
+    "pm2Search": "Buscar contenido de registro...",
+    "pm2Refresh": "Actualizar",
+    "pm2NoFile": "No se encontraron archivos de registro",
+    "pm2Lines": "líneas",
+    "pm2Total": "Total",
+    "pm2FileSize": "Tamaño del archivo"
   },
   "upload": {
     "title": "Carga de Archivos",

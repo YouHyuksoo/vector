@@ -1392,6 +1392,34 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
+  /** 로그 파일 다운로드 — 단일 파일 스트림 전송 */
+  app.get('/api/monitor/log-files/download', async (request, reply) => {
+    const { path: relPath } = request.query as { path?: string };
+    if (!relPath) {
+      return reply.status(400).send({ error: 'path required' });
+    }
+    if (relPath.includes('..')) {
+      return reply.status(400).send({ error: 'Invalid path' });
+    }
+    const filePath = join(env.RAW_LOG_BASE_PATH, relPath);
+    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+      return reply.status(404).send({ error: 'File not found' });
+    }
+    try {
+      const fileName = relPath.replace(/\\/g, '/').split('/').pop() || 'download';
+      const stat = statSync(filePath);
+      const stream = createReadStream(filePath);
+      return reply
+        .header('Content-Type', 'application/octet-stream')
+        .header('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`)
+        .header('Content-Length', stat.size)
+        .send(stream);
+    } catch (err) {
+      logger.error({ err, relPath }, 'Failed to download log file');
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
   /** 로그 파일/폴더 삭제 */
   app.delete('/api/monitor/log-files', async (request, reply) => {
     const { paths } = request.body as { paths: string[] };
@@ -2274,6 +2302,71 @@ Generate VRL parsing code for this log.`;
 
     const entries = logBuffer.getEntries({ limit, level, search });
     return reply.send({ total: logBuffer.size, count: entries.length, entries });
+  });
+
+  // ─── PM2 로그 파일 읽기 ───
+
+  /** 허용된 PM2 로그 파일 목록 */
+  const PM2_LOG_FILES = [
+    'backend-out.log',
+    'backend-error.log',
+    'frontend-out.log',
+    'frontend-error.log',
+  ];
+
+  /**
+   * GET /api/monitor/pm2-logs
+   * PM2 디스크 로그 파일의 마지막 N줄 조회
+   * @query file - 파일명 (기본 backend-out.log)
+   * @query tail - 마지막 줄 수 (기본 200, 최대 1000)
+   * @query search - 검색 문자열 (대소문자 무시)
+   */
+  app.get('/api/monitor/pm2-logs', async (request, reply) => {
+    const query = request.query as { file?: string; tail?: string; search?: string };
+    const fileName = query.file || 'backend-out.log';
+
+    if (!PM2_LOG_FILES.includes(fileName)) {
+      return reply.status(400).send({ error: `허용되지 않는 파일: ${fileName}` });
+    }
+
+    const filePath = join(process.cwd(), 'logs', fileName);
+
+    if (!existsSync(filePath)) {
+      return reply.send({ file: fileName, lines: [], total: 0 });
+    }
+
+    const tail = Math.min(Math.max(parseInt(query.tail || '200', 10) || 200, 1), 1000);
+    const searchStr = query.search?.toLowerCase();
+
+    const content = readFileSync(filePath, 'utf-8');
+    let lines = content.split('\n').filter(Boolean);
+
+    if (searchStr) {
+      lines = lines.filter(line => line.toLowerCase().includes(searchStr));
+    }
+
+    const total = lines.length;
+    const sliced = lines.slice(-tail);
+
+    return reply.send({ file: fileName, lines: sliced, total });
+  });
+
+  /**
+   * GET /api/monitor/pm2-logs/files
+   * 사용 가능한 PM2 로그 파일 목록 + 크기 반환
+   */
+  app.get('/api/monitor/pm2-logs/files', async (_request, reply) => {
+    const logsDir = join(process.cwd(), 'logs');
+    const files = PM2_LOG_FILES.map(name => {
+      const fp = join(logsDir, name);
+      const exists = existsSync(fp);
+      return {
+        name,
+        exists,
+        size: exists ? statSync(fp).size : 0,
+      };
+    });
+    return reply.send({ files });
   });
 };
 

@@ -1,12 +1,11 @@
 /**
  * @file src/app/dashboard/system-logs/page.tsx
- * @description 시스템 로그 페이지 — 백엔드 메모리 링버퍼 로그를 실시간 조회
+ * @description 시스템 로그 페이지 — 실시간 메모리 로그 + PM2 디스크 로그 파일 탭 구조
  *
  * 초보자 가이드:
- * 1. **주요 개념**: PM2 없이 백엔드/Vector 프로세스 로그를 웹에서 확인
- * 2. **자동 갱신**: 5초마다 API 폴링으로 최신 로그 표시
- * 3. **필터**: 레벨(all/debug/info/warn/error), 검색어, 표시 건수
- * 4. **API**: GET /api/monitor/system-logs?limit=&level=&search=
+ * 1. **탭 1 - 실시간 로그**: 백엔드 메모리 링버퍼 (최근 500줄, 5초 자동 갱신)
+ * 2. **탭 2 - PM2 로그 파일**: 디스크에 저장된 PM2 로그 (영구 보존, 과거 추적용)
+ * 3. **API**: GET /api/monitor/system-logs (실시간), GET /api/monitor/pm2-logs (파일)
  */
 'use client';
 
@@ -15,9 +14,11 @@ import { Icon, Card } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import { SystemLogTable, type LogEntry } from '../components/SystemLogTable';
+import { Pm2LogPanel } from '../components/Pm2LogPanel';
 
 const POLL_INTERVAL = 5000;
 const LEVELS = ['all', 'debug', 'info', 'warn', 'error', 'fatal'] as const;
+type Tab = 'realtime' | 'pm2';
 
 /** API 응답 타입 */
 interface SystemLogsResponse {
@@ -28,6 +29,7 @@ interface SystemLogsResponse {
 
 export default function SystemLogsPage() {
   const { t } = useI18n();
+  const [activeTab, setActiveTab] = useState<Tab>('realtime');
 
   const [level, setLevel] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -43,7 +45,6 @@ export default function SystemLogsPage() {
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // 검색어 디바운스 (300ms)
   useEffect(() => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => setDebouncedSearch(search), 300);
@@ -70,26 +71,28 @@ export default function SystemLogsPage() {
     }
   }, [level, debouncedSearch, limit]);
 
-  // 초기 로드
   useEffect(() => {
     setLoading(true);
     fetchLogs();
   }, [fetchLogs]);
 
-  // 자동 갱신 타이머
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (autoRefresh) {
+    if (autoRefresh && activeTab === 'realtime') {
       timerRef.current = setInterval(fetchLogs, POLL_INTERVAL);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [autoRefresh, fetchLogs]);
+  }, [autoRefresh, fetchLogs, activeTab]);
 
-  /** 레벨별 배지 색상 (필터 버튼용) */
   const levelBtnClass = (l: string) =>
     l === level
       ? 'bg-primary text-white'
       : 'bg-surface dark:bg-surface-dark text-text dark:text-white hover:bg-primary/10';
+
+  const tabClass = (tab: Tab) =>
+    tab === activeTab
+      ? 'border-b-2 border-primary text-primary font-semibold'
+      : 'text-text-secondary hover:text-text dark:hover:text-white';
 
   return (
     <div className="space-y-4">
@@ -104,82 +107,104 @@ export default function SystemLogsPage() {
             {t('systemLogs.subtitle')}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-text-secondary">
-          <span>{t('systemLogs.bufferSize')}: {total}</span>
-          <button
-            onClick={() => setAutoRefresh(v => !v)}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-              ${autoRefresh
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}
-          >
-            <Icon name={autoRefresh ? 'sync' : 'sync_disabled'} size="xs" />
-            {autoRefresh ? t('systemLogs.autoOn') : t('systemLogs.autoOff')}
-          </button>
-        </div>
+        {activeTab === 'realtime' && (
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <span>{t('systemLogs.bufferSize')}: {total}</span>
+            <button
+              onClick={() => setAutoRefresh(v => !v)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                ${autoRefresh
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}
+            >
+              <Icon name={autoRefresh ? 'sync' : 'sync_disabled'} size="xs" />
+              {autoRefresh ? t('systemLogs.autoOn') : t('systemLogs.autoOff')}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 필터 바 */}
-      <Card>
-        <div className="flex flex-wrap items-center gap-3">
-          {/* 레벨 필터 */}
-          <div className="flex items-center gap-1">
-            {LEVELS.map(l => (
-              <button
-                key={l}
-                onClick={() => setLevel(l)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase transition-colors
-                  ${levelBtnClass(l)}`}
+      {/* 탭 */}
+      <div className="flex gap-6 border-b border-border dark:border-border-dark">
+        <button
+          onClick={() => setActiveTab('realtime')}
+          className={`pb-2 px-1 text-sm transition-colors ${tabClass('realtime')}`}
+        >
+          <Icon name="speed" size="xs" className="inline mr-1" />
+          {t('systemLogs.tabRealtime')}
+        </button>
+        <button
+          onClick={() => setActiveTab('pm2')}
+          className={`pb-2 px-1 text-sm transition-colors ${tabClass('pm2')}`}
+        >
+          <Icon name="description" size="xs" className="inline mr-1" />
+          {t('systemLogs.tabPm2Files')}
+        </button>
+      </div>
+
+      {/* 탭 내용 */}
+      {activeTab === 'realtime' ? (
+        <>
+          {/* 필터 바 */}
+          <Card>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1">
+                {LEVELS.map(l => (
+                  <button
+                    key={l}
+                    onClick={() => setLevel(l)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase transition-colors
+                      ${levelBtnClass(l)}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Icon name="search" size="xs"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder={t('systemLogs.searchPlaceholder')}
+                    className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-border dark:border-border-dark
+                      bg-background dark:bg-background-dark text-text dark:text-white text-sm
+                      focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+
+              <select
+                value={limit}
+                onChange={e => setLimit(Number(e.target.value))}
+                className="px-3 py-1.5 rounded-lg border border-border dark:border-border-dark
+                  bg-background dark:bg-background-dark text-text dark:text-white text-sm"
               >
-                {l}
-              </button>
-            ))}
-          </div>
-
-          {/* 검색 */}
-          <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Icon name="search" size="xs"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={t('systemLogs.searchPlaceholder')}
-                className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-border dark:border-border-dark
-                  bg-background dark:bg-background-dark text-text dark:text-white text-sm
-                  focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+                <option value={500}>500</option>
+              </select>
             </div>
-          </div>
+          </Card>
 
-          {/* 표시 건수 */}
-          <select
-            value={limit}
-            onChange={e => setLimit(Number(e.target.value))}
-            className="px-3 py-1.5 rounded-lg border border-border dark:border-border-dark
-              bg-background dark:bg-background-dark text-text dark:text-white text-sm"
-          >
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value={200}>200</option>
-            <option value={500}>500</option>
-          </select>
-        </div>
-      </Card>
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">
+              <Icon name="error" size="xs" className="inline mr-1" />
+              {error}
+            </div>
+          )}
 
-      {/* 에러 표시 */}
-      {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">
-          <Icon name="error" size="xs" className="inline mr-1" />
-          {error}
-        </div>
+          <Card noPadding>
+            <SystemLogTable entries={entries} loading={loading} />
+          </Card>
+        </>
+      ) : (
+        <Pm2LogPanel />
       )}
-
-      {/* 로그 테이블 */}
-      <Card noPadding>
-        <SystemLogTable entries={entries} loading={loading} />
-      </Card>
     </div>
   );
 }

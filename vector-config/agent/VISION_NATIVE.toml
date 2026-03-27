@@ -17,7 +17,7 @@ include = [
 read_from = "beginning"
 ignore_older_secs = 86400
 fingerprint.strategy = "checksum"
-fingerprint.bytes = 256
+fingerprint.bytes = 32768
 
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
 [sources.work_logs.multiline]

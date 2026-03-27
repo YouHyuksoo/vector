@@ -771,7 +771,9 @@
     "deleteSelected": "Delete Selected",
     "confirmDelete": "Delete {count} item(s)? This cannot be undone.",
     "deleted": "{count} item(s) deleted",
-    "deleteFailed": "{count} item(s) failed to delete"
+    "deleteFailed": "{count} item(s) failed to delete",
+    "download": "Download",
+    "downloadSelected": "Download Selected"
   },
   "vrlSim": {
     "title": "VRL Simulator",
@@ -818,7 +820,17 @@
     "bufferSize": "Buffer size",
     "autoOn": "Auto refresh",
     "autoOff": "Paused",
-    "searchPlaceholder": "Search log messages..."
+    "searchPlaceholder": "Search log messages...",
+    "tabRealtime": "Realtime Logs",
+    "tabPm2Files": "PM2 Log Files",
+    "pm2File": "File",
+    "pm2Tail": "Lines to show",
+    "pm2Search": "Search log content...",
+    "pm2Refresh": "Refresh",
+    "pm2NoFile": "No log files found",
+    "pm2Lines": "lines",
+    "pm2Total": "Total",
+    "pm2FileSize": "File size"
   },
   "upload": {
     "title": "File Upload",

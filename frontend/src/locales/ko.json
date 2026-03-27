@@ -771,7 +771,9 @@
     "deleteSelected": "선택 삭제",
     "confirmDelete": "{count}개 항목을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
     "deleted": "{count}개 삭제 완료",
-    "deleteFailed": "{count}개 삭제 실패"
+    "deleteFailed": "{count}개 삭제 실패",
+    "download": "다운로드",
+    "downloadSelected": "선택 다운로드"
   },
   "vrlSim": {
     "title": "VRL 시뮬레이터",
@@ -818,7 +820,17 @@
     "bufferSize": "버퍼 크기",
     "autoOn": "자동 갱신",
     "autoOff": "갱신 중지",
-    "searchPlaceholder": "로그 메시지 검색..."
+    "searchPlaceholder": "로그 메시지 검색...",
+    "tabRealtime": "실시간 로그",
+    "tabPm2Files": "PM2 로그 파일",
+    "pm2File": "파일",
+    "pm2Tail": "표시 줄 수",
+    "pm2Search": "로그 내용 검색...",
+    "pm2Refresh": "새로고침",
+    "pm2NoFile": "로그 파일이 없습니다",
+    "pm2Lines": "줄",
+    "pm2Total": "전체",
+    "pm2FileSize": "파일 크기"
   },
   "upload": {
     "title": "파일 업로드",
