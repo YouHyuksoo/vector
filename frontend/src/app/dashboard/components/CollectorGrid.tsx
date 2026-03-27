@@ -118,8 +118,13 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
           <p className="text-xs text-muted-foreground/30 mt-1">{t('collector.emptyDesc')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
-          {equipments.map(eq => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
+          {[...equipments].sort((a, b) => {
+            const lineA = a.metadata?.line_code || '';
+            const lineB = b.metadata?.line_code || '';
+            if (lineA !== lineB) return lineA.localeCompare(lineB);
+            return a.equipment_id.localeCompare(b.equipment_id);
+          }).map(eq => {
             const m = eq.metadata ?? {};
             const type = m.equipment_type || '';
             const line = m.line_code || '';
