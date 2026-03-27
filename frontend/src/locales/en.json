@@ -824,6 +824,7 @@
     "autoOff": "Paused",
     "searchPlaceholder": "Search log messages...",
     "tabErrors": "Process Status",
+    "tabRetry": "Retry",
     "tabProcess": "Data Viewer",
     "tabRealtime": "Realtime Logs",
     "tabPm2Files": "PM2 Log Files",

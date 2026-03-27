@@ -824,6 +824,7 @@
     "autoOff": "Pausado",
     "searchPlaceholder": "Buscar mensajes de registro...",
     "tabErrors": "Estado de Proceso",
+    "tabRetry": "Reenvío",
     "tabProcess": "Visor de Datos",
     "tabRealtime": "Registros en Tiempo Real",
     "tabPm2Files": "Archivos de Registro PM2",

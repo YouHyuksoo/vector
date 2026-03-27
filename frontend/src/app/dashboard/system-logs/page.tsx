@@ -17,10 +17,11 @@ import { SystemLogTable, type LogEntry } from '../components/SystemLogTable';
 import { Pm2LogPanel } from '../components/Pm2LogPanel';
 import { ProcessLogPanel } from '../components/ProcessLogPanel';
 import { ErrorLogPanel } from '../components/ErrorLogPanel';
+import { RetryLogPanel } from '../components/RetryLogPanel';
 
 const POLL_INTERVAL = 5000;
 const LEVELS = ['all', 'debug', 'info', 'warn', 'error', 'fatal'] as const;
-type Tab = 'errors' | 'process' | 'realtime' | 'pm2';
+type Tab = 'errors' | 'retry' | 'process' | 'realtime' | 'pm2';
 
 /** API 응답 타입 */
 interface SystemLogsResponse {
@@ -136,6 +137,13 @@ export default function SystemLogsPage() {
           {t('systemLogs.tabErrors')}
         </button>
         <button
+          onClick={() => setActiveTab('retry')}
+          className={`pb-2 px-1 text-sm transition-colors ${tabClass('retry')}`}
+        >
+          <Icon name="replay" size="xs" className="inline mr-1" />
+          {t('systemLogs.tabRetry')}
+        </button>
+        <button
           onClick={() => setActiveTab('process')}
           className={`pb-2 px-1 text-sm transition-colors ${tabClass('process')}`}
         >
@@ -161,6 +169,8 @@ export default function SystemLogsPage() {
       {/* 탭 내용 */}
       {activeTab === 'errors' ? (
         <ErrorLogPanel />
+      ) : activeTab === 'retry' ? (
+        <RetryLogPanel />
       ) : activeTab === 'process' ? (
         <ProcessLogPanel />
       ) : activeTab === 'realtime' ? (
