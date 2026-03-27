@@ -1667,8 +1667,8 @@
       "COLUMN_ORDER": 2
     },
     {
-      "COLUMN_NAME": "DATETIME",
-      "DATA_TYPE": "VARCHAR2(500)",
+      "COLUMN_NAME": "DATE_TIME",
+      "DATA_TYPE": "VARCHAR2(100)",
       "SOURCE_FIELD": "data.DATETIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 3
