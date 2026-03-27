@@ -81,31 +81,10 @@ jobs:
 
           if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force }
 
-          # 메인 동기화 (서버 관리 디렉토리 제외)
+          # 전체 동기화: 로컬(git) = 서버. 서버 전용 파일/디렉토리만 보호.
           robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
             /XF ".env" "ai-config.json" "ai-system-prompt.txt" "parse-fields.json" `
-            /XD ".git" "vector-config" "config" "data" "logs" "vector-bin" "vector-data" "vector-data-agent"
-
-          # config/table-registry.json 강제 동기화 (VRL 컬럼 매핑 변경 시 필수)
-          if (!(Test-Path "$dst\config")) { New-Item -ItemType Directory -Path "$dst\config" -Force }
-          Copy-Item "$src\config\table-registry.json" "$dst\config\table-registry.json" -Force
-          Write-Host "table-registry.json synced"
-
-          # vector-config: 항상 최신으로 덮어쓰기
-          robocopy "$src\vector-config" "$dst\vector-config" /S /NFL /NDL /NJH /NJS /NC /NS `
-            /XD "backups"
-
-          # vector-bin에서 다운로드용 파일만 동기화
-          $vbSrc = "$src\vector-bin"
-          $vbDst = "$dst\vector-bin"
-          if (!(Test-Path $vbDst)) { New-Item -ItemType Directory -Path $vbDst -Force }
-          if (Test-Path "$vbSrc\vector.zip") { Copy-Item "$vbSrc\vector.zip" "$vbDst\vector.zip" -Force }
-          if (Test-Path "$vbSrc\vector-x64.zip") { Copy-Item "$vbSrc\vector-x64.zip" "$vbDst\vector-x64.zip" -Force }
-          if (Test-Path "$vbSrc\vector-win7.zip") { Copy-Item "$vbSrc\vector-win7.zip" "$vbDst\vector-win7.zip" -Force }
-          if (Test-Path "$vbSrc\vector-x86.zip") { Copy-Item "$vbSrc\vector-x86.zip" "$vbDst\vector-x86.zip" -Force }
-          if (Test-Path "$vbSrc\agent-manager-x64.exe") { Copy-Item "$vbSrc\agent-manager-x64.exe" "$vbDst\agent-manager-x64.exe" -Force }
-          if (Test-Path "$vbSrc\agent-manager-x86.exe") { Copy-Item "$vbSrc\agent-manager-x86.exe" "$vbDst\agent-manager-x86.exe" -Force }
-          if (Test-Path "$vbSrc\version.json") { Copy-Item "$vbSrc\version.json" "$vbDst\version.json" -Force }
+            /XD ".git" "data" "logs" "vector-data" "vector-data-agent"
 
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
 
@@ -141,39 +120,25 @@ jobs:
           }
           pm2 save
 
-      - name: Sync Aggregator TOML if changed
+      - name: Restart Vector Aggregator if TOML changed
         run: |
-          $src = "${{ github.workspace }}\vector-config\aggregator\vector-aggregator.toml"
           $dst = "$env:DEPLOY_DIR\vector-config\aggregator\vector-aggregator.toml"
-          if (Test-Path $dst) {
-            $srcHash = (Get-FileHash $src -Algorithm SHA256).Hash
-            $dstHash = (Get-FileHash $dst -Algorithm SHA256).Hash
-            if ($srcHash -ne $dstHash) {
-              Write-Host "Aggregator TOML changed — updating and restarting Vector..."
-              Copy-Item $src $dst -Force
-              # CRLF → LF 변환
-              $content = [System.IO.File]::ReadAllText($dst)
-              $content = $content -replace "`r`n", "`n"
-              [System.IO.File]::WriteAllText($dst, $content, [System.Text.UTF8Encoding]::new($false))
-              # Vector Aggregator 재시작
-              $vectorProc = Get-Process -Name "vector" -ErrorAction SilentlyContinue
-              if ($vectorProc) {
-                Stop-Process -Name "vector" -Force
-                Start-Sleep -Seconds 2
-              }
-              $vectorExe = "$env:DEPLOY_DIR\vector-bin\bin\vector.exe"
-              if (Test-Path $vectorExe) {
-                Start-Process -FilePath $vectorExe -ArgumentList "--config", $dst -WindowStyle Hidden
-                Write-Host "Vector Aggregator restarted with new TOML"
-              } else {
-                Write-Host "##[warning]vector.exe not found at $vectorExe — manual restart needed"
-              }
-            } else {
-              Write-Host "Aggregator TOML unchanged — skipping restart"
-            }
+          if (!(Test-Path $dst)) {
+            Write-Host "Aggregator TOML not found — skipping"
+            return
+          }
+          # TOML은 이미 robocopy /MIR로 동기화됨 — Vector 재시작만 처리
+          $vectorProc = Get-Process -Name "vector" -ErrorAction SilentlyContinue
+          if ($vectorProc) {
+            Stop-Process -Name "vector" -Force
+            Start-Sleep -Seconds 2
+          }
+          $vectorExe = "$env:DEPLOY_DIR\vector-bin\bin\vector.exe"
+          if (Test-Path $vectorExe) {
+            Start-Process -FilePath $vectorExe -ArgumentList "--config", $dst -WindowStyle Hidden
+            Write-Host "Vector Aggregator restarted"
           } else {
-            Write-Host "First deploy — copying Aggregator TOML"
-            Copy-Item $src $dst -Force
+            Write-Host "##[warning]vector.exe not found at $vectorExe"
           }
 
       - name: Health check
