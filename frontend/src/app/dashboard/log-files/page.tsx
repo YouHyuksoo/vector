@@ -10,7 +10,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Icon, Button, Card } from '@/components/ui';
+import { Icon, Button, Card, Modal } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 
@@ -107,6 +107,8 @@ export default function LogFilesPage() {
   const [search, setSearch] = useState('');
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
 
   /** 디렉토리 내용 조회 */
   const loadDir = useCallback(async (path: string) => {
@@ -190,25 +192,21 @@ export default function LogFilesPage() {
   /** 선택된 파일/폴더 삭제 */
   const handleDelete = async () => {
     if (checked.size === 0) return;
-    const msg = t('logFiles.confirmDelete').replace('{count}', String(checked.size));
-    if (!confirm(msg)) return;
-
+    setShowDeleteModal(false);
     setDeleting(true);
+    setDeleteMsg(null);
     try {
       const paths = Array.from(checked).map(name =>
         currentPath ? `${currentPath}/${name}` : name,
       );
       const res = await apiFetch<{ deleted: number; failed: number }>(
         '/api/monitor/log-files',
-        { method: 'DELETE', body: JSON.stringify({ paths }) },
+        { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paths }) },
       );
-      if (res.deleted > 0) {
-        alert(t('logFiles.deleted').replace('{count}', String(res.deleted)));
-      }
-      if (res.failed > 0) {
-        alert(t('logFiles.deleteFailed').replace('{count}', String(res.failed)));
-      }
-      // 삭제된 파일이 현재 보고있는 파일이면 뷰어 초기화
+      const msgs: string[] = [];
+      if (res.deleted > 0) msgs.push(t('logFiles.deleted').replace('{count}', String(res.deleted)));
+      if (res.failed > 0) msgs.push(t('logFiles.deleteFailed').replace('{count}', String(res.failed)));
+      if (msgs.length) setDeleteMsg(msgs.join(' / '));
       if (selectedFile && checked.has(selectedFile.split('/').pop() || '')) {
         setSelectedFile(null);
         setFileContent(null);
@@ -216,7 +214,7 @@ export default function LogFilesPage() {
       setChecked(new Set());
       loadDir(currentPath);
     } catch {
-      alert('Delete failed');
+      setDeleteMsg('Delete failed');
     }
     setDeleting(false);
   };
@@ -314,7 +312,7 @@ export default function LogFilesPage() {
             <Button variant="primary" leftIcon="download" size="sm" onClick={handleDownloadSelected}>
               {t('logFiles.downloadSelected')} ({entries.filter(e => checked.has(e.name) && e.type === 'file').length})
             </Button>
-            <Button variant="danger" leftIcon="delete" size="sm" onClick={handleDelete} disabled={deleting}>
+            <Button variant="danger" leftIcon="delete" size="sm" onClick={() => { setDeleteMsg(null); setShowDeleteModal(true); }} disabled={deleting}>
               {deleting ? '...' : `${t('logFiles.deleteSelected')} (${checked.size})`}
             </Button>
           </>
@@ -467,6 +465,30 @@ export default function LogFilesPage() {
           )}
         </div>
       </div>
+
+      {/* 삭제 결과 메시지 */}
+      {deleteMsg && (
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg text-sm font-bold
+          bg-surface dark:bg-surface-dark border border-border dark:border-border-dark text-text dark:text-white">
+          {deleteMsg}
+        </div>
+      )}
+
+      {/* 삭제 확인 모달 */}
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title={t('logFiles.deleteSelected')} size="sm">
+        <p className="text-base text-text dark:text-white mb-6">
+          {t('logFiles.confirmDelete').replace('{count}', String(checked.size))}
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>
+            {t('logFiles.cancel')}
+          </Button>
+          <Button variant="primary" leftIcon="delete" onClick={handleDelete}
+            className="!bg-error hover:!bg-error/80">
+            {t('logFiles.deleteSelected')}
+          </Button>
+        </div>
+      </Modal>
     </>
   );
 }

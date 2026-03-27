@@ -774,7 +774,8 @@
     "deleted": "{count} item(s) deleted",
     "deleteFailed": "{count} item(s) failed to delete",
     "download": "Download",
-    "downloadSelected": "Download Selected"
+    "downloadSelected": "Download Selected",
+    "cancel": "Cancel"
   },
   "vrlSim": {
     "title": "VRL Simulator",

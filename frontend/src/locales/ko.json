@@ -774,7 +774,8 @@
     "deleted": "{count}개 삭제 완료",
     "deleteFailed": "{count}개 삭제 실패",
     "download": "다운로드",
-    "downloadSelected": "선택 다운로드"
+    "downloadSelected": "선택 다운로드",
+    "cancel": "취소"
   },
   "vrlSim": {
     "title": "VRL 시뮬레이터",
