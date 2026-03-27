@@ -245,8 +245,8 @@ if .equipment_type == "SP" {
 
 } else if .equipment_type == "AOI" {
   # ── AOI (Automated Optical Inspection) ──
+  .target_table = "LOG_AOI"
   if .log_type == "INSPECTION" {
-    .target_table = "LOG_AOI"
     # 파일 구조 (multiline으로 통째 수신):
     #   줄1: BoardInfo
     #   줄2: Inspector,Model,LotID,SerialNo,Result,...
