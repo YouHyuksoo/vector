@@ -31,7 +31,7 @@ include = [
   'C:\logs\spi\*.csv',
 ]
 read_from = "beginning"
-ignore_older_secs = 86400
+ignore_older_secs = 604800
 fingerprint.strategy = "device_and_inode"
 
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
