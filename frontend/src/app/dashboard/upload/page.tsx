@@ -244,6 +244,7 @@ export default function UploadPage() {
                   <th className="text-left py-2 px-3 text-muted-foreground font-bold">{t('upload.colFilename')}</th>
                   <th className="text-right py-2 px-3 text-muted-foreground font-bold">{t('upload.colSize')}</th>
                   <th className="text-left py-2 px-3 text-muted-foreground font-bold">{t('upload.colDate')}</th>
+                  <th className="text-center py-2 px-3 text-muted-foreground font-bold">{t('upload.colAction')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -254,6 +255,24 @@ export default function UploadPage() {
                     <td className="py-2 px-3 text-text dark:text-white">{f.filename}</td>
                     <td className="py-2 px-3 text-right text-muted-foreground">{formatSize(f.size)}</td>
                     <td className="py-2 px-3 text-muted-foreground">{f.uploadedAt ?? '—'}</td>
+                    <td className="py-2 px-3 text-center">
+                      <button
+                        onClick={() => {
+                          const url = `/api/upload/download?path=${encodeURIComponent(`${f.equipmentId}/${f.date}/${f.filename}`)}`;
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = '';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+                          text-primary hover:bg-primary/10 border border-primary/30 transition-colors"
+                      >
+                        <Icon name="download" size="xs" />
+                        {t('upload.download')}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

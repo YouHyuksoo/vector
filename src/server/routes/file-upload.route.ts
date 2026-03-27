@@ -11,7 +11,7 @@
 
 import { FastifyPluginAsync } from 'fastify';
 import multipart from '@fastify/multipart';
-import { createWriteStream, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
 import { join, extname } from 'path';
 import { pipeline } from 'stream/promises';
 import { logger } from '../../utils/logger.js';
@@ -129,5 +129,33 @@ export const fileUploadRoute: FastifyPluginAsync = async (app) => {
     files.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
 
     return reply.send({ files, equipments });
+  });
+
+  /** GET /api/upload/download - 업로드된 파일 다운로드 */
+  app.get('/upload/download', async (request, reply) => {
+    const { path: relPath } = request.query as { path?: string };
+    if (!relPath) {
+      return reply.status(400).send({ error: 'path required' });
+    }
+    if (relPath.includes('..')) {
+      return reply.status(400).send({ error: 'Invalid path' });
+    }
+    const filePath = join(UPLOAD_BASE, relPath);
+    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+      return reply.status(404).send({ error: 'File not found' });
+    }
+    try {
+      const fileName = relPath.replace(/\\/g, '/').split('/').pop() || 'download';
+      const stat = statSync(filePath);
+      const stream = createReadStream(filePath);
+      return reply
+        .header('Content-Type', 'application/octet-stream')
+        .header('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`)
+        .header('Content-Length', stat.size)
+        .send(stream);
+    } catch (err) {
+      logger.error({ err, relPath }, 'Failed to download uploaded file');
+      return reply.status(500).send({ error: String(err) });
+    }
   });
 };

@@ -852,6 +852,8 @@
     "colEquipment": "ID de Equipo",
     "colFilename": "Nombre",
     "colSize": "Tamaño",
-    "colDate": "Fecha de Carga"
+    "colDate": "Fecha de Carga",
+    "colAction": "Descargar",
+    "download": "Descargar"
   }
 }

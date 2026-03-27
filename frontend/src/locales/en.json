@@ -852,6 +852,8 @@
     "colEquipment": "Equipment ID",
     "colFilename": "Filename",
     "colSize": "Size",
-    "colDate": "Upload Time"
+    "colDate": "Upload Time",
+    "colAction": "Download",
+    "download": "Download"
   }
 }

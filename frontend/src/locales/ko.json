@@ -852,6 +852,8 @@
     "colEquipment": "설비 ID",
     "colFilename": "파일명",
     "colSize": "크기",
-    "colDate": "업로드 시간"
+    "colDate": "업로드 시간",
+    "colAction": "다운로드",
+    "download": "다운로드"
   }
 }
