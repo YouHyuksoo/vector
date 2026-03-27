@@ -1,5 +1,5 @@
 # @file .github/workflows/deploy.yml
-# @description GitHub Actions — Windows self-hosted runner 배포 파이프라인
+# @description GitHub Actions - Windows self-hosted runner 배포 파이프라인
 #
 # 초보자 가이드:
 # 1. main 브랜치에 push 시 자동 실행
@@ -102,7 +102,7 @@ jobs:
             }
             Remove-Item "$dst\temp" -Recurse -Force
           } else {
-            Write-Host "##[warning]vector-x64.zip not found — skipping"
+            Write-Host "##[warning]vector-x64.zip not found - skipping"
           }
 
       - name: Fix TOML line endings (CRLF to LF)
@@ -141,10 +141,10 @@ jobs:
         run: |
           $dst = "$env:DEPLOY_DIR\vector-config\aggregator\vector-aggregator.toml"
           if (!(Test-Path $dst)) {
-            Write-Host "Aggregator TOML not found — skipping"
+            Write-Host "Aggregator TOML not found - skipping"
             return
           }
-          # TOML은 이미 robocopy /MIR로 동기화됨 — Vector 재시작만 처리
+          # TOML은 이미 robocopy /MIR로 동기화됨 - Vector 재시작만 처리
           $vectorProc = Get-Process -Name "vector" -ErrorAction SilentlyContinue
           if ($vectorProc) {
             Stop-Process -Name "vector" -Force
