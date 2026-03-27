@@ -828,12 +828,15 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
           await conn.execute(`ALTER INDEX ${row.INDEX_NAME} RENAME TO ${newIdxName}`).catch(() => {});
         }
 
-        /* 3) 백업 테이블의 트리거 삭제 — RENAME 불가하므로 DROP */
+        /* 3) 트리거 소스 백업 후 DROP — 새 테이블에 재적용하기 위해 */
         const trgRows = await conn.execute(
-          `SELECT TRIGGER_NAME FROM USER_TRIGGERS WHERE TABLE_NAME = :t`,
+          `SELECT TRIGGER_NAME, TRIGGER_TYPE, TRIGGERING_EVENT, TRIGGER_BODY
+           FROM USER_TRIGGERS WHERE TABLE_NAME = :t`,
           { t: upperName },
         );
-        for (const row of (trgRows.rows as Array<{ TRIGGER_NAME: string }>) || []) {
+        const triggerSources: Array<{ name: string; type: string; event: string; body: string }> = [];
+        for (const row of (trgRows.rows as Array<{ TRIGGER_NAME: string; TRIGGER_TYPE: string; TRIGGERING_EVENT: string; TRIGGER_BODY: string }>) || []) {
+          triggerSources.push({ name: row.TRIGGER_NAME, type: row.TRIGGER_TYPE, event: row.TRIGGERING_EVENT, body: row.TRIGGER_BODY });
           await conn.execute(`DROP TRIGGER ${row.TRIGGER_NAME}`).catch(() => {});
         }
 
@@ -843,6 +846,16 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         logger.info({ original: upperName, backup: backupName }, 'Table renamed as backup before recreate');
         await conn.execute(ddl);
         created = true;
+
+        /* 5) 백업한 트리거를 새 테이블에 재적용 */
+        for (const trg of triggerSources) {
+          const timing = trg.type.includes('BEFORE') ? 'BEFORE' : 'AFTER';
+          const eachRow = trg.type.includes('EACH ROW') ? 'FOR EACH ROW' : '';
+          const createTrg = `CREATE OR REPLACE TRIGGER ${trg.name}\n${timing} ${trg.event} ON ${upperName}\n${eachRow}\n${trg.body}`;
+          await conn.execute(createTrg).catch((err) => {
+            logger.warn({ trigger: trg.name, err }, 'Failed to recreate trigger on new table');
+          });
+        }
       } else if (!exists) {
         await conn.execute(ddl);
         created = true;
