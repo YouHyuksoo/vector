@@ -53,7 +53,7 @@ const SYSTEM_TAIL_COLUMNS = [
 
 /** Oracle 예약어 — 컬럼명으로 사용 시 접두사 추가 필요 */
 const ORACLE_RESERVED = new Set([
-  'DATE', 'TIME', 'TIMESTAMP', 'NUMBER', 'TABLE', 'INDEX', 'ORDER', 'GROUP',
+  'DATE', 'DATETIME', 'TIME', 'TIMESTAMP', 'NUMBER', 'TABLE', 'INDEX', 'ORDER', 'GROUP',
   'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'FROM', 'WHERE', 'AND', 'OR', 'NOT',
   'NULL', 'DEFAULT', 'CHECK', 'CREATE', 'ALTER', 'DROP', 'GRANT', 'REVOKE',
   'SET', 'VALUES', 'INTO', 'AS', 'IS', 'IN', 'ON', 'BY', 'TO', 'OF', 'FOR',
