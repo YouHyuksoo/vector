@@ -2711,8 +2711,8 @@ inputs = ["add_metadata"]
 address = "${aggregatorAddr}"
 
 [sinks.to_aggregator.buffer]
-type = "disk"
-max_size = 268435488
+type = "memory"
+max_events = 500
 when_full = "block"
 `;
 }
