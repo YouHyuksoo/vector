@@ -39,10 +39,10 @@ fingerprint.bytes = 32768
 # 첫 번째 줄이 새 이벤트의 시작이 됨.
 # 이후 모든 줄을 계속 이어붙임. 1초간 새 줄이 없으면 전송 완료.
 [sources.work_logs.multiline]
-start_pattern = "^"
-condition_pattern = 'ZZZZZ_NEVER_MATCH_ZZZZZ'
-mode = "halt_before"
-timeout_ms = 1000
+start_pattern = '^.'
+condition_pattern = '.*'
+mode = "continue_through"
+timeout_ms = 5000
 
 # ── [하트비트] 주기적 상태 전송 (30초 간격) ──
 # Aggregator를 통해 Node.js API로 전달되어 Redis에 TTL 저장됩니다.
@@ -62,10 +62,10 @@ remove_after_secs = 30
 ignore_checkpoints = true
 
 [sources.resend_logs.multiline]
-start_pattern = "^"
-condition_pattern = 'ZZZZZ_NEVER_MATCH_ZZZZZ'
-mode = "halt_before"
-timeout_ms = 1000
+start_pattern = '^.'
+condition_pattern = '.*'
+mode = "continue_through"
+timeout_ms = 5000
 
 # ── [설비 설정] ──
 
