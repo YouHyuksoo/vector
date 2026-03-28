@@ -226,18 +226,6 @@ if .equipment_type == "SP" {
   .data.INSPECTION_START_TIME = strip_whitespace(to_string!(get!(data_line, [3])))
   .data.PCB_RESULT = strip_whitespace(to_string!(get!(data_line, [4])))
   .data.LANE = strip_whitespace(to_string!(get!(data_line, [5])))
-} else if .equipment_type == "MAOI" {
-  # ── MAOI (Manual AOI) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
 } else if .equipment_type == "AOI" {  # ── AOI (Automated Optical Inspection) ──
   .target_table = "LOG_AOI"
   if .log_type == "INSPECTION" {
@@ -282,18 +270,6 @@ if .equipment_type == "SP" {
         }
       }
     }
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
-} else if .equipment_type == "REFLOW" {
-  # ── REFLOW (Reflow Oven) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
   } else if .log_type == "ALARM" {
     .data = {}
   } else if .log_type == "PROCESS" {
@@ -391,30 +367,6 @@ if .equipment_type == "SP" {
     }
   }
   .data.ROW_COUNT = length(.data.ROWS)
-} else if .equipment_type == "BURNIN" {
-  # ── BURNIN (Burn-In Test) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
-} else if .equipment_type == "HIPOT" {
-  # ── HIPOT (High Potential Test) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
 } else if .equipment_type == "EOL" {  # Log Structure:
   .target_table = "LOG_EOL"
   # Line 0: CSV header row (BARCODE,LABEL,ARRAY_RESULT,...)
@@ -465,32 +417,8 @@ if .equipment_type == "SP" {
       .data.ROWS = push(.data.ROWS, item)
     }
   }
-} else if .equipment_type == "METALMASK" {
-  # ── METALMASK (Metal Mask) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
 } else if .equipment_type == "MOUNTER" {
   # ── MOUNTER (Chip Mounter) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
-} else if .equipment_type == "VISCOSITY" {
-  # ── VISCOSITY (Viscosity Measurement) ──
   if .log_type == "INSPECTION" {
     .data = {}
   } else if .log_type == "ALARM" {
