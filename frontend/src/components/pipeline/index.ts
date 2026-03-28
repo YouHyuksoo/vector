@@ -4,3 +4,4 @@
  */
 export { EquipmentTypeChips } from './EquipmentTypeChips';
 export { PipelineStepBar } from './PipelineStepBar';
+export { default as EquipmentSidePanel } from './EquipmentSidePanel';

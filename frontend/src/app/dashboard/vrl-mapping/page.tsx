@@ -24,7 +24,7 @@ import SelectionPanel from '../mapping/components/SelectionPanel';
 import MappingTable from '../mapping/components/MappingTable';
 import ProcedureMapping from '../mapping/components/ProcedureMapping';
 import AutoCreateModal from '../mapping/components/AutoCreateModal';
-import EquipmentSidePanel from './components/EquipmentSidePanel';
+import { EquipmentSidePanel } from '@/components/pipeline';
 import AiVrlGenerator from './components/AiVrlGenerator';
 import VrlEditor from './components/VrlEditor';
 import VrlResultPanel from './components/VrlResultPanel';

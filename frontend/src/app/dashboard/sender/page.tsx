@@ -4,8 +4,9 @@
  *
  * 초보자 가이드:
  * 1. **주요 개념**: 설비 유형별(SP, SPI, MAOI 등) 독립 TOML 설정 관리
- * 2. **좌측 패널**: 설비 목록 + 통합 5단계 파이프라인 진행률
- * 3. **우측 패널**: 선택된 설비의 TOML 에디터 + 다운로드
+ * 2. **좌측 패널**: 공통 EquipmentSidePanel — 5단계 파이프라인 진행률 + 추가/삭제/설명 편집
+ * 3. **우측 패널**: 선택된 설비의 TOML 에디터 + 다운로드 (Vector) 또는 Fluent Bit 설정 패널
+ * 4. **모드 전환**: 헤더의 Vector / Fluent Bit 토글로 에이전트 종류 전환
  */
 'use client';
 
@@ -13,7 +14,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Icon, Button, Modal, Input } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
-import { EquipmentList } from './components/EquipmentList';
+import { EquipmentSidePanel } from '@/components/pipeline';
 import { AgentConfigPanel } from './components/AgentConfigPanel';
 import { FluentConfigPanel } from './components/FluentConfigPanel';
 import { usePipelineStatus } from '@/hooks/usePipelineStatus';
@@ -40,6 +41,7 @@ export default function SenderPage() {
   const { t } = useI18n();
 
   const { agents: pipelineStatus, refresh: refreshPipeline } = usePipelineStatus(refreshKey);
+  void refreshPipeline;
 
   const fetchNames = useCallback(async () => {
     try {
@@ -154,62 +156,54 @@ export default function SenderPage() {
         </div>
         {/* Vector / Fluent Bit 모드 전환 */}
         <div className="flex gap-2">
-          <button onClick={() => handleModeChange('vector')}
+          <button
+            onClick={() => handleModeChange('vector')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all border-2
               ${!isFluent
                 ? 'border-accent bg-accent/10 text-text dark:text-white'
-                : 'border-border dark:border-border-dark text-muted-foreground hover:border-accent/40'}`}>
+                : 'border-border dark:border-border-dark text-muted-foreground hover:border-accent/40'}`}
+          >
             <Icon name="terminal" size="sm" />
             Vector (.toml)
           </button>
-          <button onClick={() => handleModeChange('fluent')}
+          <button
+            onClick={() => handleModeChange('fluent')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all border-2
               ${isFluent
                 ? 'border-info bg-info/10 text-text dark:text-white'
-                : 'border-border dark:border-border-dark text-muted-foreground hover:border-info/40'}`}>
+                : 'border-border dark:border-border-dark text-muted-foreground hover:border-info/40'}`}
+          >
             <Icon name="air" size="sm" />
             Fluent Bit (.conf)
           </button>
         </div>
       </div>
 
-      {/* 상단: 설비 목록 → 하단: 설정 */}
-      <div className="flex flex-col gap-6">
-        {isFluent ? (
-          /* Fluent Bit 모드: Vector EquipmentList와 동일한 패턴 */
-          <EquipmentList
-            names={fluentNames}
-            descriptions={{}}
-            pipelineStatus={{}}
-            selected={selected}
-            onSelect={setSelected}
-            onAdd={() => setShowAdd(true)}
-            onDelete={() => setShowDelete(true)}
-            onDescriptionUpdate={() => {}}
-            fluentMode
-          />
-        ) : (
-          /* Vector 모드: 기존 EquipmentList */
-          <EquipmentList
-            names={names}
-            descriptions={descriptions}
-            pipelineStatus={pipelineStatus}
-            selected={selected}
-            onSelect={setSelected}
-            onAdd={() => setShowAdd(true)}
-            onDelete={() => setShowDelete(true)}
-            onDescriptionUpdate={handleDescUpdate}
-          />
-        )}
+      {/* 메인 레이아웃: 좌측 사이드 패널 + 우측 설정 패널 */}
+      <div className="border border-border dark:border-border-dark rounded-xl min-h-[600px] flex overflow-hidden">
+        {/* 좌측 설비 사이드 패널 */}
+        <EquipmentSidePanel
+          agents={pipelineStatus}
+          selected={selected}
+          onSelect={setSelected}
+          names={activeNames}
+          onAdd={() => setShowAdd(true)}
+          onDelete={() => setShowDelete(true)}
+          descriptions={isFluent ? undefined : descriptions}
+          onDescriptionUpdate={isFluent ? undefined : handleDescUpdate}
+          fluentMode={isFluent}
+        />
 
-        {/* 하단: 설정 패널 */}
-        <div className="flex flex-col gap-3">
+        {/* 우측 설정 패널 */}
+        <div className="flex-1 min-w-0 p-4 overflow-auto">
           {selected ? (
             isFluent ? (
               <FluentConfigPanel key={selected} name={selected} onSaved={handleSaved} />
             ) : (
               <AgentConfigPanel
-                key={selected} name={selected} onDownload={handleDownload}
+                key={selected}
+                name={selected}
+                onDownload={handleDownload}
                 description={descriptions[selected] || ''}
                 encoding={getEncStr(rawDescs[selected])}
                 onDescriptionSave={(desc, enc) => handleDescUpdate(selected, desc, enc)}
@@ -217,7 +211,7 @@ export default function SenderPage() {
               />
             )
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground gap-2">
+            <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-muted-foreground gap-2">
               <Icon name="inventory_2" size="xl" />
               <p className="text-sm">{t('sender.selectPrompt')}</p>
             </div>
@@ -226,7 +220,12 @@ export default function SenderPage() {
       </div>
 
       {/* 추가 모달 */}
-      <Modal isOpen={showAdd} onClose={() => { setShowAdd(false); setAddError(''); }} title={t('sender.addTitle')} size="sm">
+      <Modal
+        isOpen={showAdd}
+        onClose={() => { setShowAdd(false); setAddError(''); }}
+        title={t('sender.addTitle')}
+        size="sm"
+      >
         <div className="flex flex-col gap-4">
           <Input
             label={t('sender.nameLabel')}
@@ -235,17 +234,21 @@ export default function SenderPage() {
             placeholder="예: MOUNTER"
             error={addError}
           />
-          <div>
-            <label className="block text-sm font-medium text-text dark:text-white mb-1">{t('sender.descLabel')}</label>
-            <input
-              value={newDesc}
-              onChange={e => setNewDesc(e.target.value)}
-              placeholder={t('sender.descPlaceholder')}
-              className="w-full rounded-lg border border-border dark:border-border-dark bg-surface dark:bg-surface-dark
-                px-3 py-2 text-sm text-text dark:text-white placeholder:text-muted-foreground
-                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-            />
-          </div>
+          {!isFluent && (
+            <div>
+              <label className="block text-sm font-medium text-text dark:text-white mb-1">
+                {t('sender.descLabel')}
+              </label>
+              <input
+                value={newDesc}
+                onChange={e => setNewDesc(e.target.value)}
+                placeholder={t('sender.descPlaceholder')}
+                className="w-full rounded-lg border border-border dark:border-border-dark bg-surface dark:bg-surface-dark
+                  px-3 py-2 text-sm text-text dark:text-white placeholder:text-muted-foreground
+                  focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              />
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowAdd(false)}>{t('aggregator.later')}</Button>
             <Button variant="primary" leftIcon="add" onClick={handleAdd}>{t('sender.add')}</Button>
@@ -254,13 +257,23 @@ export default function SenderPage() {
       </Modal>
 
       {/* 삭제 확인 모달 */}
-      <Modal isOpen={showDelete} onClose={() => setShowDelete(false)} title={t('sender.deleteConfirm')} size="sm">
+      <Modal
+        isOpen={showDelete}
+        onClose={() => setShowDelete(false)}
+        title={t('sender.deleteConfirm')}
+        size="sm"
+      >
         <p className="text-sm text-muted-foreground mb-4">
           <strong className="text-error">{selected}</strong> {t('sender.deleteMsg')}
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setShowDelete(false)}>{t('aggregator.later')}</Button>
-          <Button variant="primary" leftIcon="delete" onClick={handleDelete} className="!bg-error hover:!bg-error/80">
+          <Button
+            variant="primary"
+            leftIcon="delete"
+            onClick={handleDelete}
+            className="!bg-error hover:!bg-error/80"
+          >
             {t('sender.delete')}
           </Button>
         </div>
