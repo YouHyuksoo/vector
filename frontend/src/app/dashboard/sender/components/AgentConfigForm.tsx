@@ -143,57 +143,57 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
         </Sec>
       </div>
 
-      {/* 로그 경로 */}
-      <Sec icon="folder_open" title={t('sender.form.logPaths')} iconColor={IC}>
-        <div className="flex flex-col gap-1.5">
-          <div className="relative">
-            <textarea value={f.logPaths} rows={2}
-              onChange={e => u(c => setInclude(c, e.target.value))}
-              placeholder={'C:\\logs\\설비명\\*.csv\nC:\\logs\\설비명\\*.txt'}
-              className="w-full px-2.5 py-1.5 text-xs font-mono border rounded-lg resize-y
-                bg-white dark:bg-slate-800 border-border" />
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              따옴표 없이 경로만 입력 (줄바꿈으로 여러 경로 추가)
-            </p>
-            <div className="absolute right-2 top-2">
-              <Tip text={t('sender.form.tooltip.logPaths')} />
+      {/* 로그 경로 + 재전송 폴더 */}
+      <div className="grid grid-cols-[3fr_2fr] gap-2">
+        <Sec icon="folder_open" title={t('sender.form.logPaths')} iconColor={IC}>
+          <div className="flex flex-col gap-1.5">
+            <div className="relative">
+              <textarea value={f.logPaths} rows={2}
+                onChange={e => u(c => setInclude(c, e.target.value))}
+                placeholder={'C:\\logs\\설비명\\*.csv\nC:\\logs\\설비명\\*.txt'}
+                className="w-full px-2.5 py-1.5 text-xs font-mono border rounded-lg resize-y
+                  bg-white dark:bg-slate-800 border-border" />
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                따옴표 없이 경로만 입력 (줄바꿈으로 여러 경로 추가)
+              </p>
+              <div className="absolute right-2 top-2">
+                <Tip text={t('sender.form.tooltip.logPaths')} />
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={hasMultiline(content)}
+                  onChange={e => u(c => e.target.checked ? addMultiline(c) : removeMultiline(c))}
+                  className="w-3.5 h-3.5 rounded border-border accent-primary" />
+                <span className="text-[11px] text-muted-foreground">{t('sender.form.wholeFile')}</span>
+                <Tip text={t('sender.form.tooltip.wholeFile')} />
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={hasRecursive(f.logPaths)}
+                  onChange={e => {
+                    const toggled = toggleRecursive(f.logPaths, e.target.checked);
+                    u(c => setInclude(c, toggled));
+                  }}
+                  className="w-3.5 h-3.5 rounded border-border accent-primary" />
+                <span className="text-[11px] text-muted-foreground">{t('sender.form.recursive')}</span>
+                <span className="text-[10px] text-muted-foreground/60 font-mono">
+                  {hasRecursive(f.logPaths) ? '**/*.ext' : '*.ext'}
+                </span>
+              </label>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={hasMultiline(content)}
-                onChange={e => u(c => e.target.checked ? addMultiline(c) : removeMultiline(c))}
-                className="w-3.5 h-3.5 rounded border-border accent-primary" />
-              <span className="text-[11px] text-muted-foreground">{t('sender.form.wholeFile')}</span>
-              <Tip text={t('sender.form.tooltip.wholeFile')} />
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={hasRecursive(f.logPaths)}
-                onChange={e => {
-                  const toggled = toggleRecursive(f.logPaths, e.target.checked);
-                  u(c => setInclude(c, toggled));
-                }}
-                className="w-3.5 h-3.5 rounded border-border accent-primary" />
-              <span className="text-[11px] text-muted-foreground">{t('sender.form.recursive')}</span>
-              <span className="text-[10px] text-muted-foreground/60 font-mono">
-                {hasRecursive(f.logPaths) ? '**/*.ext' : '*.ext'}
-              </span>
-            </label>
+        </Sec>
+        <Sec icon="replay" title={t('sender.form.resend')} iconColor={IC}>
+          <div className="flex flex-col gap-2">
+            <F label={t('sender.form.resendPath')} value={f.resendPath}
+              onChange={v => u(c => setResendInclude(c, v))}
+              tooltip={t('sender.form.tooltip.resendPath')} />
+            <F label={t('sender.form.resendDeleteSecs')} value={f.resendDeleteSecs} type="number" suffix="s"
+              onChange={v => u(c => setResendDeleteSecs(c, v))}
+              tooltip={t('sender.form.tooltip.resendDeleteSecs')} />
           </div>
-        </div>
-      </Sec>
-
-      {/* 재전송 폴더 */}
-      <Sec icon="replay" title={t('sender.form.resend')} iconColor={IC}>
-        <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-          <F label={t('sender.form.resendPath')} value={f.resendPath}
-            onChange={v => u(c => setResendInclude(c, v))}
-            tooltip={t('sender.form.tooltip.resendPath')} />
-          <F label={t('sender.form.resendDeleteSecs')} value={f.resendDeleteSecs} type="number" suffix="s"
-            onChange={v => u(c => setResendDeleteSecs(c, v))}
-            tooltip={t('sender.form.tooltip.resendDeleteSecs')} />
-        </div>
-      </Sec>
+        </Sec>
+      </div>
 
       {/* 파일 감지 + 전송 버퍼 옵션 */}
       <div className="grid grid-cols-[3fr_2fr] gap-2">
