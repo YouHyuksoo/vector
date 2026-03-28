@@ -84,7 +84,7 @@ jobs:
           # 전체 동기화: 로컬(git) = 서버. 서버 전용 파일/디렉토리만 보호.
           robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
             /XF ".env" "ai-config.json" "ai-system-prompt.txt" "parse-fields.json" `
-            /XD ".git" "data" "logs" "vector-data" "vector-data-agent"
+            /XD ".git" "data" "logs" "vector-data" "vector-data-agent" "vector-config\agent"
 
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
 
