@@ -215,22 +215,17 @@ if .equipment_type == "SP" {
 
 } else if .equipment_type == "SPI" {
   .target_table = "LOG_SPI"
-  # PROCEDURE 모드 사용 시 아래 두 줄의 주석을 해제하세요
+  # CSV 구조 (첫번째 섹션만 사용, Panel/Pad 섹션은 무시):
+  #   줄1(헤더): PCBName,MasterBarcode,InspectionDate,InspectionStartTime,PCBResult,Lane
+  #   줄2(데이터): H_MX5A_CTRO...,001263140010100000011,2026-03-26,07:53:06,GOOD,1
   values = split!(to_string!(.message), "\n")
   data_line = split!(to_string!(get!(values, [1])), ",")
-  .data.MASTER_BARCODE = strip_whitespace(to_string!(get!(data_line, [0])))
-  .data.PCB_ID = strip_whitespace(to_string!(get!(data_line, [1])))
+  .data.PCB_ID = strip_whitespace(to_string!(get!(data_line, [0])))
+  .data.MASTER_BARCODE = strip_whitespace(to_string!(get!(data_line, [1])))
   .data.INSPECTION_DATE = strip_whitespace(to_string!(get!(data_line, [2])))
   .data.INSPECTION_START_TIME = strip_whitespace(to_string!(get!(data_line, [3])))
-  .data.INSPECTION_END_TIME = strip_whitespace(to_string!(get!(data_line, [4])))
-  .data.TOTAL_PANEL_COUNT = strip_whitespace(to_string!(get!(data_line, [5])))
-  .data.JOB_NAME = strip_whitespace(to_string!(get!(data_line, [6])))
-  .data.PCB_RESULT = strip_whitespace(to_string!(get!(data_line, [7])))
-  .data.USER_ID = strip_whitespace(to_string!(get!(data_line, [8])))
-  .data.LOT_INFO = strip_whitespace(to_string!(get!(data_line, [9])))
-  .data.MACHINE_ID = strip_whitespace(to_string!(get!(data_line, [10])))
-  .data.SIDE = strip_whitespace(to_string!(get!(data_line, [11])))
-  .data.LANE = strip_whitespace(to_string!(get!(data_line, [12])))
+  .data.PCB_RESULT = strip_whitespace(to_string!(get!(data_line, [4])))
+  .data.LANE = strip_whitespace(to_string!(get!(data_line, [5])))
 } else if .equipment_type == "MAOI" {
   # ── MAOI (Manual AOI) ──
   if .log_type == "INSPECTION" {
@@ -243,8 +238,7 @@ if .equipment_type == "SP" {
     .data = {}
   }
 
-} else if .equipment_type == "AOI" {
-  # ── AOI (Automated Optical Inspection) ──
+} else if .equipment_type == "AOI" {  # ── AOI (Automated Optical Inspection) ──
   .target_table = "LOG_AOI"
   if .log_type == "INSPECTION" {
     # 파일 구조 (multiline으로 통째 수신):
@@ -857,6 +851,35 @@ if .equipment_type == "SP" {
       .data.ROWS = push(.data.ROWS, item)
     }
   }
+} else if .equipment_type == "SELECTIVE" {
+  .target_table = "LOG_SELECTIVE"
+  # Log Structure: Multi-row CSV batch log with header row (line 0)
+  # Line 0: header row (Barcode,Date&Time,Solder_TEMP1,Solder_TEMP2,RPM1,RPM2,Pre_Heat_Time,Pre_Heat_TEMP)
+  # Lines 1+: data rows (batch of selective soldering records)
+  # All data rows must be parsed into .data.ROWS array for individual DB INSERT
+
+  lines = split!(.message, "\n")
+  .data.ROWS = []
+
+  # Skip header (line 0), parse all data rows (lines 1+)
+  data_lines = slice!(lines, 1)
+  for_each(array!(data_lines)) -> |_idx, row| {
+    if row != "" {
+      cols = split(to_string!(row), ",")
+      item = {
+        "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+        "DATE_TIME": strip_whitespace(to_string!(get!(cols, [1]))),
+        "SOLDER_TEMP1": strip_whitespace(to_string!(get!(cols, [2]))),
+        "SOLDER_TEMP2": strip_whitespace(to_string!(get!(cols, [3]))),
+        "RPM1": strip_whitespace(to_string!(get!(cols, [4]))),
+        "RPM2": strip_whitespace(to_string!(get!(cols, [5]))),
+        "PRE_HEAT_TIME": strip_whitespace(to_string!(get!(cols, [6]))),
+        "PRE_HEAT_TEMP": strip_whitespace(to_string!(get!(cols, [7]))),
+      }
+      .data.ROWS = push(.data.ROWS, item)
+    }
+  }
+
 } else {
   log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
   .data = {}
@@ -876,7 +899,19 @@ if .equipment_type == "SP" {
 type = "remap"
 inputs = ["parse_logs"]
 source = '''
-ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
+ts = if exists(.timestamp) { to_string!(.timestamp) } else if .equipment_type == "SELECTIVE" {
+  # ── SELECTIVE ──
+  if .log_type == "INSPECTION" {
+    .data = {}
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+
+} else { to_string!(now()) }
 . = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "equipment_type": .equipment_type,   # 설비 유형 (raw 파일 저장 경로용)

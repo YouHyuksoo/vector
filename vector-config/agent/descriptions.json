@@ -10,5 +10,9 @@
   "MARKING": {
     "description": "LASER MARKING",
     "encoding": "utf-8"
+  },
+  "SELECTIVE": {
+    "description": "SELECTIVE SOLDERING",
+    "encoding": "utf-8"
   }
 }
