@@ -8,6 +8,7 @@
     "errors": "처리 로그",
     "receiver": "수신기 설정",
     "simulator": "VRL 시뮬레이터",
+    "vrlMapping": "VRL & 매핑",
     "sender": "송신기 설정",
     "download": "송신기 다운로드",
     "settings": "설정",
@@ -576,6 +577,12 @@
     "selectPrompt": "테이블을 선택하여 로그를 조회하세요",
     "noData": "데이터 없음",
     "rows": "행"
+  },
+  "vrlMapping": {
+    "incomplete": "미완료",
+    "complete": "완료",
+    "noEquipment": "등록된 설비가 없습니다",
+    "selectEquipment": "왼쪽에서 설비를 선택하세요"
   },
   "mapping": {
     "title": "타겟 매핑",

@@ -8,6 +8,7 @@
     "errors": "Processing Logs",
     "receiver": "Receiver",
     "simulator": "VRL Simulator",
+    "vrlMapping": "VRL & Mapping",
     "sender": "Sender",
     "download": "Agent Download",
     "settings": "Settings",
@@ -576,6 +577,12 @@
     "selectPrompt": "Select a table to view logs",
     "noData": "No data",
     "rows": "rows"
+  },
+  "vrlMapping": {
+    "incomplete": "Incomplete",
+    "complete": "Complete",
+    "noEquipment": "No equipment registered",
+    "selectEquipment": "Select equipment from the left panel"
   },
   "mapping": {
     "title": "TARGET MAPPING",

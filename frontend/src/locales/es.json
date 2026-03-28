@@ -8,6 +8,7 @@
     "errors": "Registros de Procesamiento",
     "receiver": "Receptor",
     "simulator": "Simulador VRL",
+    "vrlMapping": "VRL & Mapeo",
     "sender": "Emisor",
     "download": "Descarga de Agent",
     "settings": "Configuración",
@@ -576,6 +577,12 @@
     "selectPrompt": "Seleccione una tabla para ver los logs",
     "noData": "Sin datos",
     "rows": "filas"
+  },
+  "vrlMapping": {
+    "incomplete": "Incompleto",
+    "complete": "Completo",
+    "noEquipment": "No hay equipos registrados",
+    "selectEquipment": "Seleccione un equipo del panel izquierdo"
   },
   "mapping": {
     "title": "MAPEO DE DESTINOS",
