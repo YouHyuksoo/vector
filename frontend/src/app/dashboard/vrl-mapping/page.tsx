@@ -222,9 +222,9 @@ export default function VrlMappingPage() {
   void logTypes; // 현재 미사용 (SelectionPanel 내부에서 사용)
 
   return (
-    <>
+    <div className="flex flex-col h-[calc(100vh-100px)]">
       {/* 헤더 */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 shrink-0">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Icon name="code" className="text-primary" />
           <span className="tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
@@ -234,7 +234,7 @@ export default function VrlMappingPage() {
       </div>
 
       {/* 메인 레이아웃: 좌측 설비 패널 + 우측 탭 콘텐츠 */}
-      <div className="border border-border dark:border-border-dark rounded-xl min-h-[600px] flex overflow-hidden">
+      <div className="border border-border dark:border-border-dark rounded-xl flex-1 min-h-0 flex overflow-hidden mt-6">
         {/* 좌측 설비 사이드패널 */}
         <EquipmentSidePanel
           agents={agents}
@@ -243,7 +243,7 @@ export default function VrlMappingPage() {
         />
 
         {/* 우측 콘텐츠 영역 */}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           {/* 탭 헤더 */}
           <div className="flex items-center border-b border-border dark:border-border-dark px-4 gap-1 bg-surface dark:bg-surface-dark">
             <button
@@ -283,7 +283,7 @@ export default function VrlMappingPage() {
           </div>
 
           {/* 탭 콘텐츠 */}
-          <div className="flex-1 p-4 overflow-auto">
+          <div className="flex-1 min-h-0 p-4 overflow-y-auto">
             {!selectedEquip ? (
               /* 설비 미선택 안내 */
               <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-3">
@@ -458,6 +458,6 @@ export default function VrlMappingPage() {
           </div>
         </div>
       </Modal>
-    </>
+    </div>
   );
 }

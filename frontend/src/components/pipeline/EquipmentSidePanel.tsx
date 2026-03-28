@@ -174,7 +174,7 @@ export default function EquipmentSidePanel({
   );
 
   return (
-    <div className="w-52 shrink-0 border-r border-border dark:border-border-dark overflow-y-auto flex flex-col">
+    <div className="w-52 shrink-0 border-r border-border dark:border-border-dark overflow-y-auto flex flex-col h-full">
       {/* 추가/삭제 버튼 영역 */}
       {(onAdd || onDelete) && (
         <div className="flex items-center gap-1 px-2 py-2 border-b border-border dark:border-border-dark">

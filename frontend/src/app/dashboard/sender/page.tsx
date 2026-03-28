@@ -144,9 +144,9 @@ export default function SenderPage() {
   }
 
   return (
-    <>
+    <div className="flex flex-col h-[calc(100vh-100px)]">
       {/* 페이지 헤더 */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Icon name="upload" className="text-accent" />
           <h1 className="text-xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-accent to-primary">
@@ -180,7 +180,7 @@ export default function SenderPage() {
       </div>
 
       {/* 메인 레이아웃: 좌측 사이드 패널 + 우측 설정 패널 */}
-      <div className="border border-border dark:border-border-dark rounded-xl min-h-[600px] flex overflow-hidden">
+      <div className="border border-border dark:border-border-dark rounded-xl flex-1 min-h-0 flex overflow-hidden mt-6">
         {/* 좌측 설비 사이드 패널 */}
         <EquipmentSidePanel
           agents={pipelineStatus}
@@ -195,7 +195,7 @@ export default function SenderPage() {
         />
 
         {/* 우측 설정 패널 */}
-        <div className="flex-1 min-w-0 p-4 overflow-auto">
+        <div className="flex-1 min-w-0 min-h-0 p-4 overflow-y-auto">
           {selected ? (
             isFluent ? (
               <FluentConfigPanel key={selected} name={selected} onSaved={handleSaved} />
@@ -278,6 +278,6 @@ export default function SenderPage() {
           </Button>
         </div>
       </Modal>
-    </>
+    </div>
   );
 }
