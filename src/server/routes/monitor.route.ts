@@ -811,8 +811,9 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
           `SELECT CONSTRAINT_NAME FROM USER_CONSTRAINTS WHERE TABLE_NAME = :t`,
           { t: upperName },
         );
+        const bkSuffix = ts.slice(-6); // HHmmss — 초 단위까지 포함하여 고유성 보장
         for (const row of (conRows.rows as Array<{ CONSTRAINT_NAME: string }>) || []) {
-          const newConName = `${row.CONSTRAINT_NAME}_BK`.slice(0, 30);
+          const newConName = `${row.CONSTRAINT_NAME}_${bkSuffix}`.slice(0, 30);
           await conn.execute(`ALTER TABLE ${upperName} RENAME CONSTRAINT ${row.CONSTRAINT_NAME} TO ${newConName}`).catch(() => {});
         }
 
@@ -822,7 +823,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
           { t: upperName },
         );
         for (const row of (idxRows.rows as Array<{ INDEX_NAME: string }>) || []) {
-          const newIdxName = `${row.INDEX_NAME}_BK`.slice(0, 30);
+          const newIdxName = `${row.INDEX_NAME}_${bkSuffix}`.slice(0, 30);
           await conn.execute(`ALTER INDEX ${row.INDEX_NAME} RENAME TO ${newIdxName}`).catch(() => {});
         }
 
