@@ -112,7 +112,7 @@ export default function EquipmentSidePanel({
         className={`w-full flex flex-col px-3 py-2 rounded-lg text-sm transition-colors text-left
           ${isActive
             ? 'bg-primary text-white font-bold'
-            : `${stripe ? 'bg-black/[0.03] dark:bg-white/[0.04]' : ''} text-text dark:text-white hover:bg-surface dark:hover:bg-surface-dark`}`}
+            : `${stripe ? 'bg-black/[0.03] dark:bg-white/10' : ''} text-text dark:text-white hover:bg-surface dark:hover:bg-surface-dark`}`}
       >
         <div className="flex items-center justify-between w-full">
           <span className="font-mono text-xs truncate">{name}</span>
