@@ -185,8 +185,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       try {
         writeFileSync(tmpPath, content, 'utf-8');
         const { execSync } = await import('child_process');
-        const vectorBin = existsSync('C:\\vector\\vector.exe') ? 'C:\\vector\\vector.exe' : 'vector';
-        execSync(`"${vectorBin}" validate --no-environment "${tmpPath}"`, {
+        execSync(`"${VECTOR_BIN}" validate --no-environment "${tmpPath}"`, {
           timeout: 15000,
           windowsHide: true,
         });
@@ -592,8 +591,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       try {
         writeFileSync(tmpPath, content, 'utf-8');
         const { execSync } = await import('child_process');
-        const vectorBin = existsSync('C:\\vector\\vector.exe') ? 'C:\\vector\\vector.exe' : 'vector';
-        execSync(`"${vectorBin}" validate --no-environment "${tmpPath}"`, {
+        execSync(`"${VECTOR_BIN}" validate --no-environment "${tmpPath}"`, {
           timeout: 15000,
           windowsHide: true,
         });
@@ -2693,7 +2691,7 @@ include = [
 read_from = "beginning"
 fingerprint.strategy = "checksum"
 fingerprint.bytes = 256
-ignore_older_secs = 86400
+ignore_older_secs = 604800
 
 [transforms.add_metadata]
 type = "remap"

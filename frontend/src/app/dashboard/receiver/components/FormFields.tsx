@@ -49,7 +49,7 @@ export function F({ label, value, onChange, type = 'text', suffix, placeholder, 
             ${mono ? 'font-mono' : ''}
             ${suffix ? 'pr-10' : ''}`} />
         {suffix && (
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
             {suffix}
           </span>
         )}
