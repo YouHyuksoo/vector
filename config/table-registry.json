@@ -1032,9 +1032,9 @@
       "COLUMN_ORDER": 3
     },
     {
-      "COLUMN_NAME": "PCB_ID",
-      "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.PCB_ID",
+      "COLUMN_NAME": "PCB_NAME",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.PCB_NAME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 4
     },

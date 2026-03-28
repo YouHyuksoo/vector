@@ -220,7 +220,7 @@ if .equipment_type == "SP" {
   #   줄2(데이터): H_MX5A_CTRO...,001263140010100000011,2026-03-26,07:53:06,GOOD,1
   values = split!(to_string!(.message), "\n")
   data_line = split!(to_string!(get!(values, [1])), ",")
-  .data.PCB_ID = strip_whitespace(to_string!(get!(data_line, [0])))
+  .data.PCB_NAME = strip_whitespace(to_string!(get!(data_line, [0])))
   .data.MASTER_BARCODE = strip_whitespace(to_string!(get!(data_line, [1])))
   .data.INSPECTION_DATE = strip_whitespace(to_string!(get!(data_line, [2])))
   .data.INSPECTION_START_TIME = strip_whitespace(to_string!(get!(data_line, [3])))
