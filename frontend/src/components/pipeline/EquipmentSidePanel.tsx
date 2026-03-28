@@ -97,12 +97,13 @@ export default function EquipmentSidePanel({
   };
 
   // ── 개별 아이템 렌더 ──
-  const renderItem = (name: string) => {
+  const renderItem = (name: string, idx: number) => {
     const entry = agents[name];
     const doneCount = entry?.doneCount ?? 0;
     const isActive = selected === name;
     const desc = descriptions?.[name];
     const isEd = editing === name;
+    const stripe = idx % 2 === 1;
 
     return (
       <button
@@ -111,7 +112,7 @@ export default function EquipmentSidePanel({
         className={`w-full flex flex-col px-3 py-2 rounded-lg text-sm transition-colors text-left
           ${isActive
             ? 'bg-primary text-white font-bold'
-            : 'text-text dark:text-white hover:bg-surface dark:hover:bg-surface-dark'}`}
+            : `${stripe ? 'bg-black/[0.03] dark:bg-white/[0.04]' : ''} text-text dark:text-white hover:bg-surface dark:hover:bg-surface-dark`}`}
       >
         <div className="flex items-center justify-between w-full">
           <span className="font-mono text-xs truncate">{name}</span>
@@ -168,7 +169,7 @@ export default function EquipmentSidePanel({
         </span>
       </div>
       <div className="space-y-0.5">
-        {items.map(renderItem)}
+        {items.map((name, idx) => renderItem(name, idx))}
       </div>
     </div>
   );
