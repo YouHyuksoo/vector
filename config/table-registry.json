@@ -1009,64 +1009,6 @@
       }
     ]
   },
-  "LOG_SPI": [
-    {
-      "COLUMN_NAME": "EQUIPMENT_ID",
-      "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "equipment_id",
-      "IS_REQUIRED": "Y",
-      "COLUMN_ORDER": 1
-    },
-    {
-      "COLUMN_NAME": "LOG_TIMESTAMP",
-      "DATA_TYPE": "TIMESTAMP",
-      "SOURCE_FIELD": "timestamp",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 2
-    },
-    {
-      "COLUMN_NAME": "MASTER_BARCODE",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MASTER_BARCODE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 3
-    },
-    {
-      "COLUMN_NAME": "PCB_NAME",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.PCB_NAME",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 4
-    },
-    {
-      "COLUMN_NAME": "INSPECTION_DATE",
-      "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.INSPECTION_DATE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 5
-    },
-    {
-      "COLUMN_NAME": "INSPECTION_START_TIME",
-      "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.INSPECTION_START_TIME",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 6
-    },
-    {
-      "COLUMN_NAME": "PCB_RESULT",
-      "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "data.PCB_RESULT",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 7
-    },
-    {
-      "COLUMN_NAME": "LANE",
-      "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "data.LANE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 8
-    }
-  ],
   "LOG_VISION_NATIVE": [
     {
       "COLUMN_NAME": "EQUIPMENT_ID",

@@ -1,0 +1,5 @@
+BoardInfo
+Inspector,Model,LotID,SerialNo,Result,StartDate,EndDate,Operator,Lane
+L01_SAOI,ML41051066A_MW93A100431A_T_F,,20260303074339,Good,2026/03/03 07:43:39,2026/03/03 07:43:39,master,Front
+Inspection
+ModuleID,RefID,WindowNo,DefectType,PartName

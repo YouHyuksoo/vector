@@ -1,0 +1,6 @@
+MasterBarcode,PCBID,InspectionDate,InspectionStartTime,InspectionEndTime,TotalPanelCnt,JobName,PCBResult,UserID,LotInfo,MachineID,Side,Lane
+NULL,707,2026-03-03,07:06:22,07:06:38,8,C:\Kohyoung\Job\PROGRAMAS 2025\ESL\ML41A051066A-TOP-V1.0.mdb,GOOD,AutoOperator,,SB01,Top,2
+Panel
+ArrayBarcode,PanelResult
+NULL,GOOD
+ComponentID,PadResult,PadDefectType

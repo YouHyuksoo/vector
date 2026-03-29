@@ -1,0 +1,14 @@
+{
+  "AOI": {
+    "description": "AOI 검사설비 공용",
+    "encoding": "utf-8"
+  },
+  "LOWCURRENT": {
+    "description": "저전류검사기",
+    "encoding": "euc-kr"
+  },
+  "MARKING": {
+    "description": "LASER MARKING",
+    "encoding": "utf-8"
+  }
+}

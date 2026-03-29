@@ -1,0 +1,6 @@
+PCBName,MasterBarcode,InspectionDate,InspectionStartTime,PCBResult,Lane
+H_MX5A_CTRO_DWLX REV C.01-PAD CHANGE TOP QC2510OFA039-SPI,001263250004100000011,2026-03-26,10:24:55,GOOD,1
+PanelResult,PanelNo,ArrayBarcode,PanelInspectionStartTime,PanelInspectionEndTime
+GOOD,1,001163250004100000011,10:24:55,10:25:02
+GOOD,2,001263250004100000011,10:24:55,10:25:02
+PadDefectType,PadResult,ArrayNumber,PanelNumber,ComponentID
