@@ -19,7 +19,7 @@ function elapsed(iso: string, serverNow?: number) {
   if (s < 3600) return `${Math.floor(s / 60)}m`;
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 const ICONS: Record<string, string> = {
