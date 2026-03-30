@@ -34,7 +34,7 @@ class HeartbeatService {
 
     store.set(equipmentId, {
       equipment_id: equipmentId,
-      last_seen: data?.timestamp ?? new Date().toISOString(),
+      last_seen: new Date().toISOString(),
       metadata: data?.metadata,
       timer,
     });
