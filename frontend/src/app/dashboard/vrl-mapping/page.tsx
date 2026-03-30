@@ -49,6 +49,7 @@ export default function VrlMappingPage() {
   const [simResult, setSimResult] = useState<SimResult | null>(null);
   const [restartModalOpen, setRestartModalOpen] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const [reloading, setReloading] = useState(false);
 
   // AI VRL 생성기 옵션 상태
   const [logStructure, setLogStructure] = useState<'SINGLE' | 'MULTI_ROW' | 'KEY_VALUE' | 'MULTI_SECTION'>('SINGLE');
@@ -132,16 +133,26 @@ export default function VrlMappingPage() {
     loadParseRules();
   }, [loadParseRules]);
 
-  /** 재시작 확인 — Vector 재시작 → 매핑 탭 이동 + pipeline 갱신 */
+  /** 재시작 확인 — Vector 리로드 → 매핑 탭 이동 + pipeline 갱신 */
   const handleRestartConfirm = useCallback(async () => {
     setRestarting(true);
     try {
-      await apiFetch('/api/monitor/restart', { method: 'POST' });
+      await apiFetch('/api/monitor/vector/reload', { method: 'POST' });
     } catch { /* ignore */ }
     setRestarting(false);
     setRestartModalOpen(false);
     setPipelineKey(k => k + 1);
     setActiveTab('mapping');
+  }, []);
+
+  /** Vector 리로드 (헤더 버튼) */
+  const handleReload = useCallback(async () => {
+    setReloading(true);
+    try {
+      await apiFetch('/api/monitor/vector/reload', { method: 'POST' });
+      setPipelineKey(k => k + 1);
+    } catch { /* ignore */ }
+    setReloading(false);
   }, []);
 
   /** 나중에 — 재시작 없이 매핑 탭으로 이동 */
@@ -231,6 +242,15 @@ export default function VrlMappingPage() {
             VRL &amp; 매핑
           </span>
         </h1>
+        <Button
+          variant="ghost" size="sm"
+          leftIcon={reloading ? 'progress_activity' : 'restart_alt'}
+          onClick={handleReload}
+          disabled={reloading}
+          className={reloading ? '[&_span.material-symbols-outlined]:animate-spin' : ''}
+        >
+          {reloading ? 'Vector 리로드 중...' : 'Vector 리로드'}
+        </Button>
       </div>
 
       {/* 메인 레이아웃: 좌측 설비 패널 + 우측 탭 콘텐츠 */}

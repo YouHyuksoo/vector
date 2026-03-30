@@ -161,6 +161,27 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     return reply.status(result.success ? 200 : 400).send(result);
   });
 
+  /** Vector aggregator 리로드 (stop → start) */
+  app.post('/api/monitor/vector/reload', async (_request, reply) => {
+    try {
+      const stopResult = await stopVector();
+      if (!stopResult.success) {
+        return reply.status(400).send({ success: false, message: `Stop failed: ${stopResult.message}` });
+      }
+      await new Promise(r => setTimeout(r, 1500));
+      const startResult = await startVector();
+      const msg = startResult.success
+        ? `Vector reloaded (PID: ${startResult.message.match(/\d+/)?.[0] ?? '?'})`
+        : `Restart partial: stopped OK, start issue: ${startResult.message}`;
+      errorLogRepository.success('VECTOR_CONTROL', 'VECTOR_PROCESS', 'SYSTEM', msg);
+      return reply.send({ success: startResult.success, message: msg });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error({ err: msg }, 'Failed to reload Vector');
+      return reply.status(500).send({ success: false, message: msg });
+    }
+  });
+
   /** Vector aggregator TOML 설정 조회 */
   app.get('/api/monitor/aggregator/config', async (_request, reply) => {
     try {
