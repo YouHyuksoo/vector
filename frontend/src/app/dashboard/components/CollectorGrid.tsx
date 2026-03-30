@@ -10,13 +10,16 @@ import { Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
 import { RemoteTabPanel } from '../equipment/components/RemoteTabPanel';
 
-function elapsed(iso: string) {
+function elapsed(iso: string, serverNow?: number) {
   if (!iso) return '—';
-  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  const now = serverNow ?? Date.now();
+  const s = (now - new Date(iso).getTime()) / 1000;
   if (s < 0) return 'now';
   if (s < 60) return `${Math.floor(s)}s`;
   if (s < 3600) return `${Math.floor(s / 60)}m`;
-  return `${Math.floor(s / 3600)}h`;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
 const ICONS: Record<string, string> = {
@@ -29,7 +32,7 @@ const ICONS: Record<string, string> = {
 
 interface Equipment { equipment_id: string; online: boolean; last_seen: string; metadata: Record<string, string> }
 interface LogEntry { LOG_ID?: number; SOURCE_TABLE?: string; EQUIPMENT_ID: string; MESSAGE?: string; STAGE?: string; STATUS: string; CREATED_AT?: string }
-interface Props { equipments: Equipment[]; logs?: LogEntry[] }
+interface Props { equipments: Equipment[]; logs?: LogEntry[]; serverTimestamp?: string }
 
 const SKIP = new Set([
   'equipment_id', 'equipment_type', 'line_code', 'log_type',
@@ -77,11 +80,12 @@ function ActivityPanel({ logs, t }: { logs: LogEntry[]; t: (k: string) => string
   );
 }
 
-export function CollectorGrid({ equipments, logs = [] }: Props) {
+export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props) {
   const up = equipments.filter(e => e.online).length;
   const dn = equipments.length - up;
   const { t } = useI18n();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const serverNow = serverTimestamp ? new Date(serverTimestamp).getTime() : undefined;
 
   const stats = useMemo(() => {
     const m: Record<string, { ok: number; err: number }> = {};
@@ -190,7 +194,7 @@ export function CollectorGrid({ equipments, logs = [] }: Props) {
                     </div>
                     <span className="flex items-center gap-0.5">
                       <Icon name="schedule" size="xs" className="text-muted-foreground/40" />
-                      {elapsed(eq.last_seen)}
+                      {elapsed(eq.last_seen, serverNow)}
                     </span>
                   </div>
 

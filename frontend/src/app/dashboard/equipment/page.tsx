@@ -34,7 +34,7 @@ export default function EquipmentDashboardPage() {
         </h1>
       </div>
 
-      <CollectorGrid equipments={data.equipments} logs={data.recentLogs} />
+      <CollectorGrid equipments={data.equipments} logs={data.recentLogs} serverTimestamp={data.server.timestamp} />
 
       <div className="flex items-center justify-between text-sm text-muted-foreground pt-4 border-t border-border dark:border-border-dark">
         <span>{t('dashboard.copyright')} &copy; 2026</span>
