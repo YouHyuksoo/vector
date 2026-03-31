@@ -20,6 +20,8 @@ interface AiModel { name: string; model: string; }
 interface Props {
   equipmentType: string;
   sampleLog: string;
+  logType: string;
+  onLogTypeChange: (v: string) => void;
   onGenerated: (code: string) => void;
   logStructure: 'SINGLE' | 'MULTI_ROW' | 'KEY_VALUE' | 'MULTI_SECTION';
   onLogStructureChange: (s: 'SINGLE' | 'MULTI_ROW' | 'KEY_VALUE' | 'MULTI_SECTION') => void;
@@ -38,7 +40,7 @@ interface Props {
 }
 
 export default function AiVrlGenerator({
-  equipmentType, sampleLog, onGenerated,
+  equipmentType, sampleLog, logType, onLogTypeChange, onGenerated,
   logStructure, onLogStructureChange,
   multiRowMode, onMultiRowModeChange,
   hasHeader, onHasHeaderChange,
@@ -48,7 +50,6 @@ export default function AiVrlGenerator({
   sectionMarkers, onSectionMarkersChange,
 }: Props) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
   const [aiModels, setAiModels] = useState<AiModel[]>([]);
   const [selectedAi, setSelectedAi] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
@@ -104,24 +105,28 @@ export default function AiVrlGenerator({
   };
 
   return (
-    <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 overflow-hidden">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-purple-500/10 transition-colors"
-      >
-        <Icon name={open ? 'expand_less' : 'expand_more'} size="xs" className="text-purple-500" />
+    <div className="flex-1 min-w-0 rounded-lg border border-purple-500/20 bg-purple-500/5 overflow-hidden">
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-purple-500/20">
         <Icon name="smart_toy" size="xs" className="text-purple-500" />
         <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
           {t('vrlSim.aiGenerate')}
         </span>
+        <div className="flex items-center gap-1.5 ml-4">
+          <label className="text-[10px] font-medium text-muted-foreground">{t('vrlSim.logType')}</label>
+          <input
+            type="text" value={logType} onChange={e => onLogTypeChange(e.target.value)}
+            placeholder={t('vrlSim.logTypePlaceholder')}
+            className="w-56 px-2 py-1 text-xs font-mono border rounded-md
+              bg-white dark:bg-slate-800 border-border"
+          />
+        </div>
         {aiModels.length === 0 && (
           <span className="text-[10px] text-muted-foreground ml-auto">{t('vrlSim.aiNotConfigured')}</span>
         )}
-      </button>
+      </div>
 
-      {open && (
-        <div className="px-3 pb-3 space-y-2 border-t border-purple-500/20">
-          <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-info/5 border border-info/20 mt-2">
+      <div className="px-3 pb-3 space-y-2">
+        <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-info/5 border border-info/20 mt-2">
             <div className="flex items-center gap-1.5 mb-0.5">
               <Icon name="description" size="xs" className="text-info" />
               <span className="text-[10px] font-bold text-info uppercase tracking-wider">
@@ -166,7 +171,7 @@ export default function AiVrlGenerator({
                 <div className="flex items-center gap-1 ml-1 border-l border-info/30 pl-2">
                   <span className="text-[10px] text-muted-foreground">{t('receiver.form.kvDelimiter')}:</span>
                   <div className="flex items-center gap-0.5">
-                    {[':', '=', '\\t'].map(d => (
+                    {[':', '=', '\t'].map(d => (
                       <button
                         key={d}
                         onClick={() => onKvDelimiterChange(d)}
@@ -176,11 +181,11 @@ export default function AiVrlGenerator({
                             : 'text-muted-foreground hover:text-text'
                         }`}
                       >
-                        {d === '\\t' ? 'TAB' : d}
+                        {d === '\t' ? 'TAB' : d}
                       </button>
                     ))}
                     <input
-                      value={[':', '=', '\\t'].includes(kvDelimiter) ? '' : kvDelimiter}
+                      value={[':', '=', '\t'].includes(kvDelimiter) ? '' : kvDelimiter}
                       onChange={e => onKvDelimiterChange(e.target.value)}
                       placeholder={t('receiver.form.kvCustom')}
                       className="w-16 px-1.5 py-0.5 text-[10px] font-mono border rounded
@@ -316,7 +321,7 @@ export default function AiVrlGenerator({
                           setSystemPrompt(res.prompt); setIsCustomPrompt(false);
                         }}
                         className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded
-                          text-muted-foreground hover:text-text border border-border hover:border-border/80 transition-colors"
+                          text-muted-foreground hover:text-text border border-border hover:border-border-dark transition-colors"
                       >
                         <Icon name="restart_alt" size="xs" />
                         {t('vrlSim.resetPrompt')}
@@ -328,7 +333,6 @@ export default function AiVrlGenerator({
             </>
           )}
         </div>
-      )}
     </div>
   );
 }

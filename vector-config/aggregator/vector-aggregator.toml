@@ -215,17 +215,61 @@ if .equipment_type == "SP" {
 
 } else if .equipment_type == "SPI" {
   .target_table = "LOG_SPI"
-  # CSV 구조 (첫번째 섹션만 사용, Panel/Pad 섹션은 무시):
-  #   줄1(헤더): PCBName,MasterBarcode,InspectionDate,InspectionStartTime,PCBResult,Lane
-  #   줄2(데이터): H_MX5A_CTRO...,001263140010100000011,2026-03-26,07:53:06,GOOD,1
-  values = split!(to_string!(.message), "\n")
-  data_line = split!(to_string!(get!(values, [1])), ",")
-  .data.PCB_NAME = strip_whitespace(to_string!(get!(data_line, [0])))
-  .data.MASTER_BARCODE = strip_whitespace(to_string!(get!(data_line, [1])))
-  .data.INSPECTION_DATE = strip_whitespace(to_string!(get!(data_line, [2])))
-  .data.INSPECTION_START_TIME = strip_whitespace(to_string!(get!(data_line, [3])))
-  .data.PCB_RESULT = strip_whitespace(to_string!(get!(data_line, [4])))
-  .data.LANE = strip_whitespace(to_string!(get!(data_line, [5])))
+  # Log Structure:
+  # Line 0: Master header row (PCBName,MasterBarcode,InspectionDate,InspectionEndTime,PCBResult,Lane)
+  # Line 1: Master data row (single row)
+  # Line 2: Panel header row (PanelResult,PanelNo,ArrayBarcode,PanelInspectionStartTime,PanelInspectionEndTime)
+  # Line 3+: Panel data rows (multiple rows)
+  # Line X: PadDefectType header row (IGNORE this and all following lines)
+  #
+  # User requirement:
+  # - Master data (line 1) + Panel data (lines 3+) must be combined into single rows in .data.ROWS
+  # - PadDefectType section (and any following) must be ignored
+  # - Each panel row becomes one row in .data.ROWS, with master data merged
+
+  lines = split!(.message, "\n")
+
+  # Parse Master section (line 1)
+  master_cols = split(to_string!(get!(lines, [1])), ",")
+  master_data = {
+    "PCB_NAME": strip_whitespace(to_string!(get!(master_cols, [0]))),
+    "MASTER_BARCODE": strip_whitespace(to_string!(get!(master_cols, [1]))),
+    "INSPECTION_DATE": strip_whitespace(to_string!(get!(master_cols, [2]))),
+    "INSPECTION_END_TIME": strip_whitespace(to_string!(get!(master_cols, [3]))),
+    "PCB_RESULT": strip_whitespace(to_string!(get!(master_cols, [4]))),
+    "LANE": strip_whitespace(to_string!(get!(master_cols, [5])))
+  }
+
+  .data.ROWS = []
+  panel_start_line = 3
+  panel_end_line = length(lines)
+
+  for_each(array!(slice!(lines, panel_start_line))) -> |idx, line| {
+    if starts_with(to_string!(line), "PadDefectType") {
+      panel_end_line = panel_start_line + idx
+    }
+  }
+
+  panel_lines = slice!(lines, panel_start_line, panel_end_line)
+  for_each(array!(panel_lines)) -> |_idx, row| {
+    if row != "" {
+      panel_cols = split(to_string!(row), ",")
+      item = {
+        "PCB_NAME": master_data.PCB_NAME,
+        "MASTER_BARCODE": master_data.MASTER_BARCODE,
+        "INSPECTION_DATE": master_data.INSPECTION_DATE,
+        "INSPECTION_END_TIME": master_data.INSPECTION_END_TIME,
+        "PCB_RESULT": master_data.PCB_RESULT,
+        "LANE": master_data.LANE,
+        "PANEL_RESULT": strip_whitespace(to_string!(get!(panel_cols, [0]))),
+        "PANEL_NO": strip_whitespace(to_string!(get!(panel_cols, [1]))),
+        "ARRAY_BARCODE": strip_whitespace(to_string!(get!(panel_cols, [2]))),
+        "PANEL_INSPECTION_START_TIME": strip_whitespace(to_string!(get!(panel_cols, [3]))),
+        "PANEL_INSPECTION_END_TIME": strip_whitespace(to_string!(get!(panel_cols, [4])))
+      }
+      .data.ROWS = push(.data.ROWS, item)
+    }
+  }
 } else if .equipment_type == "AOI" {  # ── AOI (Automated Optical Inspection) ──
   .target_table = "LOG_AOI"
   if .log_type == "INSPECTION" {
@@ -808,6 +852,226 @@ if .equipment_type == "SP" {
     }
   }
 
+} else if .equipment_type == "REFLOW" {
+  .target_table = "LOG_REFLOW_01"
+  # ── REFLOW ──
+  if .log_type == "INSPECTION" {
+    # Log Structure: REFLOW 온도 프로파일 (UTF-16 LE, TAB 구분)
+    # [0]=빈줄, [1]=JOB이름, [2]=헤더(600컬럼), [3]=데이터
+    # 컬럼: DataId, DateTime, SP0,PV0,OP0, SP1,PV1,OP1, ... (3개씩 반복)
+    # Zone 0~19 (60컬럼)만 추출
+
+    lines = split!(.message, "\n")
+    non_empty = []
+    for_each(array!(lines)) -> |_idx, line| {
+      trimmed = strip_whitespace(to_string!(line))
+      if trimmed != "" {
+        non_empty = push(non_empty, trimmed)
+      }
+    }
+
+    .data.JOB_NAME = to_string!(get!(non_empty, [0]))
+    cols = split(to_string!(get!(non_empty, [2])), "\t")
+    .data.DATA_ID = strip_whitespace(to_string!(get!(cols, [0])))
+    .data.DATE_TIME = strip_whitespace(to_string!(get!(cols, [1])))
+
+    # Zone 0~19: SP(설정온도), PV(실제온도), OP(출력%)
+    .data.SP0 = strip_whitespace(to_string!(get!(cols, [2])))
+    .data.PV0 = strip_whitespace(to_string!(get!(cols, [3])))
+    .data.OP0 = strip_whitespace(to_string!(get!(cols, [4])))
+    .data.SP1 = strip_whitespace(to_string!(get!(cols, [5])))
+    .data.PV1 = strip_whitespace(to_string!(get!(cols, [6])))
+    .data.OP1 = strip_whitespace(to_string!(get!(cols, [7])))
+    .data.SP2 = strip_whitespace(to_string!(get!(cols, [8])))
+    .data.PV2 = strip_whitespace(to_string!(get!(cols, [9])))
+    .data.OP2 = strip_whitespace(to_string!(get!(cols, [10])))
+    .data.SP3 = strip_whitespace(to_string!(get!(cols, [11])))
+    .data.PV3 = strip_whitespace(to_string!(get!(cols, [12])))
+    .data.OP3 = strip_whitespace(to_string!(get!(cols, [13])))
+    .data.SP4 = strip_whitespace(to_string!(get!(cols, [14])))
+    .data.PV4 = strip_whitespace(to_string!(get!(cols, [15])))
+    .data.OP4 = strip_whitespace(to_string!(get!(cols, [16])))
+    .data.SP5 = strip_whitespace(to_string!(get!(cols, [17])))
+    .data.PV5 = strip_whitespace(to_string!(get!(cols, [18])))
+    .data.OP5 = strip_whitespace(to_string!(get!(cols, [19])))
+    .data.SP6 = strip_whitespace(to_string!(get!(cols, [20])))
+    .data.PV6 = strip_whitespace(to_string!(get!(cols, [21])))
+    .data.OP6 = strip_whitespace(to_string!(get!(cols, [22])))
+    .data.SP7 = strip_whitespace(to_string!(get!(cols, [23])))
+    .data.PV7 = strip_whitespace(to_string!(get!(cols, [24])))
+    .data.OP7 = strip_whitespace(to_string!(get!(cols, [25])))
+    .data.SP8 = strip_whitespace(to_string!(get!(cols, [26])))
+    .data.PV8 = strip_whitespace(to_string!(get!(cols, [27])))
+    .data.OP8 = strip_whitespace(to_string!(get!(cols, [28])))
+    .data.SP9 = strip_whitespace(to_string!(get!(cols, [29])))
+    .data.PV9 = strip_whitespace(to_string!(get!(cols, [30])))
+    .data.OP9 = strip_whitespace(to_string!(get!(cols, [31])))
+    .data.SP10 = strip_whitespace(to_string!(get!(cols, [32])))
+    .data.PV10 = strip_whitespace(to_string!(get!(cols, [33])))
+    .data.OP10 = strip_whitespace(to_string!(get!(cols, [34])))
+    .data.SP11 = strip_whitespace(to_string!(get!(cols, [35])))
+    .data.PV11 = strip_whitespace(to_string!(get!(cols, [36])))
+    .data.OP11 = strip_whitespace(to_string!(get!(cols, [37])))
+    .data.SP12 = strip_whitespace(to_string!(get!(cols, [38])))
+    .data.PV12 = strip_whitespace(to_string!(get!(cols, [39])))
+    .data.OP12 = strip_whitespace(to_string!(get!(cols, [40])))
+    .data.SP13 = strip_whitespace(to_string!(get!(cols, [41])))
+    .data.PV13 = strip_whitespace(to_string!(get!(cols, [42])))
+    .data.OP13 = strip_whitespace(to_string!(get!(cols, [43])))
+    .data.SP14 = strip_whitespace(to_string!(get!(cols, [44])))
+    .data.PV14 = strip_whitespace(to_string!(get!(cols, [45])))
+    .data.OP14 = strip_whitespace(to_string!(get!(cols, [46])))
+    .data.SP15 = strip_whitespace(to_string!(get!(cols, [47])))
+    .data.PV15 = strip_whitespace(to_string!(get!(cols, [48])))
+    .data.OP15 = strip_whitespace(to_string!(get!(cols, [49])))
+    .data.SP16 = strip_whitespace(to_string!(get!(cols, [50])))
+    .data.PV16 = strip_whitespace(to_string!(get!(cols, [51])))
+    .data.OP16 = strip_whitespace(to_string!(get!(cols, [52])))
+    .data.SP17 = strip_whitespace(to_string!(get!(cols, [53])))
+    .data.PV17 = strip_whitespace(to_string!(get!(cols, [54])))
+    .data.OP17 = strip_whitespace(to_string!(get!(cols, [55])))
+    .data.SP18 = strip_whitespace(to_string!(get!(cols, [56])))
+    .data.PV18 = strip_whitespace(to_string!(get!(cols, [57])))
+    .data.OP18 = strip_whitespace(to_string!(get!(cols, [58])))
+    .data.SP19 = strip_whitespace(to_string!(get!(cols, [59])))
+    .data.PV19 = strip_whitespace(to_string!(get!(cols, [60])))
+    .data.OP19 = strip_whitespace(to_string!(get!(cols, [61])))
+  } else if .log_type == "ALARM" {
+    .data = {}
+  } else if .log_type == "PROCESS" {
+    .data = {}
+  } else {
+    .data = {}
+  }
+} else if .equipment_type == "REFLOW2" {  # ── REFLOW2 ──
+  .target_table = "LOG_REFLOW_02"
+    if .log_type == "INSPECTION" {
+      # Log Structure: REFLOW2 오븐 데이터 로그 (UTF-8, CSV, 누적형)
+      # Line 0: 헤더 (103 컬럼)
+      # Line 1+: 데이터 행 (1초 간격, 하루 ~86400줄)
+      # 컬럼: Time, Recipe, SP/PV/OP_Top1~13, SP/PV/OP_Bot1~13, C1, Belt, Ehc 등
+      lines = split!(.message, "
+  ")
+      data_lines = slice!(lines, 1)
+      .data.ROWS = []
+      for_each(array!(data_lines)) -> |_idx, row| {
+        if strip_whitespace(to_string!(row)) != "" {
+          cols = split(to_string!(row), ",")
+          item = {
+            "TIME": strip_whitespace(to_string!(get!(cols, [0]))),
+            "RECIPE": strip_whitespace(to_string!(get!(cols, [1]))),
+            "SP_TOP1": strip_whitespace(to_string!(get!(cols, [2]))),
+            "PV_TOP1": strip_whitespace(to_string!(get!(cols, [3]))),
+            "OP_TOP1": strip_whitespace(to_string!(get!(cols, [4]))),
+            "SP_TOP2": strip_whitespace(to_string!(get!(cols, [5]))),
+            "PV_TOP2": strip_whitespace(to_string!(get!(cols, [6]))),
+            "OP_TOP2": strip_whitespace(to_string!(get!(cols, [7]))),
+            "SP_TOP3": strip_whitespace(to_string!(get!(cols, [8]))),
+            "PV_TOP3": strip_whitespace(to_string!(get!(cols, [9]))),
+            "OP_TOP3": strip_whitespace(to_string!(get!(cols, [10]))),
+            "SP_TOP4": strip_whitespace(to_string!(get!(cols, [11]))),
+            "PV_TOP4": strip_whitespace(to_string!(get!(cols, [12]))),
+            "OP_TOP4": strip_whitespace(to_string!(get!(cols, [13]))),
+            "SP_TOP5": strip_whitespace(to_string!(get!(cols, [14]))),
+            "PV_TOP5": strip_whitespace(to_string!(get!(cols, [15]))),
+            "OP_TOP5": strip_whitespace(to_string!(get!(cols, [16]))),
+            "SP_TOP6": strip_whitespace(to_string!(get!(cols, [17]))),
+            "PV_TOP6": strip_whitespace(to_string!(get!(cols, [18]))),
+            "OP_TOP6": strip_whitespace(to_string!(get!(cols, [19]))),
+            "SP_TOP7": strip_whitespace(to_string!(get!(cols, [20]))),
+            "PV_TOP7": strip_whitespace(to_string!(get!(cols, [21]))),
+            "OP_TOP7": strip_whitespace(to_string!(get!(cols, [22]))),
+            "SP_TOP8": strip_whitespace(to_string!(get!(cols, [23]))),
+            "PV_TOP8": strip_whitespace(to_string!(get!(cols, [24]))),
+            "OP_TOP8": strip_whitespace(to_string!(get!(cols, [25]))),
+            "SP_TOP9": strip_whitespace(to_string!(get!(cols, [26]))),
+            "PV_TOP9": strip_whitespace(to_string!(get!(cols, [27]))),
+            "OP_TOP9": strip_whitespace(to_string!(get!(cols, [28]))),
+            "SP_TOP10": strip_whitespace(to_string!(get!(cols, [29]))),
+            "PV_TOP10": strip_whitespace(to_string!(get!(cols, [30]))),
+            "OP_TOP10": strip_whitespace(to_string!(get!(cols, [31]))),
+            "SP_TOP11": strip_whitespace(to_string!(get!(cols, [32]))),
+            "PV_TOP11": strip_whitespace(to_string!(get!(cols, [33]))),
+            "OP_TOP11": strip_whitespace(to_string!(get!(cols, [34]))),
+            "SP_TOP12": strip_whitespace(to_string!(get!(cols, [35]))),
+            "PV_TOP12": strip_whitespace(to_string!(get!(cols, [36]))),
+            "OP_TOP12": strip_whitespace(to_string!(get!(cols, [37]))),
+            "SP_TOP13": strip_whitespace(to_string!(get!(cols, [38]))),
+            "PV_TOP13": strip_whitespace(to_string!(get!(cols, [39]))),
+            "OP_TOP13": strip_whitespace(to_string!(get!(cols, [40]))),
+            "SP_BOT1": strip_whitespace(to_string!(get!(cols, [41]))),
+            "PV_BOT1": strip_whitespace(to_string!(get!(cols, [42]))),
+            "OP_BOT1": strip_whitespace(to_string!(get!(cols, [43]))),
+            "SP_BOT2": strip_whitespace(to_string!(get!(cols, [44]))),
+            "PV_BOT2": strip_whitespace(to_string!(get!(cols, [45]))),
+            "OP_BOT2": strip_whitespace(to_string!(get!(cols, [46]))),
+            "SP_BOT3": strip_whitespace(to_string!(get!(cols, [47]))),
+            "PV_BOT3": strip_whitespace(to_string!(get!(cols, [48]))),
+            "OP_BOT3": strip_whitespace(to_string!(get!(cols, [49]))),
+            "SP_BOT4": strip_whitespace(to_string!(get!(cols, [50]))),
+            "PV_BOT4": strip_whitespace(to_string!(get!(cols, [51]))),
+            "OP_BOT4": strip_whitespace(to_string!(get!(cols, [52]))),
+            "SP_BOT5": strip_whitespace(to_string!(get!(cols, [53]))),
+            "PV_BOT5": strip_whitespace(to_string!(get!(cols, [54]))),
+            "OP_BOT5": strip_whitespace(to_string!(get!(cols, [55]))),
+            "SP_BOT6": strip_whitespace(to_string!(get!(cols, [56]))),
+            "PV_BOT6": strip_whitespace(to_string!(get!(cols, [57]))),
+            "OP_BOT6": strip_whitespace(to_string!(get!(cols, [58]))),
+            "SP_BOT7": strip_whitespace(to_string!(get!(cols, [59]))),
+            "PV_BOT7": strip_whitespace(to_string!(get!(cols, [60]))),
+            "OP_BOT7": strip_whitespace(to_string!(get!(cols, [61]))),
+            "SP_BOT8": strip_whitespace(to_string!(get!(cols, [62]))),
+            "PV_BOT8": strip_whitespace(to_string!(get!(cols, [63]))),
+            "OP_BOT8": strip_whitespace(to_string!(get!(cols, [64]))),
+            "SP_BOT9": strip_whitespace(to_string!(get!(cols, [65]))),
+            "PV_BOT9": strip_whitespace(to_string!(get!(cols, [66]))),
+            "OP_BOT9": strip_whitespace(to_string!(get!(cols, [67]))),
+            "SP_BOT10": strip_whitespace(to_string!(get!(cols, [68]))),
+            "PV_BOT10": strip_whitespace(to_string!(get!(cols, [69]))),
+            "OP_BOT10": strip_whitespace(to_string!(get!(cols, [70]))),
+            "SP_BOT11": strip_whitespace(to_string!(get!(cols, [71]))),
+            "PV_BOT11": strip_whitespace(to_string!(get!(cols, [72]))),
+            "OP_BOT11": strip_whitespace(to_string!(get!(cols, [73]))),
+            "SP_BOT12": strip_whitespace(to_string!(get!(cols, [74]))),
+            "PV_BOT12": strip_whitespace(to_string!(get!(cols, [75]))),
+            "OP_BOT12": strip_whitespace(to_string!(get!(cols, [76]))),
+            "SP_BOT13": strip_whitespace(to_string!(get!(cols, [77]))),
+            "PV_BOT13": strip_whitespace(to_string!(get!(cols, [78]))),
+            "OP_BOT13": strip_whitespace(to_string!(get!(cols, [79]))),
+            "SP_C1": strip_whitespace(to_string!(get!(cols, [80]))),
+            "PV_C1": strip_whitespace(to_string!(get!(cols, [81]))),
+            "OP_C1": strip_whitespace(to_string!(get!(cols, [82]))),
+            "BELTSP1": strip_whitespace(to_string!(get!(cols, [83]))),
+            "BELTPV1": strip_whitespace(to_string!(get!(cols, [84]))),
+            "BELTADC1": strip_whitespace(to_string!(get!(cols, [85]))),
+            "BELTOP1": strip_whitespace(to_string!(get!(cols, [86]))),
+            "EHCSP1": strip_whitespace(to_string!(get!(cols, [87]))),
+            "EHCPV1": strip_whitespace(to_string!(get!(cols, [88]))),
+            "BLOWERSP1": strip_whitespace(to_string!(get!(cols, [89]))),
+            "BLOWERSP2": strip_whitespace(to_string!(get!(cols, [90]))),
+            "BLOWERSP3": strip_whitespace(to_string!(get!(cols, [91]))),
+            "BLOWERSP4": strip_whitespace(to_string!(get!(cols, [92]))),
+            "BDSINLANE1": strip_whitespace(to_string!(get!(cols, [93]))),
+            "BDSOUTLANE1": strip_whitespace(to_string!(get!(cols, [94]))),
+            "N2_ONOFF": strip_whitespace(to_string!(get!(cols, [95]))),
+            "TOTALN2MASSFLOW": strip_whitespace(to_string!(get!(cols, [96]))),
+            "ACTIVECHANNEL": strip_whitespace(to_string!(get!(cols, [97]))),
+            "ACTIVECHANNELLASTPPM": strip_whitespace(to_string!(get!(cols, [98]))),
+            "O2PPM_0": strip_whitespace(to_string!(get!(cols, [99]))),
+            "O2PPM_1": strip_whitespace(to_string!(get!(cols, [100]))),
+            "O2PPM_2": strip_whitespace(to_string!(get!(cols, [101]))),
+            "USERNAME": strip_whitespace(to_string!(get!(cols, [102])))
+          }
+          .data.ROWS = push(.data.ROWS, item)
+        }
+      }
+    } else if .log_type == "ALARM" {
+      .data = {}
+    } else if .log_type == "PROCESS" {
+      .data = {}
+    } else {
+      .data = {}
+    }
 } else {
   log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
   .data = {}

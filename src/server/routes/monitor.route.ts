@@ -2027,7 +2027,13 @@ Generate VRL parsing code for this log.`;
           error: result.stderr.trim() || 'VRL produced no JSON output.\nstdout: ' + (raw.slice(0, 200) || '(empty)'),
         });
       }
-      const jsonStr = raw.slice(jsonStart, jsonEnd + 1);
+      // Vector VRL 출력에 이스케이프되지 않은 제어 문자(TAB 등)가 있을 수 있으므로 치환
+      const jsonStr = raw.slice(jsonStart, jsonEnd + 1)
+        .replace(/"(?:[^"\\]|\\.)*"/g, (strLiteral) =>
+          strLiteral.replace(/[\x00-\x1F\x7F]/g, (ch) =>
+            `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`,
+          ),
+        );
 
       let output: Record<string, unknown>;
       try {
@@ -2058,6 +2064,52 @@ Generate VRL parsing code for this log.`;
       const msg = err instanceof Error ? err.message : String(err);
       logger.warn({ err: msg }, 'VRL simulation failed');
       return reply.send({ success: false, error: msg });
+    } finally {
+      try { if (existsSync(inputFile)) unlinkSync(inputFile); } catch { /* ignore */ }
+      try { if (existsSync(vrlFile)) unlinkSync(vrlFile); } catch { /* ignore */ }
+    }
+  });
+
+  /** VRL 코드 문법 검증 (샘플 로그 없이 컴파일만 체크) */
+  app.post('/api/monitor/vrl/validate', async (request, reply) => {
+    const { vrlCode } = request.body as { vrlCode: string };
+    if (!vrlCode) {
+      return reply.status(400).send({ success: false, error: 'vrlCode is required' });
+    }
+
+    const ts = Date.now();
+    const inputFile = join(tmpdir(), `vrl-validate-input-${ts}.json`);
+    const vrlFile = join(tmpdir(), `vrl-validate-${ts}.vrl`);
+
+    try {
+      // 최소한의 더미 입력으로 문법 검증
+      writeFileSync(inputFile, JSON.stringify({ message: '', equipment_type: '', log_type: '' }), 'utf-8');
+      writeFileSync(vrlFile, vrlCode, 'utf-8');
+
+      const result = await new Promise<{ stdout: string; stderr: string; code: number }>((resolve) => {
+        const proc = spawn(VECTOR_BIN, [
+          'vrl', '--input', inputFile, '--program', vrlFile, '--print-object',
+        ], { windowsHide: true });
+        let stdout = '';
+        let stderr = '';
+        proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
+        proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
+        proc.on('close', (code) => resolve({ stdout, stderr, code: code ?? 1 }));
+        proc.on('error', () => resolve({ stdout, stderr, code: 1 }));
+        const timer = setTimeout(() => { proc.kill(); resolve({ stdout, stderr, code: 1 }); }, 10000);
+        proc.on('close', () => clearTimeout(timer));
+      });
+
+      if (result.code === 0) {
+        return reply.send({ success: true });
+      }
+      // stderr에서 INFO/DEBUG 로그 제거하여 실제 에러만 추출
+      const cleanErr = result.stderr.split('\n')
+        .filter(l => !l.match(/^\d{4}-\d{2}-\d{2}T.*\s+(INFO|DEBUG|WARN)\s+/))
+        .join('\n').trim();
+      return reply.send({ success: false, error: cleanErr || `Validation failed (exit code ${result.code})` });
+    } catch (err) {
+      return reply.send({ success: false, error: err instanceof Error ? err.message : String(err) });
     } finally {
       try { if (existsSync(inputFile)) unlinkSync(inputFile); } catch { /* ignore */ }
       try { if (existsSync(vrlFile)) unlinkSync(vrlFile); } catch { /* ignore */ }
@@ -2557,12 +2609,17 @@ function getDefaultVrlSystemPrompt(): string {
 Your task: parse a raw log into structured .data.FIELD fields.
 
 ABSOLUTE FORBIDDEN — VRL compilation will FAIL if you use ANY of these:
+- "for" — RESERVED KEYWORD, causes E205 error. "for x in 0..N" does NOT exist in VRL.
 - "while" — RESERVED KEYWORD, causes E205 error. NEVER use while loops.
 - "loop" — RESERVED KEYWORD, causes E205 error.
 - "break" — RESERVED KEYWORD, causes E205 error.
 - "continue" — RESERVED KEYWORD, causes E205 error.
+- "range()" — UNDEFINED FUNCTION, causes E105 error. VRL has NO range function.
+- "0..N" range syntax — VRL does NOT support range literals.
 - obj[variable] or .data[field] — VRL does NOT support dynamic field access. Only integer literals allowed in brackets.
-Instead of loops, use for_each() with array slicing. See PATTERN 2 below.
+VRL has ONLY ONE iteration construct: for_each(array!(items)) -> |_idx, val| { ... }
+Use for_each() with array slicing (slice!) for iteration. See PATTERN 2 below.
+For many columns (e.g. 50+), assign each field explicitly with get!(cols, [N]) — do NOT try to generate indices dynamically with arithmetic.
 
 CRITICAL VRL syntax rules:
 - Input: .message contains the raw log string (may be single-line or multi-line)

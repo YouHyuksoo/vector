@@ -34,3 +34,4 @@ agent-monitor/dist-exe/*.exe
 
 # PM2 logs
 logs/
+.gstack/

@@ -100,6 +100,7 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
                       bg-white dark:bg-slate-800 border-border dark:border-border-dark
                       text-text dark:text-white focus:outline-none focus:ring-1 focus:ring-primary/30">
                     <option value="utf-8">UTF-8</option>
+                    <option value="utf-16le">UTF-16 LE</option>
                     <option value="euc-kr">EUC-KR</option>
                     <option value="cp949">CP949</option>
                   </select>

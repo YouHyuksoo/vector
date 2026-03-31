@@ -1,0 +1,78 @@
+# =============================================================================
+#  Vector Agent (송신기) - REFLOW2 설비 (2라인 리플로우 오븐)
+# =============================================================================
+#
+#  역할: REFLOW2 설비 PC의 OvenDataLog CSV 파일을
+#        중앙 서버(Aggregator)로 전송합니다.
+#
+#  로그 특성: 누적형 (1초 간격, 하루 ~86,400줄)
+#  인코딩: UTF-8
+#  파일명 패턴: OvenDataLog.YYYYMMDD.csv
+#
+# =============================================================================
+
+data_dir = 'C:\vector-data-reflow2'
+
+[api]
+enabled = true
+address = "127.0.0.1:8686"
+
+# ── [소스] 파일 수집 ──
+
+[sources.work_logs]
+type = "file"
+include = [
+  'C:\logs\reflow2\*.csv',
+]
+read_from = "beginning"
+fingerprint.strategy = "device_and_inode"
+ignore_older_secs = 604800
+
+# ── 파일 전체를 하나의 이벤트로 묶기 ──
+[sources.work_logs.multiline]
+start_pattern = '^.'
+condition_pattern = '.*'
+mode = "continue_through"
+timeout_ms = 5000
+
+# ── [소스] 재전송 폴더 — 여기에 복사하면 전송 후 자동 삭제 ──
+
+[sources.resend_logs]
+type = "file"
+include = [
+  'C:\logs\reflow2\resend\*',
+]
+read_from = "beginning"
+fingerprint.strategy = "device_and_inode"
+fingerprint.bytes = 256
+remove_after_secs = 30
+ignore_checkpoints = true
+
+[sources.resend_logs.multiline]
+start_pattern = '^.'
+condition_pattern = '.*'
+mode = "continue_through"
+timeout_ms = 5000
+
+# ── [설비 설정] ──
+[transforms.add_metadata]
+type = "remap"
+inputs = ["work_logs", "resend_logs"]
+source = '''
+.equipment_type = "REFLOW2"
+.log_type = "INSPECTION"
+.line_code = "02"
+.equipment_id = "REFLOW2-001"
+'''
+
+# ── [출력] Aggregator 서버로 전송 ──
+
+[sinks.to_aggregator]
+type = "vector"
+inputs = ["add_metadata"]
+address = "20.10.30.112:6000"
+
+[sinks.to_aggregator.buffer]
+type = "memory"
+max_events = 500
+when_full = "block"

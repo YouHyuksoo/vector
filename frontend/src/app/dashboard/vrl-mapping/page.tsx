@@ -26,8 +26,8 @@ import ProcedureMapping from '../mapping/components/ProcedureMapping';
 import AutoCreateModal from '../mapping/components/AutoCreateModal';
 import { EquipmentSidePanel } from '@/components/pipeline';
 import AiVrlGenerator from './components/AiVrlGenerator';
+import SampleLogPanel from './components/SampleLogPanel';
 import VrlEditor from './components/VrlEditor';
-import VrlResultPanel from './components/VrlResultPanel';
 import type { SimResult } from './components/VrlEditor';
 
 type ActiveTab = 'vrl' | 'mapping';
@@ -45,6 +45,7 @@ export default function VrlMappingPage() {
   // VRL 탭 상태
   const [sampleLog, setSampleLog] = useState('');
   const [vrlCode, setVrlCode] = useState('');
+  const [vrlLogType, setVrlLogType] = useState('');
   const [codeFromServer, setCodeFromServer] = useState(false);
   const [simResult, setSimResult] = useState<SimResult | null>(null);
   const [restartModalOpen, setRestartModalOpen] = useState(false);
@@ -313,27 +314,39 @@ export default function VrlMappingPage() {
             ) : activeTab === 'vrl' ? (
               /* VRL 탭 */
               <div className="space-y-3">
-                <AiVrlGenerator
-                  equipmentType={selectedEquip}
-                  sampleLog={sampleLog}
-                  onGenerated={setVrlCode}
-                  logStructure={logStructure}
-                  onLogStructureChange={setLogStructure}
-                  multiRowMode={multiRowMode}
-                  onMultiRowModeChange={setMultiRowMode}
-                  hasHeader={hasHeader}
-                  onHasHeaderChange={setHasHeader}
-                  headerLines={headerLines}
-                  onHeaderLinesChange={setHeaderLines}
-                  startRow={startRow}
-                  onStartRowChange={setStartRow}
-                  kvDelimiter={kvDelimiter}
-                  onKvDelimiterChange={setKvDelimiter}
-                  sectionMarkers={sectionMarkers}
-                  onSectionMarkersChange={setSectionMarkers}
-                />
+                {/* 상단: AI 생성(좌) + 샘플 로그(우) */}
+                <div className="flex gap-3">
+                  <AiVrlGenerator
+                    equipmentType={selectedEquip}
+                    sampleLog={sampleLog}
+                    logType={vrlLogType}
+                    onLogTypeChange={setVrlLogType}
+                    onGenerated={setVrlCode}
+                    logStructure={logStructure}
+                    onLogStructureChange={setLogStructure}
+                    multiRowMode={multiRowMode}
+                    onMultiRowModeChange={setMultiRowMode}
+                    hasHeader={hasHeader}
+                    onHasHeaderChange={setHasHeader}
+                    headerLines={headerLines}
+                    onHeaderLinesChange={setHeaderLines}
+                    startRow={startRow}
+                    onStartRowChange={setStartRow}
+                    kvDelimiter={kvDelimiter}
+                    onKvDelimiterChange={setKvDelimiter}
+                    sectionMarkers={sectionMarkers}
+                    onSectionMarkersChange={setSectionMarkers}
+                  />
+                  <SampleLogPanel
+                    sampleLog={sampleLog}
+                    onSampleLogChange={setSampleLog}
+                  />
+                </div>
+                {/* 하단: VRL 코드(좌) + 시뮬레이션 결과(우) */}
                 <VrlEditor
                   equipmentType={selectedEquip}
+                  logType={vrlLogType}
+                  onLogTypeChange={setVrlLogType}
                   sampleLog={sampleLog}
                   onSampleLogChange={setSampleLog}
                   vrlCode={vrlCode}
@@ -344,7 +357,6 @@ export default function VrlMappingPage() {
                   onCodeFromServerChange={setCodeFromServer}
                   result={simResult}
                 />
-                {simResult && <VrlResultPanel result={simResult} />}
               </div>
             ) : (
               /* 매핑 탭 */

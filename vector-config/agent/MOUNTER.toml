@@ -27,8 +27,7 @@ address = "127.0.0.1:8686"
 [sources.work_logs]
 type = "file"
 include = [
-  'C:\logs\mounter\*.txt',
-  'C:\logs\mounter\*.csv',
+  'C:\logs\mounter\*.trk',
 ]
 read_from = "beginning"
 ignore_older_secs = 604800

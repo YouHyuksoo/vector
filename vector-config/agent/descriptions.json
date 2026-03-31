@@ -14,5 +14,9 @@
   "SELECTIVE": {
     "description": "SELECTIVE SOLDERING",
     "encoding": "utf-8"
+  },
+  "REFLOW": {
+    "description": "REFLOW",
+    "encoding": "utf-16le"
   }
 }

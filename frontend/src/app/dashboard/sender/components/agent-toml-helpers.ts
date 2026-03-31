@@ -111,15 +111,18 @@ export const getResendInclude = (c: string): string => {
     .filter(Boolean).map(p => p.replace(/\\\\/g, '\\')).join('\n');
 };
 
-/** [sources.resend_logs] 섹션의 include 경로 교체 */
+/** [sources.resend_logs] 섹션의 include 경로 교체 — 섹션이 없으면 자동 생성 */
 export const setResendInclude = (c: string, path: string): string => {
   const trimmed = path.trim();
-  if (!trimmed) return c;
+  if (!trimmed) return removeResendSection(c);
   const m = c.match(/(\[sources\.resend_logs\][\s\S]*?)include\s*=\s*\[[\s\S]*?\]/);
-  if (!m) return c;
-  const before = c.slice(0, m.index! + m[1].length);
-  const after = c.slice(m.index! + m[0].length);
-  return before + `include = [\n  '${trimmed}',\n]` + after;
+  if (m) {
+    const before = c.slice(0, m.index! + m[1].length);
+    const after = c.slice(m.index! + m[0].length);
+    return before + `include = [\n  '${trimmed}',\n]` + after;
+  }
+  // 섹션이 없으면 [transforms.add_metadata] 앞에 자동 생성
+  return addResendSection(c, trimmed);
 };
 
 /** [sources.resend_logs] 섹션의 remove_after_secs 추출 */
@@ -128,7 +131,7 @@ export const getResendDeleteSecs = (c: string): string => {
   return sec?.[1] ?? '';
 };
 
-/** [sources.resend_logs] 섹션의 remove_after_secs 교체 */
+/** [sources.resend_logs] 섹션의 remove_after_secs 교체 — 섹션이 없으면 무시 */
 export const setResendDeleteSecs = (c: string, secs: string): string => {
   const idx = c.indexOf('[sources.resend_logs]');
   if (idx < 0) return c;
@@ -137,6 +140,52 @@ export const setResendDeleteSecs = (c: string, secs: string): string => {
   if (!m) return c;
   const absIdx = idx + m.index!;
   return c.slice(0, absIdx) + `remove_after_secs = ${secs}` + c.slice(absIdx + m[0].length);
+};
+
+/** [sources.resend_logs] 섹션을 [transforms.add_metadata] 앞에 자동 생성 */
+const addResendSection = (c: string, includePath: string): string => {
+  const section = [
+    '',
+    '# ── [소스] 재전송 폴더 — 여기에 복사하면 전송 후 자동 삭제 ──',
+    '',
+    '[sources.resend_logs]',
+    'type = "file"',
+    'include = [',
+    `  '${includePath}',`,
+    ']',
+    'read_from = "beginning"',
+    'fingerprint.strategy = "device_and_inode"',
+    'fingerprint.bytes = 256',
+    'remove_after_secs = 30',
+    'ignore_checkpoints = true',
+    '',
+    '[sources.resend_logs.multiline]',
+    "start_pattern = '^.'",
+    "condition_pattern = '.*'",
+    'mode = "continue_through"',
+    'timeout_ms = 5000',
+    '',
+  ].join('\n');
+  // transforms.add_metadata 앞에 삽입 + inputs에 resend_logs 추가
+  let result = c.replace(/(\[transforms\.add_metadata\])/, section + '$1');
+  result = result.replace(
+    /inputs\s*=\s*\["work_logs"\]/,
+    'inputs = ["work_logs", "resend_logs"]',
+  );
+  return result;
+};
+
+/** [sources.resend_logs] 섹션 제거 (경로를 비웠을 때) */
+const removeResendSection = (c: string): string => {
+  let result = c.replace(
+    /\n?#[^\n]*재전송 폴더[^\n]*\n\n?\[sources\.resend_logs\][\s\S]*?\[sources\.resend_logs\.multiline\][\s\S]*?timeout_ms\s*=\s*\d+\n?/,
+    '\n',
+  );
+  result = result.replace(
+    /inputs\s*=\s*\["work_logs",\s*"resend_logs"\]/,
+    'inputs = ["work_logs"]',
+  );
+  return result;
 };
 
 /* ── multiline / recursive 헬퍼 ──────────────── */

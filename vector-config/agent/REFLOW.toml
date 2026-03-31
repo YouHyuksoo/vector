@@ -1,0 +1,60 @@
+# =============================================================================
+#  Vector Agent (송신기) - REFLOW 설비
+# =============================================================================
+
+data_dir = 'C:\vector-data-reflow'
+
+[api]
+enabled = true
+address = "127.0.0.1:8686"
+
+[sources.work_logs]
+type = "file"
+include = [
+  'C:\logs\reflow\*.txt',
+  'C:\logs\reflow\*.csv',
+  'C:\logs\reflow\*.log',
+]
+read_from = "beginning"
+fingerprint.strategy = "checksum"
+fingerprint.bytes = 256
+ignore_older_secs = 604800
+
+
+# ── [소스] 재전송 폴더 — 여기에 복사하면 전송 후 자동 삭제 ──
+
+[sources.resend_logs]
+type = "file"
+include = [
+  'C:\logs\reflow\resend\*',
+]
+read_from = "beginning"
+fingerprint.strategy = "device_and_inode"
+fingerprint.bytes = 256
+remove_after_secs = 30
+ignore_checkpoints = true
+
+[sources.resend_logs.multiline]
+start_pattern = '^.'
+condition_pattern = '.*'
+mode = "continue_through"
+timeout_ms = 5000
+[transforms.add_metadata]
+type = "remap"
+inputs = ["work_logs", "resend_logs"]
+source = '''
+.equipment_type = "REFLOW"
+.log_type = "INSPECTION"
+.line_code = "01"
+.equipment_id = "REFLOW-01"
+'''
+
+[sinks.to_aggregator]
+type = "vector"
+inputs = ["add_metadata"]
+address = "20.10.30.112:6000"
+
+[sinks.to_aggregator.buffer]
+type = "memory"
+max_events = 500
+when_full = "block"
