@@ -185,6 +185,12 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                       <span className={rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}>
                         {rate < 0 ? '—' : `${rate}%`}
                       </span>
+                      {ip && (
+                        <>
+                          <span className="text-muted-foreground/30">|</span>
+                          <span className="text-muted-foreground/60">{ip}</span>
+                        </>
+                      )}
                     </div>
                     <span className="flex items-center gap-0.5 text-muted-foreground/60">
                       <Icon name="schedule" size="xs" className="text-muted-foreground/40" />
