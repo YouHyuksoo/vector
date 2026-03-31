@@ -150,10 +150,15 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                     ${ok ? 'border-border dark:border-border-dark' : 'border-destructive/30 dark:border-destructive/30'}
                     ${isSelected ? 'ring-2 ring-primary/50' : ''}`}>
 
-                  {/* 헤더: ID + 상태 */}
+                  {/* 헤더: 라인코드 + ID + 상태 */}
                   <div className="flex items-center gap-2 mb-2">
                     <Icon name={ICONS[type] || 'memory'} size="xs"
                       className={ok ? 'text-primary' : 'text-destructive'} />
+                    {line && (
+                      <span className="font-mono text-base font-bold text-muted-foreground truncate">
+                        {line}
+                      </span>
+                    )}
                     <span className="font-mono text-base font-bold text-foreground dark:text-white truncate flex-1">
                       {eq.equipment_id}
                     </span>
@@ -169,30 +174,19 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                     {log && <span className="font-mono">{log}</span>}
                   </div>
 
-                  {/* 통계: 한 줄 */}
-                  <div className="flex items-center gap-3 text-xs font-mono tabular-nums mb-2">
-                    <span className="text-primary">{s.ok}<span className="text-muted-foreground/60 ml-0.5 text-[11px]">{t('collector.success')}</span></span>
-                    <span className={s.err > 0 ? 'text-destructive' : 'text-muted-foreground/30'}>
-                      {s.err}<span className="text-muted-foreground/60 ml-0.5 text-[11px]">{t('collector.fail')}</span>
-                    </span>
-                    <span className={rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}>
-                      {rate < 0 ? '—' : `${rate}%`}
-                    </span>
-                  </div>
-
-                  {/* 푸터: 라인 + IP + 경과시간 */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground/60 font-mono
+                  {/* 통계 + 라인/IP/경과시간 (한 줄) */}
+                  <div className="flex items-center justify-between text-xs font-mono tabular-nums
                     pt-1.5 border-t border-border/50 dark:border-border-dark/50">
-                    <div className="flex items-center gap-1.5">
-                      <span>{line || '—'}</span>
-                      {ip && (
-                        <>
-                          <span className="text-muted-foreground/30">|</span>
-                          <span className="text-muted-foreground/80">{ip}</span>
-                        </>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary">{s.ok}<span className="text-muted-foreground/60 ml-0.5 text-[11px]">{t('collector.success')}</span></span>
+                      <span className={s.err > 0 ? 'text-destructive' : 'text-muted-foreground/30'}>
+                        {s.err}<span className="text-muted-foreground/60 ml-0.5 text-[11px]">{t('collector.fail')}</span>
+                      </span>
+                      <span className={rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}>
+                        {rate < 0 ? '—' : `${rate}%`}
+                      </span>
                     </div>
-                    <span className="flex items-center gap-0.5">
+                    <span className="flex items-center gap-0.5 text-muted-foreground/60">
                       <Icon name="schedule" size="xs" className="text-muted-foreground/40" />
                       {elapsed(eq.last_seen, serverNow)}
                     </span>
