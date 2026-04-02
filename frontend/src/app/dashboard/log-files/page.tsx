@@ -385,7 +385,7 @@ export default function LogFilesPage() {
         )}
       </Card>
 
-      <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 230px)' }}>
+      <div className="flex gap-4" style={{ height: 'calc(100vh - 230px)' }}>
         {/* 좌측: 폴더 탐색 */}
         <Card className="w-80 shrink-0 flex flex-col overflow-hidden">
           {/* 전체 선택 헤더 */}
