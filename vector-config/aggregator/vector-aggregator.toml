@@ -456,15 +456,90 @@ if .equipment_type == "SP" {
     }
   }
 } else if .equipment_type == "MOUNTER" {
-  # ── MOUNTER (Chip Mounter) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
+  .target_table = "LOG_MOUNTER"
+  # Log Structure: TRK file — [HEAD] key=value section + [DATA] CSV section
+  # HEAD keys: VERSION, BOARD_SN, ARRAY_NO, ARRAY_SN, ORDERNAME, MACHINE_CODE,
+  #            PCB_FILE_NAME, OPERATOR, START_TIME, END_TIME, WORKZONE
+  # DATA cols: STEP,REF,PART_NAME,REELID,FEEDERID,SLOT_NO,ARRAY,BLOCK,VCODE,VPART,VNAME,LOT_CODE,DUMP
+  # Each DATA row is combined with HEAD values for insertion
+
+  lines = split!(.message, "\n")
+
+  # ── [HEAD] 영역 파싱 — key=value 추출 ──
+  head_version = ""
+  head_board_sn = ""
+  head_array_no = ""
+  head_array_sn = ""
+  head_ordername = ""
+  head_machine_code = ""
+  head_pcb_file_name = ""
+  head_operator = ""
+  head_start_time = ""
+  head_end_time = ""
+  head_workzone = ""
+  in_data = false
+  data_start_idx = 0
+
+  for_each(array!(lines)) -> |idx, line| {
+    l = strip_whitespace(to_string!(line))
+    if l == "[DATA]" {
+      in_data = true
+      data_start_idx = idx + 2
+    }
+    if !in_data && contains(l, "=") {
+      parts = split!(l, "=")
+      k = strip_whitespace(to_string!(get!(parts, [0])))
+      v = strip_whitespace(to_string!(get!(parts, [1])))
+      if k == "VERSION" { head_version = v }
+      if k == "BOARD_SN" { head_board_sn = v }
+      if k == "ARRAY_NO" { head_array_no = v }
+      if k == "ARRAY_SN" { head_array_sn = v }
+      if k == "ORDERNAME" { head_ordername = v }
+      if k == "MACHINE_CODE" { head_machine_code = v }
+      if k == "PCB_FILE_NAME" { head_pcb_file_name = v }
+      if k == "OPERATOR" { head_operator = v }
+      if k == "START_TIME" { head_start_time = v }
+      if k == "END_TIME" { head_end_time = v }
+      if k == "WORKZONE" { head_workzone = v }
+    }
+  }
+
+  # ── [DATA] 영역 파싱 — CSV 행별 파싱 + HEAD 값 조합 ──
+  .data.ROWS = []
+  if data_start_idx > 0 {
+    data_lines = slice!(lines, data_start_idx)
+    for_each(array!(data_lines)) -> |_idx, row| {
+      if strip_whitespace(to_string!(row)) != "" {
+        cols = split(to_string!(row), ",")
+        item = {
+          "VERSION": head_version,
+          "BOARD_SN": head_board_sn,
+          "ARRAY_NO": head_array_no,
+          "ARRAY_SN": head_array_sn,
+          "ORDERNAME": head_ordername,
+          "MACHINE_CODE": head_machine_code,
+          "PCB_FILE_NAME": head_pcb_file_name,
+          "OPERATOR": head_operator,
+          "START_TIME": head_start_time,
+          "END_TIME": head_end_time,
+          "WORKZONE": head_workzone,
+          "STEP": strip_whitespace(to_string!(get!(cols, [0]))),
+          "REF": strip_whitespace(to_string!(get!(cols, [1]))),
+          "PART_NAME": strip_whitespace(to_string!(get!(cols, [2]))),
+          "REELID": strip_whitespace(to_string!(get!(cols, [3]))),
+          "FEEDERID": strip_whitespace(to_string!(get!(cols, [4]))),
+          "SLOT_NO": strip_whitespace(to_string!(get!(cols, [5]))),
+          "ARRAY": strip_whitespace(to_string!(get!(cols, [6]))),
+          "BLOCK": strip_whitespace(to_string!(get!(cols, [7]))),
+          "VCODE": strip_whitespace(to_string!(get!(cols, [8]))),
+          "VPART": strip_whitespace(to_string!(get!(cols, [9]))),
+          "VNAME": strip_whitespace(to_string!(get!(cols, [10]))),
+          "LOT_CODE": strip_whitespace(to_string!(get!(cols, [11]))),
+          "DUMP": strip_whitespace(to_string!(get!(cols, [12]))),
+        }
+        .data.ROWS = push(.data.ROWS, item)
+      }
+    }
   }
 
 } else if .equipment_type == "VISION_LEGACY" {
