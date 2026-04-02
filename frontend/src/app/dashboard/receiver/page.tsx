@@ -18,7 +18,6 @@ import { BackupHistory } from './components/BackupHistory';
 
 export default function ReceiverPage() {
   const [content, setContent] = useState('');
-  const [showRaw, setShowRaw] = useState(false);
   const [showRestart, setShowRestart] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [restartResult, setRestartResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -77,33 +76,30 @@ export default function ReceiverPage() {
           refreshKey={configRefreshKey}
         />
 
-        <BackupHistory
-          refreshKey={backupRefreshKey}
-          onRestored={handleRestored}
-        />
+        {/* 변경이력 + TOML 직접편집 좌우 배치 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <BackupHistory
+            refreshKey={backupRefreshKey}
+            onRestored={handleRestored}
+          />
 
-        {/* TOML 직접 편집 */}
-        <button
-          onClick={() => setShowRaw(!showRaw)}
-          className="flex items-center gap-1.5 self-start text-xs text-muted-foreground
-            hover:text-text dark:hover:text-white transition-colors"
-        >
-          <Icon name={showRaw ? 'expand_less' : 'expand_more'} size="xs" />
-          {t('sender.form.rawToml')}
-        </button>
-
-        {showRaw && (
-          <Card noPadding>
-            <textarea
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              spellCheck={false}
-              className="w-full min-h-[400px] p-3 font-mono text-xs leading-relaxed resize-y
-                bg-background-white dark:bg-background-dark text-text dark:text-white
-                border-0 outline-none focus:ring-0 rounded-lg"
-            />
-          </Card>
-        )}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Icon name="code" size="sm" className="text-info" />
+              <h3 className="text-sm font-bold">{t('sender.form.rawToml')}</h3>
+            </div>
+            <Card noPadding className="flex-1">
+              <textarea
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                spellCheck={false}
+                className="w-full h-full min-h-[360px] p-3 font-mono text-xs leading-relaxed resize-y
+                  bg-background-white dark:bg-background-dark text-text dark:text-white
+                  border-0 outline-none focus:ring-0 rounded-lg"
+              />
+            </Card>
+          </div>
+        </div>
       </div>
 
       <Modal isOpen={showRestart} onClose={() => setShowRestart(false)} title={t('aggregator.restartPrompt')} size="sm">

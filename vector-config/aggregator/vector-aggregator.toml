@@ -325,40 +325,34 @@ if .equipment_type == "SP" {
 } else if .equipment_type == "ICT" {
   .target_table = "LOG_ICT"
   # Log Structure: ICT multi-row CSV with header
-  # Line 0: header row (BARCODE,PCB NO,RESULT,MODEL,DAY,TIME,S/W VER,...)
-  # Lines 1+: data rows (23 columns, same as DOWNLOAD format)
+  # Line 0: header row (BARCODE,OPEN,SHORT,Step,Board,Type,Device,Ideal,CH+,CH-,LC,STD,T+,T-,Meas,Error%,Result)
+  # Lines 1+: data rows (17 columns, each row = one test step)
 
   lines = split!(.message, "\n")
 
   .data.ROWS = []
   data_lines = slice!(lines, 1)
   for_each(array!(data_lines)) -> |_idx, row| {
-    if row != "" {
+    if strip_whitespace(to_string!(row)) != "" {
       cols = split(to_string!(row), ",")
       item = {
         "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
-        "PCB_NO": strip_whitespace(to_string!(get!(cols, [1]))),
-        "RESULT": strip_whitespace(to_string!(get!(cols, [2]))),
-        "MODEL": strip_whitespace(to_string!(get!(cols, [3]))),
-        "DAY": strip_whitespace(to_string!(get!(cols, [4]))),
-        "TIME": strip_whitespace(to_string!(get!(cols, [5]))),
-        "SW_VER": strip_whitespace(to_string!(get!(cols, [6]))),
-        "MCU_HEX_CRC_1": strip_whitespace(to_string!(get!(cols, [7]))),
-        "MCU_HEX_CRC_2": strip_whitespace(to_string!(get!(cols, [8]))),
-        "MCU_HEX_CRC_3": strip_whitespace(to_string!(get!(cols, [9]))),
-        "MCU_HEX_CRC_4": strip_whitespace(to_string!(get!(cols, [10]))),
-        "MCU_HEX_CRC_5": strip_whitespace(to_string!(get!(cols, [11]))),
-        "MCU_HEX_CRC_6": strip_whitespace(to_string!(get!(cols, [12]))),
-        "MCU_HEX_CRC_7": strip_whitespace(to_string!(get!(cols, [13]))),
-        "ROM_CRC": strip_whitespace(to_string!(get!(cols, [14]))),
-        "NAME": strip_whitespace(to_string!(get!(cols, [15]))),
-        "MCU_CHKSUM": strip_whitespace(to_string!(get!(cols, [16]))),
-        "ROM_CHKSUM": strip_whitespace(to_string!(get!(cols, [17]))),
-        "MCU_READ_CHKSUM": strip_whitespace(to_string!(get!(cols, [18]))),
-        "ROM_READ_CHKSUM": strip_whitespace(to_string!(get!(cols, [19]))),
-        "MCU_RESULT": strip_whitespace(to_string!(get!(cols, [20]))),
-        "ROM_RESULT": strip_whitespace(to_string!(get!(cols, [21]))),
-        "DRV_IC_RESULT": strip_whitespace(to_string!(get!(cols, [22]))),
+        "OPEN": strip_whitespace(to_string!(get!(cols, [1]))),
+        "SHORT": strip_whitespace(to_string!(get!(cols, [2]))),
+        "STEP": strip_whitespace(to_string!(get!(cols, [3]))),
+        "BOARD": strip_whitespace(to_string!(get!(cols, [4]))),
+        "TYPE": strip_whitespace(to_string!(get!(cols, [5]))),
+        "DEVICE": strip_whitespace(to_string!(get!(cols, [6]))),
+        "IDEAL": strip_whitespace(to_string!(get!(cols, [7]))),
+        "CH_PLUS": strip_whitespace(to_string!(get!(cols, [8]))),
+        "CH_MINUS": strip_whitespace(to_string!(get!(cols, [9]))),
+        "LC": strip_whitespace(to_string!(get!(cols, [10]))),
+        "STD": strip_whitespace(to_string!(get!(cols, [11]))),
+        "T_PLUS": strip_whitespace(to_string!(get!(cols, [12]))),
+        "T_MINUS": strip_whitespace(to_string!(get!(cols, [13]))),
+        "MEAS": strip_whitespace(to_string!(get!(cols, [14]))),
+        "ERROR_PCT": strip_whitespace(to_string!(get!(cols, [15]))),
+        "RESULT": strip_whitespace(to_string!(get!(cols, [16]))),
       }
       .data.ROWS = push(.data.ROWS, item)
     }

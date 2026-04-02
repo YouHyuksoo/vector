@@ -321,7 +321,7 @@ export default function LogFilesPage() {
 
       <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 230px)' }}>
         {/* 좌측: 폴더 탐색 */}
-        <Card className="w-72 shrink-0 flex flex-col overflow-hidden">
+        <Card className="w-80 shrink-0 flex flex-col overflow-hidden">
           {/* 전체 선택 헤더 */}
           {entries.length > 0 && !dirLoading && (
             <div className="px-3 py-1.5 border-b border-border/50 dark:border-border-dark/50 flex items-center gap-2">
@@ -365,18 +365,19 @@ export default function LogFilesPage() {
                   <button
                     onClick={() => handleEntryClick(entry)}
                     className="flex items-center gap-2 min-w-0 flex-1"
+                    title={entry.type === 'file' && entry.size != null
+                      ? `${entry.name}  (${formatSize(entry.size)})`
+                      : entry.name}
                   >
                     <Icon
                       name={entry.type === 'dir' ? 'folder' : 'description'}
                       size="xs"
-                      className={entry.type === 'dir' ? 'text-warning' : 'text-muted-foreground'}
+                      className={`shrink-0 ${entry.type === 'dir' ? 'text-warning' : 'text-muted-foreground'}`}
                     />
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="text-sm truncate">{entry.name}</p>
-                      {entry.type === 'file' && entry.size != null && (
-                        <p className="text-xs text-muted-foreground">{formatSize(entry.size)}</p>
-                      )}
-                    </div>
+                    <span className="min-w-0 flex-1 text-left text-sm truncate">{entry.name}</span>
+                    {entry.type === 'file' && entry.size != null && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">{formatSize(entry.size)}</span>
+                    )}
                     {entry.type === 'dir' && (
                       <Icon name="chevron_right" size="xs" className="text-muted-foreground shrink-0" />
                     )}

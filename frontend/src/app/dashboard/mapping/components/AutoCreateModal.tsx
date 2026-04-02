@@ -41,6 +41,14 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
   const [ddlText, setDdlText] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [result, setResult] = useState<{
+    tableName?: string;
+    renamedFrom?: string;
+    alreadyExisted?: boolean;
+    tomlSync?: { success: boolean; backupName?: string };
+    tableCreated?: boolean;
+    procedureName?: string;
+  } | null>(null);
 
   /** initialLogType이 전달되면 모달 열릴 때 자동 설정 */
   const prevOpen = useRef(false);
@@ -118,15 +126,27 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
       const payload = targetType === 'TABLE'
         ? { tableName: effectiveName, logType, fields, preview: false, forceRecreate }
         : { procedureName: effectiveName, tableName: effectiveTable, logType, fields, preview: false, forceRecreate };
-      const res = await apiFetch<{ success: boolean; error?: string; alreadyExisted?: boolean; tableCreated?: boolean }>(url, {
+      const res = await apiFetch<{
+        success: boolean; error?: string;
+        tableName?: string; procedureName?: string;
+        alreadyExisted?: boolean; renamedFrom?: string;
+        tomlSync?: { success: boolean; backupName?: string };
+        tableCreated?: boolean;
+      }>(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (res.success) {
+        setResult({
+          tableName: res.tableName,
+          procedureName: res.procedureName,
+          renamedFrom: res.renamedFrom,
+          alreadyExisted: res.alreadyExisted,
+          tomlSync: res.tomlSync,
+          tableCreated: res.tableCreated,
+        });
         onCreated(effectiveName, logType);
-        onClose();
-        resetState();
       } else {
         const errKey = res.error || 'Unknown';
         const mapped = t(`mapping.${errKey}`);
@@ -149,6 +169,7 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
     setShowDDL(false);
     setDdlText('');
     setError('');
+    setResult(null);
   };
 
   const title = targetType === 'TABLE' ? t('mapping.autoCreateTableTitle') : t('mapping.autoCreateProcTitle');
@@ -285,22 +306,61 @@ export default function AutoCreateModal({ isOpen, onClose, targetType, parseRule
               )}
             </div>
 
+            {/* 생성 결과 */}
+            {result && (
+              <div className="p-3 rounded-lg bg-success/10 border border-success/30 space-y-1.5">
+                <div className="flex items-center gap-2 text-success font-bold text-sm">
+                  <Icon name="check_circle" size="sm" />
+                  {targetType === 'TABLE' ? t('mapping.tableCreated') : t('mapping.procCreated')}
+                </div>
+                <div className="text-xs space-y-0.5 text-text dark:text-white">
+                  <p><span className="text-muted-foreground">{targetType === 'TABLE' ? t('mapping.tableNameLabel') : t('mapping.procNameLabel')}:</span> <span className="font-mono font-bold">{result.tableName || result.procedureName}</span></p>
+                  {result.renamedFrom && (
+                    <p><span className="text-muted-foreground">{t('mapping.backupTable')}:</span> <span className="font-mono">{result.renamedFrom}</span></p>
+                  )}
+                  {result.alreadyExisted && (
+                    <p className="text-muted-foreground">{t('mapping.alreadyExisted')}</p>
+                  )}
+                  {result.tableCreated && targetType === 'PROCEDURE' && (
+                    <p><span className="text-muted-foreground">{t('mapping.targetTableLabel')}:</span> {t('mapping.autoCreatedTable')}</p>
+                  )}
+                  {result.tomlSync && (
+                    <p>
+                      <span className="text-muted-foreground">TOML {t('mapping.sync')}:</span>{' '}
+                      {result.tomlSync.success
+                        ? <span className="text-success">{t('mapping.syncSuccess')}</span>
+                        : <span className="text-error">{t('mapping.syncFail')}</span>}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 에러 메시지 */}
             {error && (
-              <div className="p-3 rounded-lg bg-error/10 text-error text-sm font-medium">
+              <div className="p-3 rounded-lg bg-error/10 border border-error/30 text-error text-sm font-medium flex items-center gap-2">
+                <Icon name="error" size="sm" />
                 {error}
               </div>
             )}
 
             {/* 버튼 */}
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-border dark:border-border-dark">
-              <Button variant="outline" size="sm" onClick={() => { onClose(); resetState(); }}>
-                {t('settings.cancel')}
-              </Button>
-              <Button variant="primary" size="sm" leftIcon="add_circle"
-                onClick={handleCreate} disabled={creating || !nameValid || fields.length === 0}>
-                {creating ? t('mapping.creating') : (targetType === 'TABLE' ? t('mapping.createTableBtn') : t('mapping.createProcBtn'))}
-              </Button>
+              {result ? (
+                <Button variant="primary" size="sm" leftIcon="check" onClick={() => { onClose(); resetState(); }}>
+                  {t('settings.close')}
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => { onClose(); resetState(); }}>
+                    {t('settings.cancel')}
+                  </Button>
+                  <Button variant="primary" size="sm" leftIcon="add_circle"
+                    onClick={handleCreate} disabled={creating || !nameValid || fields.length === 0}>
+                    {creating ? t('mapping.creating') : (targetType === 'TABLE' ? t('mapping.createTableBtn') : t('mapping.createProcBtn'))}
+                  </Button>
+                </>
+              )}
             </div>
           </>
         )}
