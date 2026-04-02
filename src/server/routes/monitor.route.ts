@@ -22,6 +22,7 @@ import { errorLogRepository } from '../../database/repositories/error-log.reposi
 import { env, updateEnvValue } from '../../config/env.js';
 import type { Env } from '../../config/env.js';
 import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AGENT_CONFIG_DIR, FLUENT_CONFIG_DIR } from '../../services/vector-process.service.js';
+import type { LogRecord } from '../../types/index.js';
 
 /**
  * Win7(Vector 0.38) 호환 TOML 변환
@@ -2067,6 +2068,142 @@ Generate VRL parsing code for this log.`;
     } finally {
       try { if (existsSync(inputFile)) unlinkSync(inputFile); } catch { /* ignore */ }
       try { if (existsSync(vrlFile)) unlinkSync(vrlFile); } catch { /* ignore */ }
+    }
+  });
+
+  /**
+   * 수동 로그 투입 — 누락 파일 재전송용
+   * 1. TOML에서 해당 설비의 VRL 코드 자동 추출
+   * 2. Vector VRL로 파싱 실행
+   * 3. 파싱 결과를 /api/logs 파이프라인과 동일하게 DB INSERT
+   */
+  app.post('/api/monitor/vrl/manual-ingest', async (request, reply) => {
+    const { equipmentType, equipmentId, logContent } = request.body as {
+      equipmentType: string;
+      equipmentId: string;
+      logContent: string;
+    };
+
+    if (!equipmentType || !equipmentId || !logContent) {
+      return reply.status(400).send({ error: 'equipmentType, equipmentId, logContent are required' });
+    }
+
+    const eqType = equipmentType.toUpperCase();
+
+    try {
+      // 1) TOML에서 VRL 코드 추출
+      const tomlContent = readFileSync(VECTOR_CONFIG, 'utf-8');
+      const sourceMatch = tomlContent.match(
+        /\[transforms\.parse_logs\][\s\S]*?source\s*=\s*'''([\s\S]*?)'''/,
+      );
+      if (!sourceMatch) {
+        return reply.status(500).send({ error: 'parse_logs source block not found in TOML' });
+      }
+      const vrlBlock = extractEquipmentBlock(sourceMatch[1], eqType);
+      if (!vrlBlock) {
+        return reply.status(404).send({ error: `No VRL block found for equipment type: ${eqType}` });
+      }
+
+      // 2) VRL 시뮬레이션 실행
+      const ts = Date.now();
+      const inputFile = join(tmpdir(), `manual-ingest-input-${ts}.json`);
+      const vrlFile = join(tmpdir(), `manual-ingest-vrl-${ts}.vrl`);
+
+      const inputData = JSON.stringify({
+        message: logContent.replace(/\r\n/g, '\n').replace(/\r/g, ''),
+        equipment_type: eqType,
+        log_type: 'INSPECTION',
+      });
+      writeFileSync(inputFile, inputData, 'utf-8');
+      writeFileSync(vrlFile, vrlBlock, 'utf-8');
+
+      const result = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+        const proc = spawn(VECTOR_BIN, [
+          'vrl', '--input', inputFile, '--program', vrlFile, '--print-object',
+        ], { windowsHide: true });
+        let stdout = '';
+        let stderr = '';
+        proc.stdout.on('data', (d: Buffer) => { stdout += d.toString(); });
+        proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
+        proc.on('close', (code) => {
+          if (code === 0) resolve({ stdout, stderr });
+          else {
+            const cleanErr = stderr.split('\n')
+              .filter(l => !l.match(/^\d{4}-\d{2}-\d{2}T.*\s+(INFO|DEBUG)\s+/))
+              .join('\n').trim();
+            reject(new Error(cleanErr || `VRL exited with code ${code}`));
+          }
+        });
+        proc.on('error', reject);
+        const timer = setTimeout(() => { proc.kill(); reject(new Error('VRL execution timeout (10s)')); }, 10000);
+        proc.on('close', () => clearTimeout(timer));
+      });
+
+      // 3) VRL 출력 파싱
+      const raw = result.stdout.trim();
+      const jsonStart = raw.indexOf('{');
+      const jsonEnd = raw.lastIndexOf('}');
+      if (jsonStart === -1 || jsonEnd === -1) {
+        return reply.status(500).send({ error: 'VRL produced no JSON output' });
+      }
+      const jsonStr = raw.slice(jsonStart, jsonEnd + 1)
+        .replace(/"(?:[^"\\]|\\.)*"/g, (strLiteral) =>
+          strLiteral.replace(/[\x00-\x1F\x7F]/g, (ch) =>
+            `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`,
+          ),
+        );
+
+      let output: Record<string, unknown>;
+      try {
+        output = JSON.parse(jsonStr);
+      } catch {
+        return reply.status(500).send({ error: 'Failed to parse VRL output' });
+      }
+
+      // 4) 파싱 결과를 LogRecord로 변환 → processLogBatch로 DB INSERT
+      const data = output.data as Record<string, unknown> | undefined;
+      const targetTable = (output.target_table as string) || `LOG_${eqType}`;
+      const targetType = (output.target_type as string) || 'TABLE';
+      const now = new Date().toISOString();
+
+      const logs: LogRecord[] = [];
+      if (data && Array.isArray(data.ROWS) && data.ROWS.length > 0) {
+        for (const row of data.ROWS) {
+          logs.push({
+            equipment_id: equipmentId,
+            equipment_type: eqType,
+            log_type: 'INSPECTION',
+            target_type: targetType as 'TABLE' | 'PROCEDURE',
+            target_table: targetTable,
+            timestamp: now,
+            data: row as Record<string, unknown>,
+          });
+        }
+      } else if (data) {
+        logs.push({
+          equipment_id: equipmentId,
+          equipment_type: eqType,
+          log_type: 'INSPECTION',
+          target_type: targetType as 'TABLE' | 'PROCEDURE',
+          target_table: targetTable,
+          timestamp: now,
+          data,
+        });
+      }
+
+      if (logs.length === 0) {
+        return reply.send({ success: true, accepted: 0, failed: 0, message: 'No data rows parsed' });
+      }
+
+      const { logIngestService: svc } = await import('../../services/log-ingest.service.js');
+      const { accepted, failed } = await svc.processLogBatch(logs);
+      logger.info({ equipmentType: eqType, equipmentId, accepted, failed }, 'Manual ingest completed');
+
+      return reply.send({ success: true, accepted, failed, totalRows: logs.length });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error({ err: msg, equipmentType: eqType }, 'Manual ingest failed');
+      return reply.status(500).send({ error: msg });
     }
   });
 
