@@ -62,8 +62,8 @@ function CsvTableView({ content }: { content: string }) {
   const data = rows.slice(1);
 
   return (
-    <Card noPadding className="flex-1 overflow-hidden">
-      <div className="overflow-auto max-h-[calc(100vh-340px)]">
+    <Card noPadding className="flex-1 overflow-hidden min-h-0">
+      <div className="overflow-auto h-full">
         <table className="w-full text-xs font-mono border-collapse">
           <thead className="sticky top-0 z-10">
             <tr className="bg-surface dark:bg-surface-dark border-b border-border dark:border-border-dark">
@@ -455,7 +455,7 @@ export default function LogFilesPage() {
         </Card>
 
         {/* 우측: 파일 뷰어 */}
-        <div className="flex-1 flex flex-col gap-4 min-w-0">
+        <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
           {!selectedFile ? (
             <Card className="flex-1 flex items-center justify-center">
               <div className="text-center text-muted-foreground">
@@ -530,8 +530,8 @@ export default function LogFilesPage() {
                 selectedFile?.toLowerCase().endsWith('.csv') ? (
                   <CsvTableView content={fileContent.content} />
                 ) : (
-                  <Card noPadding className="flex-1 overflow-hidden">
-                    <pre className="overflow-auto p-4 text-xs font-mono leading-relaxed text-text dark:text-white whitespace-pre max-h-[calc(100vh-340px)]">
+                  <Card noPadding className="flex-1 overflow-hidden min-h-0">
+                    <pre className="overflow-auto p-4 text-xs font-mono leading-relaxed text-text dark:text-white whitespace-pre h-full">
                       {fileContent.content || t('logFiles.noFiles')}
                     </pre>
                   </Card>
