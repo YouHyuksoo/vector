@@ -790,7 +790,17 @@
     "deleteFailed": "{count} elemento(s) no se pudieron eliminar",
     "download": "Descargar",
     "downloadSelected": "Descargar Seleccionados",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "manualIngest": "Ingesta Manual",
+    "equipmentType": "Tipo de Equipo",
+    "equipmentId": "ID de Equipo",
+    "selectEquipType": "Seleccionar tipo de equipo",
+    "noVrlRegistered": "No hay análisis VRL registrado para este equipo",
+    "targetFile": "Archivo Destino",
+    "lines": "líneas",
+    "ingestBtn": "Insertar en DB",
+    "ingesting": "Insertando...",
+    "ingestSuccess": "{count} filas insertadas en DB"
   },
   "vrlSim": {
     "title": "Simulador VRL",

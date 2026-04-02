@@ -790,7 +790,17 @@
     "deleteFailed": "{count}개 삭제 실패",
     "download": "다운로드",
     "downloadSelected": "선택 다운로드",
-    "cancel": "취소"
+    "cancel": "취소",
+    "manualIngest": "수동 투입",
+    "equipmentType": "설비 유형",
+    "equipmentId": "설비 ID",
+    "selectEquipType": "설비 유형 선택",
+    "noVrlRegistered": "VRL 파싱이 등록되지 않은 설비입니다",
+    "targetFile": "대상 파일",
+    "lines": "줄",
+    "ingestBtn": "DB에 투입",
+    "ingesting": "투입 중...",
+    "ingestSuccess": "{count}건 DB 입력 완료"
   },
   "vrlSim": {
     "title": "VRL 시뮬레이터",

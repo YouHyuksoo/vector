@@ -790,7 +790,17 @@
     "deleteFailed": "{count} item(s) failed to delete",
     "download": "Download",
     "downloadSelected": "Download Selected",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "manualIngest": "Manual Ingest",
+    "equipmentType": "Equipment Type",
+    "equipmentId": "Equipment ID",
+    "selectEquipType": "Select equipment type",
+    "noVrlRegistered": "No VRL parsing registered for this equipment",
+    "targetFile": "Target File",
+    "lines": "lines",
+    "ingestBtn": "Ingest to DB",
+    "ingesting": "Ingesting...",
+    "ingestSuccess": "{count} rows inserted to DB"
   },
   "vrlSim": {
     "title": "VRL Simulator",

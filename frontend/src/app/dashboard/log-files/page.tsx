@@ -9,10 +9,19 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Icon, Button, Card, Modal } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
+
+/** 경로에서 설비유형/설비ID 자동 추출 — RAW_LOG_BASE / equipType / equipId / date / file */
+function extractEquipInfo(filePath: string): { equipmentType: string; equipmentId: string } {
+  const parts = filePath.replace(/\\/g, '/').split('/').filter(Boolean);
+  return {
+    equipmentType: parts[0] || '',
+    equipmentId: parts[1] || '',
+  };
+}
 
 interface DirEntry {
   name: string;
@@ -109,6 +118,24 @@ export default function LogFilesPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
+
+  /* ── 수동 투입 관련 state ── */
+  const [showIngestModal, setShowIngestModal] = useState(false);
+  const [ingestType, setIngestType] = useState('');
+  const [ingestId, setIngestId] = useState('');
+  const [ingesting, setIngesting] = useState(false);
+  const [ingestResult, setIngestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [vrlTargetMap, setVrlTargetMap] = useState<Record<string, { targetTable: string }>>({});
+
+  /** VRL 등록된 설비 목록 로드 (한 번만) */
+  useEffect(() => {
+    apiFetch<{ map: Record<string, { targetTable: string }> }>('/api/monitor/vrl/target-map')
+      .then(res => setVrlTargetMap(res.map))
+      .catch(() => {});
+  }, []);
+
+  /** VRL 등록된 설비 유형 목록 */
+  const vrlEquipTypes = useMemo(() => Object.keys(vrlTargetMap).sort(), [vrlTargetMap]);
 
   /** 디렉토리 내용 조회 */
   const loadDir = useCallback(async (path: string) => {
@@ -238,6 +265,45 @@ export default function LogFilesPage() {
       const filePath = currentPath ? `${currentPath}/${file.name}` : file.name;
       setTimeout(() => handleDownload(filePath), i * 200);
     });
+  };
+
+  /** 수동 투입 모달 열기 — 경로에서 설비 정보 자동 추출 */
+  const openIngestModal = () => {
+    if (!selectedFile) return;
+    const info = extractEquipInfo(selectedFile);
+    setIngestType(info.equipmentType);
+    setIngestId(info.equipmentId);
+    setIngestResult(null);
+    setShowIngestModal(true);
+  };
+
+  /** 수동 투입 실행 */
+  const handleIngest = async () => {
+    if (!selectedFile || !fileContent || !ingestType || !ingestId) return;
+    setIngesting(true);
+    setIngestResult(null);
+    try {
+      const res = await apiFetch<{ success: boolean; accepted: number; failed: number; totalRows: number; error?: string }>(
+        '/api/monitor/vrl/manual-ingest',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            equipmentType: ingestType,
+            equipmentId: ingestId,
+            logContent: fileContent.content,
+          }),
+        },
+      );
+      if (res.success) {
+        setIngestResult({ ok: true, msg: t('logFiles.ingestSuccess').replace('{count}', String(res.accepted)) });
+      } else {
+        setIngestResult({ ok: false, msg: res.error || 'Unknown error' });
+      }
+    } catch (err) {
+      setIngestResult({ ok: false, msg: err instanceof Error ? err.message : 'Failed' });
+    }
+    setIngesting(false);
   };
 
   /** 경로를 breadcrumb 세그먼트로 분리 */
@@ -439,6 +505,15 @@ export default function LogFilesPage() {
                       <Icon name="download" size="xs" />
                       {t('logFiles.download')}
                     </button>
+                    <button
+                      onClick={openIngestModal}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+                        text-warning hover:bg-warning/10 border border-warning/30 transition-colors"
+                      title={t('logFiles.manualIngest')}
+                    >
+                      <Icon name="upload" size="xs" />
+                      {t('logFiles.manualIngest')}
+                    </button>
                   </span>
                 )}
               </div>
@@ -488,6 +563,96 @@ export default function LogFilesPage() {
             className="!bg-error hover:!bg-error/80">
             {t('logFiles.deleteSelected')}
           </Button>
+        </div>
+      </Modal>
+
+      {/* 수동 투입 모달 */}
+      <Modal isOpen={showIngestModal} onClose={() => setShowIngestModal(false)} title={t('logFiles.manualIngest')} size="sm">
+        <div className="space-y-4">
+          {/* 설비 유형 */}
+          <div>
+            <label className="block text-xs font-bold text-muted-foreground mb-1">
+              {t('logFiles.equipmentType')}
+            </label>
+            <select
+              value={ingestType}
+              onChange={e => setIngestType(e.target.value)}
+              className="w-full h-9 px-2 rounded border border-border dark:border-border-dark
+                bg-white dark:bg-background-dark text-sm text-text dark:text-white"
+            >
+              <option value="">{t('logFiles.selectEquipType')}</option>
+              {vrlEquipTypes.map(eq => (
+                <option key={eq} value={eq}>{eq}</option>
+              ))}
+            </select>
+            {ingestType && !vrlTargetMap[ingestType] && (
+              <p className="text-[10px] text-error mt-0.5">{t('logFiles.noVrlRegistered')}</p>
+            )}
+            {ingestType && vrlTargetMap[ingestType] && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                → {vrlTargetMap[ingestType].targetTable}
+              </p>
+            )}
+          </div>
+
+          {/* 설비 ID */}
+          <div>
+            <label className="block text-xs font-bold text-muted-foreground mb-1">
+              {t('logFiles.equipmentId')}
+            </label>
+            <input
+              type="text"
+              value={ingestId}
+              onChange={e => setIngestId(e.target.value)}
+              placeholder="MOUNTER-001"
+              className="w-full h-9 px-2 rounded border border-border dark:border-border-dark
+                bg-white dark:bg-background-dark text-sm font-mono text-text dark:text-white"
+            />
+          </div>
+
+          {/* 대상 파일 */}
+          <div className="p-2 rounded bg-surface/50 dark:bg-surface-dark/50 border border-border/50 dark:border-border-dark/50">
+            <p className="text-[10px] text-muted-foreground">{t('logFiles.targetFile')}</p>
+            <p className="text-xs font-mono truncate" title={selectedFile || ''}>{selectedFile}</p>
+            {fileContent && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {fileContent.total} {t('logFiles.lines')}
+              </p>
+            )}
+          </div>
+
+          {/* 결과 */}
+          {ingestResult && (
+            <div className={`p-3 rounded-lg text-sm font-medium flex items-center gap-2
+              ${ingestResult.ok
+                ? 'bg-success/10 border border-success/30 text-success'
+                : 'bg-error/10 border border-error/30 text-error'}`}
+            >
+              <Icon name={ingestResult.ok ? 'check_circle' : 'error'} size="sm" />
+              {ingestResult.msg}
+            </div>
+          )}
+
+          {/* 버튼 */}
+          <div className="flex justify-end gap-2 pt-2 border-t border-border dark:border-border-dark">
+            {ingestResult?.ok ? (
+              <Button variant="primary" leftIcon="check" onClick={() => setShowIngestModal(false)}>
+                {t('settings.close')}
+              </Button>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => setShowIngestModal(false)}>
+                  {t('logFiles.cancel')}
+                </Button>
+                <Button variant="primary" leftIcon="upload"
+                  onClick={handleIngest}
+                  disabled={ingesting || !ingestType || !ingestId || !vrlTargetMap[ingestType]}
+                >
+                  {ingesting ? t('logFiles.ingesting') : t('logFiles.ingestBtn')}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </Modal>
     </>
