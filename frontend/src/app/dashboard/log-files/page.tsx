@@ -401,7 +401,7 @@ export default function LogFilesPage() {
             </div>
           )}
           {/* 파일/폴더 목록 */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-auto">
             {dirLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Icon name="progress_activity" size="md" className="animate-spin text-primary" />
@@ -440,7 +440,7 @@ export default function LogFilesPage() {
                       size="xs"
                       className={`shrink-0 ${entry.type === 'dir' ? 'text-warning' : 'text-muted-foreground'}`}
                     />
-                    <span className="min-w-0 flex-1 text-left text-sm truncate">{entry.name}</span>
+                    <span className="text-left text-sm whitespace-nowrap">{entry.name}</span>
                     {entry.type === 'file' && entry.size != null && (
                       <span className="text-[10px] text-muted-foreground shrink-0">{formatSize(entry.size)}</span>
                     )}
