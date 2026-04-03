@@ -56,16 +56,7 @@ export default function MappingPage() {
   const loadParseRules = useCallback(async () => {
     try {
       const res = await apiFetch<{ rules: Record<string, ParseField[]> }>('/api/monitor/parse-rules');
-      const rules = res.rules;
-      if (!rules || Object.keys(rules).length === 0) {
-        const syncRes = await apiFetch<{ synced: Record<string, number> }>('/api/monitor/parse-rules/sync', { method: 'POST' });
-        if (syncRes.synced && Object.keys(syncRes.synced).length > 0) {
-          const refreshed = await apiFetch<{ rules: Record<string, ParseField[]> }>('/api/monitor/parse-rules');
-          setParseRules(refreshed.rules);
-          return;
-        }
-      }
-      setParseRules(rules);
+      setParseRules(res.rules ?? {});
     } catch { /* 테이블 미생성 시 무시 */ }
   }, []);
 

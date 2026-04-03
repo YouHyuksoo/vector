@@ -1859,21 +1859,21 @@
     },
     {
       "COLUMN_NAME": "VERSION",
-      "DATA_TYPE": "VARCHAR2(20)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.VERSION",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 3
     },
     {
       "COLUMN_NAME": "BOARD_SN",
-      "DATA_TYPE": "VARCHAR2(100)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.BOARD_SN",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 4
     },
     {
       "COLUMN_NAME": "ARRAY_NO",
-      "DATA_TYPE": "VARCHAR2(20)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.ARRAY_NO",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 5
@@ -1887,14 +1887,14 @@
     },
     {
       "COLUMN_NAME": "ORDERNAME",
-      "DATA_TYPE": "VARCHAR2(200)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.ORDERNAME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 7
     },
     {
       "COLUMN_NAME": "MACHINE_CODE",
-      "DATA_TYPE": "VARCHAR2(50)",
+      "DATA_TYPE": "VARCHAR2(100)",
       "SOURCE_FIELD": "data.MACHINE_CODE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 8
@@ -1908,105 +1908,105 @@
     },
     {
       "COLUMN_NAME": "OPERATOR",
-      "DATA_TYPE": "VARCHAR2(50)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.OPERATOR",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 10
     },
     {
       "COLUMN_NAME": "START_TIME",
-      "DATA_TYPE": "VARCHAR2(30)",
+      "DATA_TYPE": "VARCHAR2(100)",
       "SOURCE_FIELD": "data.START_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 11
     },
     {
       "COLUMN_NAME": "END_TIME",
-      "DATA_TYPE": "VARCHAR2(30)",
+      "DATA_TYPE": "VARCHAR2(100)",
       "SOURCE_FIELD": "data.END_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 12
     },
     {
       "COLUMN_NAME": "WORKZONE",
-      "DATA_TYPE": "VARCHAR2(20)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.WORKZONE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 13
     },
     {
       "COLUMN_NAME": "STEP",
-      "DATA_TYPE": "VARCHAR2(20)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.STEP",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 14
     },
     {
       "COLUMN_NAME": "REF",
-      "DATA_TYPE": "VARCHAR2(50)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.REF",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 15
     },
     {
       "COLUMN_NAME": "PART_NAME",
-      "DATA_TYPE": "VARCHAR2(100)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.PART_NAME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 16
     },
     {
       "COLUMN_NAME": "REELID",
-      "DATA_TYPE": "VARCHAR2(200)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.REELID",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 17
     },
     {
       "COLUMN_NAME": "FEEDERID",
-      "DATA_TYPE": "VARCHAR2(100)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.FEEDERID",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 18
     },
     {
       "COLUMN_NAME": "SLOT_NO",
-      "DATA_TYPE": "VARCHAR2(20)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.SLOT_NO",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 19
     },
     {
       "COLUMN_NAME": "ARRAY",
-      "DATA_TYPE": "VARCHAR2(20)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.ARRAY",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 20
     },
     {
       "COLUMN_NAME": "BLOCK",
-      "DATA_TYPE": "VARCHAR2(20)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.BLOCK",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 21
     },
     {
       "COLUMN_NAME": "VCODE",
-      "DATA_TYPE": "VARCHAR2(100)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.VCODE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 22
     },
     {
       "COLUMN_NAME": "VPART",
-      "DATA_TYPE": "VARCHAR2(100)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.VPART",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 23
     },
     {
       "COLUMN_NAME": "VNAME",
-      "DATA_TYPE": "VARCHAR2(100)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.VNAME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 24
@@ -2020,10 +2020,17 @@
     },
     {
       "COLUMN_NAME": "DUMP",
-      "DATA_TYPE": "VARCHAR2(20)",
+      "DATA_TYPE": "VARCHAR2(500)",
       "SOURCE_FIELD": "data.DUMP",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 26
+    },
+    {
+      "COLUMN_NAME": "LOG_ROWS",
+      "DATA_TYPE": "VARCHAR2(500)",
+      "SOURCE_FIELD": "data.ROWS",
+      "IS_REQUIRED": "N",
+      "COLUMN_ORDER": 27
     }
   ],
   "LOG_MARKING": [

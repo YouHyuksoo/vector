@@ -270,6 +270,73 @@ if .equipment_type == "SP" {
       .data.ROWS = push(.data.ROWS, item)
     }
   }
+} else if .equipment_type == "SPI_VD" {
+  .target_table = "LOG_SPI_VD"
+  # Log Structure:
+  # Line 0: Master header (MasterBarcode,PCBID,InspectionDate,InspectionStartTime,InspectionEndTime,TotalPanelCnt,JobName,PCBResult,UserID,LotInfo,MachineID,Side,Lane)
+  # Line 1: Master data row
+  # Line 2: "Panel" separator
+  # Line 3: Panel header (ArrayBarcode,PanelResult)
+  # Line 4+: Panel data rows
+  # Line X: "ComponentID" header → IGNORE this and all following lines
+  #
+  # Master data (line 1) + Panel data (lines 4+) combined into .data.ROWS
+
+  lines = split!(.message, "\n")
+
+  # Parse Master section (line 1)
+  master_cols = split(to_string!(get!(lines, [1])), ",")
+  master_data = {
+    "MASTER_BARCODE": strip_whitespace(to_string!(get!(master_cols, [0]))),
+    "PCBID": strip_whitespace(to_string!(get!(master_cols, [1]))),
+    "INSPECTION_DATE": strip_whitespace(to_string!(get!(master_cols, [2]))),
+    "INSPECTION_START_TIME": strip_whitespace(to_string!(get!(master_cols, [3]))),
+    "INSPECTION_END_TIME": strip_whitespace(to_string!(get!(master_cols, [4]))),
+    "TOTAL_PANEL_CNT": strip_whitespace(to_string!(get!(master_cols, [5]))),
+    "JOB_NAME": strip_whitespace(to_string!(get!(master_cols, [6]))),
+    "PCB_RESULT": strip_whitespace(to_string!(get!(master_cols, [7]))),
+    "USER_ID": strip_whitespace(to_string!(get!(master_cols, [8]))),
+    "LOT_INFO": strip_whitespace(to_string!(get!(master_cols, [9]))),
+    "MACHINE_ID": strip_whitespace(to_string!(get!(master_cols, [10]))),
+    "SIDE": strip_whitespace(to_string!(get!(master_cols, [11]))),
+    "LANE": strip_whitespace(to_string!(get!(master_cols, [12])))
+  }
+
+  .data.ROWS = []
+  panel_start_line = 4
+  panel_end_line = length(lines)
+
+  for_each(array!(slice!(lines, panel_start_line))) -> |idx, line| {
+    if starts_with(to_string!(line), "ComponentID") {
+      panel_end_line = panel_start_line + idx
+    }
+  }
+
+  panel_lines = slice!(lines, panel_start_line, panel_end_line)
+  for_each(array!(panel_lines)) -> |_idx, row| {
+    if row != "" {
+      panel_cols = split(to_string!(row), ",")
+      item = {
+        "MASTER_BARCODE": master_data.MASTER_BARCODE,
+        "PCBID": master_data.PCBID,
+        "INSPECTION_DATE": master_data.INSPECTION_DATE,
+        "INSPECTION_START_TIME": master_data.INSPECTION_START_TIME,
+        "INSPECTION_END_TIME": master_data.INSPECTION_END_TIME,
+        "TOTAL_PANEL_CNT": master_data.TOTAL_PANEL_CNT,
+        "JOB_NAME": master_data.JOB_NAME,
+        "PCB_RESULT": master_data.PCB_RESULT,
+        "USER_ID": master_data.USER_ID,
+        "LOT_INFO": master_data.LOT_INFO,
+        "MACHINE_ID": master_data.MACHINE_ID,
+        "SIDE": master_data.SIDE,
+        "LANE": master_data.LANE,
+        "ARRAY_BARCODE": strip_whitespace(to_string!(get!(panel_cols, [0]))),
+        "PANEL_RESULT": strip_whitespace(to_string!(get!(panel_cols, [1])))
+      }
+      .data.ROWS = push(.data.ROWS, item)
+    }
+  }
+
 } else if .equipment_type == "AOI" {  # ── AOI (Automated Optical Inspection) ──
   .target_table = "LOG_AOI"
   if .log_type == "INSPECTION" {
@@ -455,9 +522,8 @@ if .equipment_type == "SP" {
       .data.ROWS = push(.data.ROWS, item)
     }
   }
-} else if .equipment_type == "MOUNTER" {
+} else if .equipment_type == "MOUNTER" {  # Log Structure: TRK file — [HEAD] key=value section + [DATA] CSV section
   .target_table = "LOG_MOUNTER"
-  # Log Structure: TRK file — [HEAD] key=value section + [DATA] CSV section
   # HEAD keys: VERSION, BOARD_SN, ARRAY_NO, ARRAY_SN, ORDERNAME, MACHINE_CODE,
   #            PCB_FILE_NAME, OPERATOR, START_TIME, END_TIME, WORKZONE
   # DATA cols: STEP,REF,PART_NAME,REELID,FEEDERID,SLOT_NO,ARRAY,BLOCK,VCODE,VPART,VNAME,LOT_CODE,DUMP
@@ -541,7 +607,6 @@ if .equipment_type == "SP" {
       }
     }
   }
-
 } else if .equipment_type == "VISION_LEGACY" {
   lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_VISION_LEGACY"

@@ -34,7 +34,6 @@ import {
   setProcedure, getProcedure, deleteTarget, getRegisteredProcedureKeys,
   isProcedureEntry, type RegistryColumn, type ProcedureEntry, type ProcedureParam,
 } from '../../config/local-registry.js';
-import { readParseFields, setFieldsByEquipment, deleteFieldsByEquipment, writeParseFields, type ParseField } from '../../config/local-parse-fields.js';
 import { syncTomlRouting } from '../../config/vrl-target-updater.js';
 import {
   buildCreateTableDDL, buildCreateProcedureDDL,
@@ -227,23 +226,6 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       writeFileSync(VECTOR_CONFIG, content, 'utf-8');
       logger.info('Aggregator config updated via API');
       errorLogRepository.success('FILE_WRITE', 'AGGREGATOR_CONFIG', 'SYSTEM', 'Config saved');
-
-      // VRL 변경 시 parse-fields 자동 동기화
-      try {
-        const extracted = extractVrlFields(content);
-        if (Object.keys(extracted).length > 0) {
-          const allFields = readParseFields();
-          for (const [eqType, fields] of Object.entries(extracted)) {
-            allFields[eqType] = fields.map((f, i) => ({
-              fieldName: f, fieldLabel: f, fieldOrder: i + 1,
-            }));
-          }
-          writeParseFields(allFields);
-          logger.info('Parse-fields auto-synced after aggregator config save');
-        }
-      } catch (syncErr) {
-        logger.warn({ err: syncErr }, 'Failed to auto-sync parse-fields');
-      }
 
       return reply.send({ success: true, message: 'Config saved', backupName });
     } catch (err) {
@@ -701,7 +683,6 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       const bakPath = filePath + '.bak';
       if (existsSync(bakPath)) unlinkSync(bakPath);
       removeEquipmentFromAggregatorVrl(name);
-      deleteFieldsByEquipment(name);
       const descs = loadDescriptions();
       if (descs[name]) { delete descs[name]; saveDescriptions(descs); }
       logger.info({ name }, 'Agent config deleted (+ VRL block & parse-fields cleaned)');
@@ -1528,84 +1509,21 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     return reply.send({ success: true, deleted, failed, results });
   });
 
-  // ─── VRL 파싱 룰 관리 API ───
+  // ─── VRL 파싱 룰 조회 API (TOML에서 실시간 추출) ───
 
-  /** 전체 파싱 룰 조회 (로컬 JSON — 설비 유형별 그룹핑) */
+  /** 전체 파싱 룰 조회 — VRL 코드에서 data.* 필드 실시간 추출 */
   app.get('/api/monitor/parse-rules', async (_request, reply) => {
-    try {
-      const rules = readParseFields();
-      return reply.send({ rules });
-    } catch (err) {
-      return reply.status(500).send({ error: String(err) });
-    }
-  });
-
-  /** 특정 설비 유형의 파싱 룰 저장 (로컬 JSON) */
-  app.post('/api/monitor/parse-rules', async (request, reply) => {
-    const body = request.body as {
-      equipmentType: string;
-      fields: Array<{ fieldName: string; fieldLabel?: string }>;
-    };
-    if (!body.equipmentType || !Array.isArray(body.fields)) {
-      return reply.status(400).send({ error: 'Invalid payload: equipmentType and fields required' });
-    }
-    const eqType = body.equipmentType.toUpperCase();
-
-    try {
-      const fields: ParseField[] = body.fields.map((f, i) => ({
-        fieldName: f.fieldName,
-        fieldLabel: f.fieldLabel || f.fieldName,
-        fieldOrder: i + 1,
-      }));
-      setFieldsByEquipment(eqType, fields);
-      logger.info({ equipmentType: eqType, count: fields.length }, 'Parse rules saved to local config');
-      return reply.send({ success: true, count: fields.length });
-    } catch (err) {
-      return reply.status(500).send({ error: String(err) });
-    }
-  });
-
-  /** 특정 설비 유형의 모든 파싱 룰 삭제 (로컬 JSON) */
-  app.delete('/api/monitor/parse-rules/:equipmentType', async (request, reply) => {
-    const { equipmentType } = request.params as { equipmentType: string };
-    if (!equipmentType || !/^[A-Za-z0-9_-]+$/.test(equipmentType)) {
-      return reply.status(400).send({ error: 'Invalid equipment type' });
-    }
-    try {
-      const existed = deleteFieldsByEquipment(equipmentType);
-      logger.info({ equipmentType, existed }, 'Parse rules deleted from local config');
-      return reply.send({ success: true, deleted: existed ? 1 : 0 });
-    } catch (err) {
-      return reply.status(500).send({ error: String(err) });
-    }
-  });
-
-  /** VRL 코드에서 data.* 필드를 자동 추출하여 로컬 JSON에 동기화 */
-  app.post('/api/monitor/parse-rules/sync', async (_request, reply) => {
     try {
       const tomlContent = readFileSync(VECTOR_CONFIG, 'utf-8');
       const extracted = extractVrlFields(tomlContent);
-
-      if (Object.keys(extracted).length === 0) {
-        return reply.send({ success: true, synced: {}, message: 'No data.* fields found in VRL' });
-      }
-
-      const allFields = readParseFields();
+      const rules: Record<string, Array<{ fieldName: string; fieldLabel: string; fieldOrder: number }>> = {};
       for (const [eqType, fields] of Object.entries(extracted)) {
-        allFields[eqType] = fields.map((f, i) => ({
-          fieldName: f,
-          fieldLabel: f,
-          fieldOrder: i + 1,
+        rules[eqType] = fields.map((f, i) => ({
+          fieldName: f, fieldLabel: f, fieldOrder: i + 1,
         }));
       }
-      writeParseFields(allFields);
-
-      const synced: Record<string, number> = {};
-      for (const [k, v] of Object.entries(extracted)) synced[k] = v.length;
-      logger.info({ synced }, 'Parse rules synced from VRL to local config');
-      return reply.send({ success: true, synced, details: extracted });
+      return reply.send({ rules });
     } catch (err) {
-      logger.error(err, 'Failed to sync parse rules from VRL');
       return reply.status(500).send({ error: String(err) });
     }
   });
@@ -2289,23 +2207,8 @@ Generate VRL parsing code for this log.`;
       writeFileSync(VECTOR_CONFIG, newToml, 'utf-8');
       logger.info({ equipmentType: eqType }, 'VRL code applied to aggregator TOML');
 
-      // 파싱 룰 로컬 파일 동기화
-      let syncCount = 0;
       const extracted = extractVrlFields(newToml);
-      if (extracted[eqType] && extracted[eqType].length > 0) {
-        try {
-          const fields = extracted[eqType].map((fieldName: string, i: number) => ({
-            fieldName,
-            fieldLabel: fieldName,
-            fieldOrder: i + 1,
-          }));
-          setFieldsByEquipment(eqType, fields);
-          syncCount = fields.length;
-          logger.info({ equipmentType: eqType, syncCount }, 'Parse rules synced to local file after VRL apply');
-        } catch (syncErr) {
-          logger.warn({ err: syncErr }, 'Failed to sync parse rules to local file after VRL apply');
-        }
-      }
+      const syncCount = extracted[eqType]?.length ?? 0;
 
       return reply.send({ success: true, message: 'VRL applied', syncCount });
     } catch (err) {
@@ -2454,8 +2357,9 @@ Generate VRL parsing code for this log.`;
       let aggOk = false;
       try { aggOk = readFileSync(VECTOR_CONFIG, 'utf-8').trim().length > 0; } catch { /* */ }
 
-      // 3) parseRules
-      const parseRules = readParseFields();
+      // 3) parseRules — TOML에서 실시간 추출
+      const aggTomlForParse = readFileSync(VECTOR_CONFIG, 'utf-8');
+      const parseRules = extractVrlFields(aggTomlForParse);
 
       // 4) registry
       const registry = readRegistry();
