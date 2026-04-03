@@ -59,21 +59,21 @@
     {
       "COLUMN_NAME": "LOG_DATE",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.DATE",
+      "SOURCE_FIELD": "data.LOG_DATE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 7
     },
     {
       "COLUMN_NAME": "LOG_TIME",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.TIME",
+      "SOURCE_FIELD": "data.LOG_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 8
     },
     {
       "COLUMN_NAME": "LOG_TYPE",
       "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.TYPE",
+      "SOURCE_FIELD": "data.LOG_TYPE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 9
     },
@@ -292,14 +292,14 @@
     {
       "COLUMN_NAME": "LOG_DATE",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.DATE",
+      "SOURCE_FIELD": "data.LOG_DATE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 7
     },
     {
       "COLUMN_NAME": "LOG_TIME",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.TIME",
+      "SOURCE_FIELD": "data.LOG_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 8
     },
@@ -637,7 +637,7 @@
     {
       "COLUMN_NAME": "LOG_TIME",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.TIME",
+      "SOURCE_FIELD": "data.LOG_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 8
     },
@@ -793,7 +793,7 @@
     {
       "COLUMN_NAME": "LOG_DATE",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.DATE",
+      "SOURCE_FIELD": "data.LOG_DATE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 5
     },
@@ -821,7 +821,7 @@
     {
       "COLUMN_NAME": "LOG_MODE",
       "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.MODE",
+      "SOURCE_FIELD": "data.LOG_MODE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 9
     },
@@ -1055,21 +1055,21 @@
     {
       "COLUMN_NAME": "LOG_DATE",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.DATE",
+      "SOURCE_FIELD": "data.LOG_DATE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 7
     },
     {
       "COLUMN_NAME": "LOG_TIME",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.TIME",
+      "SOURCE_FIELD": "data.LOG_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 8
     },
     {
       "COLUMN_NAME": "LOG_TYPE",
       "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.TYPE",
+      "SOURCE_FIELD": "data.LOG_TYPE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 9
     },
@@ -1479,7 +1479,7 @@
     {
       "COLUMN_NAME": "DATE_TIME",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.DATETIME",
+      "SOURCE_FIELD": "data.DATE_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 3
     },
@@ -1758,9 +1758,9 @@
       "COLUMN_ORDER": 7
     },
     {
-      "COLUMN_NAME": "TYPE",
+      "COLUMN_NAME": "LOG_TYPE",
       "DATA_TYPE": "VARCHAR2(50)",
-      "SOURCE_FIELD": "data.TYPE",
+      "SOURCE_FIELD": "data.LOG_TYPE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 8
     },
@@ -2859,7 +2859,7 @@
     {
       "COLUMN_NAME": "LOG_TIME",
       "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.TIME",
+      "SOURCE_FIELD": "data.LOG_TIME",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 3
     },
