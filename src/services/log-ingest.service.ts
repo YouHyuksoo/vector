@@ -15,23 +15,19 @@ import type { LogRecord } from '../types/index.js';
 
 class LogIngestService {
   async processLog(log: LogRecord): Promise<void> {
-    const { equipment_id, target_type, target_table, data, timestamp } = log;
+    const { equipment_id, target_type, target_table, data, timestamp, line_code, filename } = log;
+    const extraFields: Record<string, unknown> = { equipment_id, timestamp };
+    if (line_code) extraFields.line_code = line_code;
+    if (filename) extraFields.filename = filename;
 
     if (target_type === TARGET_TYPES.PROCEDURE) {
-      await dynamicInsert.callProcedure(target_table, data, {
-        equipment_id,
-        timestamp,
-      });
+      await dynamicInsert.callProcedure(target_table, data, extraFields);
     } else if (Array.isArray(data.ROWS) && data.ROWS.length > 0) {
-      const extraFields = { equipment_id, timestamp };
       for (const row of data.ROWS) {
         await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
       }
     } else {
-      await dynamicInsert.insert(target_table, data, {
-        equipment_id,
-        timestamp,
-      });
+      await dynamicInsert.insert(target_table, data, extraFields);
     }
 
     const rowCount = Array.isArray(data.ROWS) ? data.ROWS.length : 1;

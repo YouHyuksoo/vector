@@ -15,6 +15,7 @@ export interface LogRecord {
   equipment_id: string;
   equipment_type?: string;
   log_type: string;
+  line_code?: string;
   target_type: TargetType;
   target_table: string;
   timestamp: string;

@@ -1242,6 +1242,7 @@ ts = if exists(.timestamp) { to_string!(.timestamp) } else if .equipment_type ==
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "equipment_type": .equipment_type,   # 설비 유형 (raw 파일 저장 경로용)
   "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)
+  "line_code": .line_code,             # 라인 코드 (Agent가 태깅)
   "target_type": .target_type,         # 저장 방식 (TABLE/PROCEDURE)
   "target_table": .target_table,       # 저장 대상 (테이블명 또는 프로시져 레지스트리 키)
   "timestamp": ts,                     # 타임스탬프 (문자열로 변환)
