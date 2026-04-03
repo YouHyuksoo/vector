@@ -14,10 +14,11 @@ import type { ParseField, LogTypeConfig } from './types';
 /** 공통 필드 (모든 설비에 포함되는 Vector 기본 필드) */
 const COMMON_FIELDS = [
   { value: 'equipment_id', label: 'equipment_id' },
+  { value: 'line_code', label: 'line_code' },
   { value: 'timestamp', label: 'timestamp' },
+  { value: 'filename', label: 'filename' },
   { value: 'log_type', label: 'log_type' },
   { value: 'target_table', label: 'target_table' },
-  { value: 'filename', label: 'filename' },
 ];
 
 /** 설비별 아이콘 매핑 (UI 표시용) */
@@ -164,7 +165,9 @@ export function buildPreviewColumns(
   const cols: import('./types').PreviewColumnDef[] = [
     { columnName: 'LOG_ID', dataType: 'NUMBER(PK)', nullable: false, isSystem: true, sourceField: '' },
     { columnName: 'EQUIPMENT_ID', dataType: 'VARCHAR2(50)', nullable: false, isSystem: true, sourceField: 'equipment_id' },
+    { columnName: 'LINE_CODE', dataType: 'VARCHAR2(50)', nullable: true, isSystem: true, sourceField: 'line_code' },
     { columnName: 'LOG_TIMESTAMP', dataType: 'TIMESTAMP', nullable: true, isSystem: true, sourceField: 'timestamp' },
+    { columnName: 'FILE_NAME', dataType: 'VARCHAR2(500)', nullable: true, isSystem: true, sourceField: 'filename' },
   ];
 
   const fields = parseRules[logType] || [];
@@ -197,7 +200,9 @@ export function autoMatchField(
 
   // 공통 필드 매칭
   if (colUpper === 'EQUIPMENT_ID') return 'equipment_id';
+  if (colUpper === 'LINE_CODE') return 'line_code';
   if (colUpper === 'LOG_TIMESTAMP') return 'timestamp';
+  if (colUpper === 'FILE_NAME') return 'filename';
 
   // 설비별 data.* 필드 매칭 (컬럼명 == 필드명의 마지막 부분)
   for (const f of allFields) {
