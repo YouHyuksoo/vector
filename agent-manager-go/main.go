@@ -238,6 +238,78 @@ func tomlSetSinkAddr(content, ip, port string) string {
 	return strings.Join(lines, "\n")
 }
 
+func tomlGetEncoding(content string) string {
+	// [sources.work_logs] 섹션에서 encoding.codec 값 추출
+	idx := strings.Index(content, "[sources.work_logs]")
+	if idx < 0 {
+		return "utf-8"
+	}
+	sub := content[idx:]
+	// 다음 섹션 시작 전까지만 탐색
+	endIdx := strings.Index(sub[1:], "\n[")
+	if endIdx > 0 {
+		sub = sub[:endIdx+1]
+	}
+	for _, line := range strings.Split(sub, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "encoding.codec") {
+			q1 := strings.Index(trimmed, `"`)
+			if q1 < 0 {
+				continue
+			}
+			q2 := strings.Index(trimmed[q1+1:], `"`)
+			if q2 < 0 {
+				continue
+			}
+			return trimmed[q1+1 : q1+1+q2]
+		}
+	}
+	return "utf-8"
+}
+
+func tomlSetEncoding(content, codec string) string {
+	if codec == "" || codec == "utf-8" {
+		// utf-8이면 encoding.codec 줄 제거 (Vector 기본값)
+		lines := strings.Split(content, "\n")
+		var result []string
+		for _, line := range lines {
+			if !strings.Contains(strings.TrimSpace(line), "encoding.codec") {
+				result = append(result, line)
+			}
+		}
+		return strings.Join(result, "\n")
+	}
+
+	// 이미 있으면 값 교체
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if strings.Contains(strings.TrimSpace(line), "encoding.codec") {
+			lines[i] = fmt.Sprintf(`encoding.codec = "%s"`, codec)
+			return strings.Join(lines, "\n")
+		}
+	}
+
+	// 없으면 [sources.work_logs] 섹션의 type 줄 바로 뒤에 추가
+	inSection := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.Contains(trimmed, "[sources.work_logs]") {
+			inSection = true
+			continue
+		}
+		if inSection && strings.HasPrefix(trimmed, "type =") {
+			// type = "file" 다음 줄에 삽입
+			newLine := fmt.Sprintf(`encoding.codec = "%s"`, codec)
+			result := make([]string, 0, len(lines)+1)
+			result = append(result, lines[:i+1]...)
+			result = append(result, newLine)
+			result = append(result, lines[i+1:]...)
+			return strings.Join(result, "\n")
+		}
+	}
+	return content
+}
+
 func tomlGetInclude(content string) string {
 	idx := strings.Index(content, "include = [")
 	if idx < 0 {
@@ -785,6 +857,7 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 			"resend_delete_secs":  tomlGetResendDeleteSecs(s),
 			"sink_address":        sinkIP,
 			"sink_port":      sinkPort,
+			"encoding":       tomlGetEncoding(s),
 		})
 		return
 	}
@@ -815,6 +888,9 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 		}
 		if v, ok := body["resend_delete_secs"]; ok {
 			s = tomlSetResendDeleteSecs(s, v)
+		}
+		if v, ok := body["encoding"]; ok {
+			s = tomlSetEncoding(s, v)
 		}
 		curIP, curPort := tomlGetSinkAddr(s)
 		if v, ok := body["sink_address"]; ok {
@@ -1374,7 +1450,7 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 	// 기존 TOML에서 메타데이터 백업
 	tomlPath := filepath.Join(configDir, name+".toml")
 	var oldMeta map[string]string
-	var oldSinkIP, oldSinkPort, oldInclude string
+	var oldSinkIP, oldSinkPort, oldInclude, oldEncoding string
 	if oldContent, err := os.ReadFile(tomlPath); err == nil {
 		old := string(oldContent)
 		oldMeta = map[string]string{
@@ -1385,6 +1461,7 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 		}
 		oldSinkIP, oldSinkPort = tomlGetSinkAddr(old)
 		oldInclude = tomlGetInclude(old)
+		oldEncoding = tomlGetEncoding(old)
 	}
 
 	resp, err := httpGet(masterServer + "/api/monitor/download/agent/" + name)
@@ -1409,8 +1486,11 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 		if oldInclude != "" {
 			newToml = tomlSetInclude(newToml, oldInclude)
 		}
-		log.Printf("[TOML Download] %s — 기존 설비 설정 유지 (equipment_id=%s, sink=%s:%s)",
-			name, oldMeta["equipment_id"], oldSinkIP, oldSinkPort)
+		if oldEncoding != "" && oldEncoding != "utf-8" {
+			newToml = tomlSetEncoding(newToml, oldEncoding)
+		}
+		log.Printf("[TOML Download] %s — 기존 설비 설정 유지 (equipment_id=%s, sink=%s:%s, encoding=%s)",
+			name, oldMeta["equipment_id"], oldSinkIP, oldSinkPort, oldEncoding)
 	}
 
 	os.MkdirAll(configDir, 0755)

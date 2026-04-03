@@ -10,6 +10,7 @@ address = "127.0.0.1:8686"
 
 [sources.work_logs]
 type = "file"
+encoding.codec = "utf-16le"
 include = [
   'C:\logs\reflow\*.txt',
   'C:\logs\reflow\*.csv',

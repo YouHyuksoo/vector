@@ -10,6 +10,7 @@ address = "127.0.0.1:8686"
 
 [sources.work_logs]
 type = "file"
+encoding.codec = "euc-kr"
 include = [
   'C:\logs\lowcurrent\*.txt',
   'C:\logs\lowcurrent\*.csv',
