@@ -15,7 +15,7 @@ import { tmpdir, platform, cpus, totalmem, freemem } from 'os';
 import { spawn, execSync } from 'child_process';
 import { heartbeatService } from '../../services/heartbeat.service.js';
 import { getConnection } from '../../database/oracle.pool.js';
-import { logger } from '../../utils/logger.js';
+import { logger, localNow, localISOString } from '../../utils/logger.js';
 import { logBuffer } from '../../utils/log-buffer.js';
 import iconv from 'iconv-lite';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
@@ -51,7 +51,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
   /** 타임스탬프 기반 백업 생성 (source: 변경 출처) */
   function createTomlBackup(source: string): string {
     if (!existsSync(BACKUP_DIR)) mkdirSync(BACKUP_DIR, { recursive: true });
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+    const ts = localNow().replace(' ', '_').replace(/:/g, '-');
     const backupName = `vector-aggregator_${ts}_${source}.toml`;
     const backupPath = join(BACKUP_DIR, backupName);
     copyFileSync(VECTOR_CONFIG, backupPath);
@@ -107,7 +107,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       server: {
         status: 'ok',
         uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
+        timestamp: localISOString(),
         nodeEnv: process.env.NODE_ENV ?? 'development',
         ...(disk && { disk }),
         memory: mem,
@@ -259,7 +259,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         return {
           name: f,
           size: stat.size,
-          createdAt: stat.mtime.toISOString(),
+          createdAt: (() => { const d = stat.mtime; const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; })(),
           source,
         };
       });
@@ -806,7 +806,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       let created = false;
       let renamedFrom: string | undefined;
       if (exists && body.forceRecreate) {
-        const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+        const ts = localNow().replace(/[-: ]/g, '').slice(0, 14);
         const backupName = `${upperName}_BK_${ts}`;
 
         /* 1) 백업 테이블의 제약조건 이름 변경 (PK 등) — 새 테이블 생성 시 이름 충돌 방지 */
@@ -2082,7 +2082,7 @@ Generate VRL parsing code for this log.`;
       const data = output.data as Record<string, unknown> | undefined;
       const targetTable = (output.target_table as string) || `LOG_${eqType}`;
       const targetType = (output.target_type as string) || 'TABLE';
-      const now = new Date().toISOString();
+      const now = localISOString();
 
       const logs: LogRecord[] = [];
       if (data && Array.isArray(data.ROWS) && data.ROWS.length > 0) {

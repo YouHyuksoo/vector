@@ -8,7 +8,7 @@
  */
 
 import { FastifyPluginAsync, FastifyError } from 'fastify';
-import { logger } from '../../utils/logger.js';
+import { logger, localISOString } from '../../utils/logger.js';
 
 export const errorHandlerPlugin: FastifyPluginAsync = async (app) => {
   app.setErrorHandler((error: FastifyError, request, reply) => {
@@ -22,7 +22,7 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (app) => {
     reply.status(statusCode).send({
       error: statusCode >= 500 ? 'Internal Server Error' : error.message,
       statusCode,
-      timestamp: new Date().toISOString(),
+      timestamp: localISOString(),
     });
   });
 };

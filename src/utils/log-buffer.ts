@@ -9,6 +9,8 @@
  * 4. **API 연동**: GET /api/monitor/system-logs 에서 이 버퍼를 조회
  */
 
+import { localISOString } from './logger.js';
+
 /** 로그 항목 하나의 구조 */
 export interface LogEntry {
   /** ISO 8601 타임스탬프 */
@@ -111,8 +113,8 @@ export function createLogBufferStream(): { write: (chunk: string) => void } {
           const parsed = JSON.parse(line);
           const entry: LogEntry = {
             timestamp: parsed.time
-              ? new Date(parsed.time).toISOString()
-              : new Date().toISOString(),
+              ? (() => { const d = new Date(parsed.time); const p = (n: number) => String(n).padStart(2, '0'); const ms = String(d.getMilliseconds()).padStart(3, '0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${ms}`; })()
+              : localISOString(),
             level: PINO_LEVELS[parsed.level] ?? 'info',
             message: parsed.msg ?? '',
             component: parsed.component ?? 'backend',
@@ -122,7 +124,7 @@ export function createLogBufferStream(): { write: (chunk: string) => void } {
       } catch {
         // JSON 파싱 실패 시 원본 텍스트를 그대로 저장
         logBuffer.push({
-          timestamp: new Date().toISOString(),
+          timestamp: localISOString(),
           level: 'info',
           message: chunk.toString().trim(),
           component: 'backend',
@@ -146,7 +148,7 @@ export function pushVectorLog(data: Buffer, level: 'info' | 'warn' = 'info'): vo
     if (!trimmed) continue;
 
     logBuffer.push({
-      timestamp: new Date().toISOString(),
+      timestamp: localISOString(),
       level,
       message: trimmed,
       component: 'vector-aggregator',

@@ -15,7 +15,7 @@ import { join, dirname } from 'path';
 import { logBatchSchema } from '../../schemas/log-ingest.schema.js';
 import { logIngestService } from '../../services/log-ingest.service.js';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
-import { logger } from '../../utils/logger.js';
+import { logger, localISOString } from '../../utils/logger.js';
 import type { LogRecord } from '../../types/index.js';
 
 const RAW_LOG_BASE = 'C:\\data\\raw-logs';
@@ -103,7 +103,7 @@ export const logIngestRoute: FastifyPluginAsync = async (app) => {
       return reply.status(202).send({
         accepted: result.accepted,
         failed: result.failed,
-        timestamp: new Date().toISOString(),
+        timestamp: localISOString(),
       });
     } catch (err) {
       logger.error({ err }, 'Failed to process logs');

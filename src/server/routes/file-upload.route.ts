@@ -120,7 +120,7 @@ export const fileUploadRoute: FastifyPluginAsync = async (app) => {
             date: dt,
             filename: f,
             size: stat.size,
-            uploadedAt: stat.mtime.toISOString(),
+            uploadedAt: (() => { const d = stat.mtime; const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; })(),
           });
         }
       }

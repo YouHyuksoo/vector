@@ -8,12 +8,13 @@
  */
 
 import { FastifyPluginAsync } from 'fastify';
+import { localISOString } from '../../utils/logger.js';
 
 export const healthPlugin: FastifyPluginAsync = async (app) => {
   app.get('/health', async (_request, reply) => {
     return reply.status(200).send({
       status: 'ok',
-      timestamp: new Date().toISOString(),
+      timestamp: localISOString(),
       uptime: process.uptime(),
     });
   });

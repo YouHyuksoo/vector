@@ -12,7 +12,7 @@
 
 import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
-import { logger } from '../../utils/logger.js';
+import { logger, localNow } from '../../utils/logger.js';
 
 const LOG_DIR = join(process.cwd(), 'data', 'process-logs');
 const FILE_PREFIX = 'process-';
@@ -88,7 +88,7 @@ class ProcessLogRepository {
         MESSAGE: entry.message.substring(0, 4000),
         STAGE: entry.stage,
         STATUS: entry.status,
-        CREATED_AT: now.toISOString().replace('T', ' ').substring(0, 19),
+        CREATED_AT: localNow(),
         ...(entry.raw_data ? { RAW_DATA: entry.raw_data } : {}),
       };
       appendFileSync(this.getFilePath(now), JSON.stringify(record) + '\n', 'utf-8');

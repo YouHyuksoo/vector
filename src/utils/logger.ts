@@ -48,3 +48,21 @@ export const logger = pino(
 );
 
 export type Logger = typeof logger;
+
+/**
+ * 서버 로컬 시간을 'YYYY-MM-DD HH:mm:ss' 형식으로 반환
+ * toISOString()은 UTC를 반환하므로, 로컬 시간 표시가 필요한 곳에 사용
+ */
+export function localNow(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/** 서버 로컬 시간 ISO 형식 (타임존 없음) — API 응답용 */
+export function localISOString(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const ms = String(d.getMilliseconds()).padStart(3, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
+}

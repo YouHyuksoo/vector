@@ -9,6 +9,7 @@
  */
 
 import { env } from '../config/env.js';
+import { localISOString } from '../utils/logger.js';
 import type { EquipmentStatus } from '../types/index.js';
 
 interface HeartbeatEntry {
@@ -34,7 +35,7 @@ class HeartbeatService {
 
     store.set(equipmentId, {
       equipment_id: equipmentId,
-      last_seen: new Date().toISOString(),
+      last_seen: localISOString(),
       metadata: data?.metadata,
       timer,
     });
