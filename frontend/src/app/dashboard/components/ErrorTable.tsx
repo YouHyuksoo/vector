@@ -41,9 +41,9 @@ export function ErrorTable({ logs }: { logs: ProcessLogRow[] }) {
   const { t } = useI18n();
 
   return (
-    <div>
-      <Card noPadding>
-        <div className="overflow-x-auto overflow-y-auto">
+    <div className="h-full flex flex-col">
+      <Card noPadding className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 overflow-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border dark:border-border-dark bg-surface dark:bg-background-dark">

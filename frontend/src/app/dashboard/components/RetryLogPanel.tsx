@@ -10,13 +10,14 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Icon, Button, Modal, Card } from '@/components/ui';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Icon, Button, Modal, Card, Pagination } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import type { ProcessLogResponse, RetryResponse } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 
 const POLL_INTERVAL = 5000;
+const PAGE_SIZE = 25;
 
 export function RetryLogPanel() {
   const { t } = useI18n();
@@ -36,6 +37,7 @@ export function RetryLogPanel() {
   const [retrying, setRetrying] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [showConfirmAll, setShowConfirmAll] = useState(false);
+  const [page, setPage] = useState(1);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -81,6 +83,11 @@ export function RetryLogPanel() {
 
   const allRows = data?.logs ?? [];
   const allSelected = allRows.length > 0 && allRows.every(r => selected.has(r.LOG_ID));
+  const totalPages = Math.max(1, Math.ceil(allRows.length / PAGE_SIZE));
+  const pageData = useMemo(
+    () => allRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [allRows, page],
+  );
 
   const toggleAll = () => {
     if (allSelected) setSelected(new Set());
@@ -128,7 +135,7 @@ export function RetryLogPanel() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col gap-3">
       {/* 필터 + 재전송 버튼 */}
       <Card>
         <div className="flex items-end gap-3 overflow-x-auto flex-wrap">
@@ -178,17 +185,15 @@ export function RetryLogPanel() {
         )}
       </Card>
 
-      {!data && (
-        <div className="flex items-center justify-center h-64">
+      {!data ? (
+        <div className="flex-1 flex items-center justify-center">
           <Icon name="progress_activity" size="xl" className="animate-spin text-primary" />
         </div>
-      )}
-
-      {data && (
-        <Card>
-          <div className="overflow-x-auto">
+      ) : (
+        <Card noPadding className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 overflow-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 bg-surface dark:bg-background-dark z-10">
                 <tr className="border-b border-border dark:border-border-dark text-left">
                   <th className="p-3 w-10">
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} className="accent-primary" />
@@ -202,7 +207,7 @@ export function RetryLogPanel() {
                 </tr>
               </thead>
               <tbody>
-                {data.logs.length === 0 && (
+                {allRows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-muted-foreground">
                       <Icon name="check_circle" className="text-success mr-2" />
@@ -210,7 +215,7 @@ export function RetryLogPanel() {
                     </td>
                   </tr>
                 )}
-                {data.logs.map(row => {
+                {pageData.map(row => {
                   const hasRaw = !!row.RAW_DATA;
                   return (
                     <tr key={row.LOG_ID}
@@ -237,16 +242,17 @@ export function RetryLogPanel() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={allRows.length}
+            showing={pageData.length}
+            onPageChange={setPage}
+          />
         </Card>
       )}
 
-      {data && (
-        <p className="text-sm text-muted-foreground text-right">
-          {t('errors.totalCount').replace('{total}', String(data.total)).replace('{count}', String(data.logs.length))}
-        </p>
-      )}
-
-      {fetchError && <p className="text-sm text-error mt-2">{fetchError}</p>}
+      {fetchError && <p className="text-sm text-error flex-shrink-0">{fetchError}</p>}
 
       <Modal isOpen={showConfirmAll} onClose={() => setShowConfirmAll(false)} title={t('retry.retryAll')} size="sm">
         <p className="text-base text-text dark:text-white mb-6">{t('retry.confirmAll')}</p>

@@ -96,7 +96,7 @@ export function Pm2LogPanel() {
   const selectedFileInfo = files.find(f => f.name === selectedFile);
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col gap-4">
       {/* 필터 바 */}
       <Card>
         <div className="flex flex-wrap items-center gap-3">
@@ -182,17 +182,17 @@ export function Pm2LogPanel() {
       )}
 
       {/* 로그 내용 */}
-      <Card noPadding>
+      <Card noPadding className="flex-1 min-h-0 flex flex-col">
         {loading && lines.length === 0 ? (
-          <div className="text-center py-12 text-text-secondary">
+          <div className="flex-1 flex items-center justify-center text-text-secondary">
             {t('systemLogs.loading')}
           </div>
         ) : lines.length === 0 ? (
-          <div className="text-center py-12 text-text-secondary">
+          <div className="flex-1 flex items-center justify-center text-text-secondary">
             {t('systemLogs.pm2NoFile')}
           </div>
         ) : (
-          <div className="overflow-auto max-h-[70vh] p-4">
+          <div className="flex-1 overflow-auto p-4">
             <pre className="font-mono text-xs text-text dark:text-gray-300 whitespace-pre-wrap break-all leading-5">
               {lines.map((line, idx) => (
                 <div

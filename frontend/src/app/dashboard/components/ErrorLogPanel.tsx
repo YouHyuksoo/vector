@@ -10,14 +10,15 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ErrorTable } from './ErrorTable';
-import { Icon, Button, Modal, Card } from '@/components/ui';
+import { Icon, Button, Modal, Card, Pagination } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import type { ProcessLogResponse } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 
 const POLL_INTERVAL = 5000;
+const PAGE_SIZE = 25;
 
 export function ErrorLogPanel() {
   const { t } = useI18n();
@@ -34,6 +35,7 @@ export function ErrorLogPanel() {
   const [data, setData] = useState<ProcessLogResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -93,9 +95,14 @@ export function ErrorLogPanel() {
   };
 
   const hasLogs = (data?.logs.length ?? 0) > 0;
+  const totalPages = Math.max(1, Math.ceil((data?.logs.length ?? 0) / PAGE_SIZE));
+  const pageData = useMemo(
+    () => (data?.logs ?? []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [data, page],
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col gap-3">
       {/* 필터 + 삭제 */}
       <Card>
         <div className="flex items-end gap-3 overflow-x-auto flex-wrap">
@@ -166,21 +173,24 @@ export function ErrorLogPanel() {
         )}
       </Card>
 
-      {!data && (
-        <div className="flex items-center justify-center h-64">
+      {!data ? (
+        <div className="flex-1 flex items-center justify-center">
           <Icon name="progress_activity" size="xl" className="animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <ErrorTable logs={pageData} />
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={data.logs.length}
+            showing={pageData.length}
+            onPageChange={setPage}
+          />
         </div>
       )}
 
-      {data && <ErrorTable logs={data.logs} />}
-
-      {data && (
-        <p className="text-sm text-muted-foreground text-right">
-          {t('errors.totalCount').replace('{total}', String(data.total)).replace('{count}', String(data.logs.length))}
-        </p>
-      )}
-
-      {fetchError && <p className="text-sm text-error mt-2">{fetchError}</p>}
+      {fetchError && <p className="text-sm text-error flex-shrink-0">{fetchError}</p>}
 
       <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title={t('errors.delete')} size="sm">
         <p className="text-base text-text dark:text-white mb-6">{t('errors.deleteConfirm')}</p>

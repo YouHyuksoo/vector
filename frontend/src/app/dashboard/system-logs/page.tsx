@@ -9,8 +9,8 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Icon, Card } from '@/components/ui';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Icon, Card, Pagination } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import { SystemLogTable, type LogEntry } from '../components/SystemLogTable';
@@ -21,6 +21,7 @@ import { RetryLogPanel } from '../components/RetryLogPanel';
 
 const POLL_INTERVAL = 5000;
 const LEVELS = ['all', 'debug', 'info', 'warn', 'error', 'fatal'] as const;
+const RT_PAGE_SIZE = 25;
 type Tab = 'errors' | 'retry' | 'process' | 'realtime' | 'pm2';
 
 /** API 응답 타입 */
@@ -43,6 +44,8 @@ export default function SystemLogsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [rtPage, setRtPage] = useState(1);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -87,6 +90,14 @@ export default function SystemLogsPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [autoRefresh, fetchLogs, activeTab]);
 
+  // realtime 탭 페이지네이션
+  const rtTotalPages = Math.max(1, Math.ceil(entries.length / RT_PAGE_SIZE));
+  const rtPageData = useMemo(
+    () => entries.slice((rtPage - 1) * RT_PAGE_SIZE, rtPage * RT_PAGE_SIZE),
+    [entries, rtPage],
+  );
+  useEffect(() => setRtPage(1), [entries]);
+
   const levelBtnClass = (l: string) =>
     l === level
       ? 'bg-primary text-white'
@@ -98,9 +109,9 @@ export default function SystemLogsPage() {
       : 'text-text-secondary hover:text-text dark:hover:text-white';
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 h-[calc(100vh-6.5rem)]">
       {/* 헤더 */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-text dark:text-white flex items-center gap-2">
             <Icon name="terminal" size="md" className="text-primary" />
@@ -128,7 +139,7 @@ export default function SystemLogsPage() {
       </div>
 
       {/* 탭 */}
-      <div className="flex gap-6 border-b border-border dark:border-border-dark">
+      <div className="flex gap-6 border-b border-border dark:border-border-dark flex-shrink-0">
         <button
           onClick={() => setActiveTab('errors')}
           className={`pb-2 px-1 text-sm transition-colors ${tabClass('errors')}`}
@@ -167,74 +178,83 @@ export default function SystemLogsPage() {
       </div>
 
       {/* 탭 내용 */}
-      {activeTab === 'errors' ? (
-        <ErrorLogPanel />
-      ) : activeTab === 'retry' ? (
-        <RetryLogPanel />
-      ) : activeTab === 'process' ? (
-        <ProcessLogPanel />
-      ) : activeTab === 'realtime' ? (
-        <>
-          {/* 필터 바 */}
-          <Card>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1">
-                {LEVELS.map(l => (
-                  <button
-                    key={l}
-                    onClick={() => setLevel(l)}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase transition-colors
-                      ${levelBtnClass(l)}`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex-1 min-w-[200px]">
-                <div className="relative">
-                  <Icon name="search" size="xs"
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder={t('systemLogs.searchPlaceholder')}
-                    className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-border dark:border-border-dark
-                      bg-background dark:bg-background-dark text-text dark:text-white text-sm
-                      focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
+      <div className="flex-1 min-h-0">
+        {activeTab === 'errors' ? (
+          <ErrorLogPanel />
+        ) : activeTab === 'retry' ? (
+          <RetryLogPanel />
+        ) : activeTab === 'process' ? (
+          <ProcessLogPanel />
+        ) : activeTab === 'realtime' ? (
+          <div className="h-full flex flex-col gap-3">
+            {/* 필터 바 */}
+            <Card className="flex-shrink-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1">
+                  {LEVELS.map(l => (
+                    <button
+                      key={l}
+                      onClick={() => setLevel(l)}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold uppercase transition-colors
+                        ${levelBtnClass(l)}`}
+                    >
+                      {l}
+                    </button>
+                  ))}
                 </div>
+                <div className="flex-1 min-w-[200px]">
+                  <div className="relative">
+                    <Icon name="search" size="xs"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder={t('systemLogs.searchPlaceholder')}
+                      className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-border dark:border-border-dark
+                        bg-background dark:bg-background-dark text-text dark:text-white text-sm
+                        focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                </div>
+                <select
+                  value={limit}
+                  onChange={e => setLimit(Number(e.target.value))}
+                  className="px-3 py-1.5 rounded-lg border border-border dark:border-border-dark
+                    bg-background dark:bg-background-dark text-text dark:text-white text-sm"
+                >
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                  <option value={500}>500</option>
+                </select>
               </div>
+            </Card>
 
-              <select
-                value={limit}
-                onChange={e => setLimit(Number(e.target.value))}
-                className="px-3 py-1.5 rounded-lg border border-border dark:border-border-dark
-                  bg-background dark:bg-background-dark text-text dark:text-white text-sm"
-              >
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={200}>200</option>
-                <option value={500}>500</option>
-              </select>
-            </div>
-          </Card>
+            {error && (
+              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm flex-shrink-0">
+                <Icon name="error" size="xs" className="inline mr-1" />
+                {error}
+              </div>
+            )}
 
-          {error && (
-            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm">
-              <Icon name="error" size="xs" className="inline mr-1" />
-              {error}
-            </div>
-          )}
-
-          <Card noPadding>
-            <SystemLogTable entries={entries} loading={loading} />
-          </Card>
-        </>
-      ) : (
-        <Pm2LogPanel />
-      )}
+            <Card noPadding className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 overflow-auto">
+                <SystemLogTable entries={rtPageData} loading={loading} />
+              </div>
+              <Pagination
+                page={rtPage}
+                totalPages={rtTotalPages}
+                total={entries.length}
+                showing={rtPageData.length}
+                onPageChange={setRtPage}
+              />
+            </Card>
+          </div>
+        ) : (
+          <Pm2LogPanel />
+        )}
+      </div>
     </div>
   );
 }

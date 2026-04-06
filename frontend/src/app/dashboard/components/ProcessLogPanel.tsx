@@ -9,12 +9,14 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Icon, Card, Input, Button } from '@/components/ui';
+import { useState, useEffect, useMemo } from 'react';
+import { Icon, Card, Input, Button, Pagination } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 
 interface LogData { columns: string[]; rows: Record<string, string>[] }
+
+const PAGE_SIZE = 25;
 
 export function ProcessLogPanel() {
   const [tables, setTables] = useState<string[]>([]);
@@ -22,6 +24,7 @@ export function ProcessLogPanel() {
   const [logData, setLogData] = useState<LogData | null>(null);
   const [loading, setLoading] = useState(false);
   const [limit, setLimit] = useState(50);
+  const [page, setPage] = useState(1);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0);
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -54,10 +57,17 @@ export function ProcessLogPanel() {
   const handleSelect = (tbl: string) => {
     setSelected(tbl);
     setLogData(null);
+    setPage(1);
   };
 
+  const totalPages = Math.max(1, Math.ceil((logData?.rows.length ?? 0) / PAGE_SIZE));
+  const pageRows = useMemo(
+    () => (logData?.rows ?? []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [logData, page],
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col gap-4">
       <div className="flex flex-wrap gap-4 items-end">
         <div>
           <label className="block text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1.5">{t('logs.table')}</label>
@@ -89,19 +99,19 @@ export function ProcessLogPanel() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
+        <div className="flex-1 flex justify-center items-center">
           <Icon name="progress_activity" size="xl" className="animate-spin text-primary" />
         </div>
       ) : !logData ? (
-        <Card className="text-center py-16">
+        <Card className="flex-1 flex flex-col items-center justify-center">
           <Icon name="table_chart" size="xl" className="text-muted-foreground opacity-30 mx-auto mb-3" />
           <p className="text-base text-muted-foreground">{t('logs.selectPrompt')}</p>
         </Card>
       ) : (
-        <Card noPadding>
-          <div className="overflow-x-auto">
+        <Card noPadding className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 overflow-auto">
             <table className="w-full text-base">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b border-border dark:border-border-dark bg-surface dark:bg-background-dark">
                   {logData.columns.map(c => (
                     <th key={c} className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{c}</th>
@@ -111,7 +121,7 @@ export function ProcessLogPanel() {
               <tbody>
                 {!logData.rows.length ? (
                   <tr><td colSpan={logData.columns.length} className="text-center py-8 text-muted-foreground text-sm">{t('logs.noData')}</td></tr>
-                ) : logData.rows.map((row, i) => (
+                ) : pageRows.map((row, i) => (
                   <tr key={i} className="border-b border-border/50 dark:border-border-dark/50 hover:bg-surface/50 dark:hover:bg-background-dark/50 transition-colors">
                     {logData.columns.map(c => (
                       <td key={c} className="px-4 py-2 text-sm font-mono whitespace-nowrap max-w-xs truncate">
@@ -123,9 +133,13 @@ export function ProcessLogPanel() {
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-3 text-sm text-muted-foreground border-t border-border dark:border-border-dark">
-            {logData.rows.length} {t('logs.rows')}
-          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={logData.rows.length}
+            showing={pageRows.length}
+            onPageChange={setPage}
+          />
         </Card>
       )}
     </div>
