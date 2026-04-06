@@ -1206,6 +1206,119 @@ if .equipment_type == "SP" {
     } else {
       .data = {}
     }
+} else if .equipment_type == "LCR" {
+  # ── LCR (LCR Check) ──
+  .target_table = "LOG_LCR"
+  # Log Structure:
+  # [PCB] 섹션: key=value 마스터 정보 (MODEL_NAME, BOARD_NAME, REV, T/B, LINE, M/C, DTime, ...)
+  # [LCR Data] 섹션: 탭 구분 헤더 + 데이터 행 (LOC, BOMCODE, X, Y, ANG, TYPE, VALUE, CHK, DATA, ...)
+  # 결과: PCB 마스터 + LCR Data 각 행 병합 → ROWS 배열
+  #
+  lines = split!(.message, "\n")
+
+  # ── PCB 섹션 추출 (빈줄 or [LCR Data] 이전까지의 key=value 행) ──
+  pcb_text = ""
+  for_each(array!(lines)) -> |_idx, line| {
+    l = strip_whitespace(to_string!(line))
+    if l != "" && !starts_with(l, "[") && contains(l, "=") {
+      pcb_text = pcb_text + l + "\n"
+    }
+  }
+  pcb = parse_key_value!(pcb_text, key_value_delimiter: "=", field_delimiter: "\n")
+  pcb_model = to_string(pcb.MODEL_NAME) ?? ""
+  pcb_board = to_string(pcb.BOARD_NAME) ?? ""
+  pcb_rev = to_string(pcb.REV) ?? ""
+  pcb_tb = to_string(pcb."T/B") ?? ""
+  pcb_line = to_string(pcb.LINE) ?? ""
+  pcb_mc = to_string(pcb."M/C") ?? ""
+  pcb_dtime = to_string(pcb.DTime) ?? ""
+  pcb_userid = to_string(pcb.UserID) ?? ""
+  pcb_username = to_string(pcb.UserName) ?? ""
+  pcb_lcr_chk = to_string(pcb.LCR_CHK) ?? ""
+  pcb_lcr_result = to_string(pcb.LCR_RESULT) ?? ""
+  pcb_lcr_msg = to_string(pcb.LCR_MSG) ?? ""
+  pcb_lcr_full = to_string(pcb.LCR_FULL) ?? ""
+  pcb_l_cnt = to_string(pcb.L_CNT) ?? ""
+  pcb_r_cnt = to_string(pcb.R_CNT) ?? ""
+  pcb_c_cnt = to_string(pcb.C_CNT) ?? ""
+  pcb_l_skip = to_string(pcb.L_SKIP) ?? ""
+  pcb_r_skip = to_string(pcb.R_SKIP) ?? ""
+  pcb_c_skip = to_string(pcb.C_SKIP) ?? ""
+  pcb_l_ok = to_string(pcb.L_OK) ?? ""
+  pcb_r_ok = to_string(pcb.R_OK) ?? ""
+  pcb_c_ok = to_string(pcb.C_OK) ?? ""
+  pcb_l_fail = to_string(pcb.L_FAIL) ?? ""
+  pcb_r_fail = to_string(pcb.R_FAIL) ?? ""
+  pcb_c_fail = to_string(pcb.C_FAIL) ?? ""
+  pcb_file = to_string(pcb.File) ?? ""
+
+  # ── LCR Data 섹션 파싱 (탭 구분) ──
+  in_lcr = false
+  header_skipped = false
+  .data.ROWS = []
+
+  for_each(array!(lines)) -> |_idx, line| {
+    l = strip_whitespace(to_string!(line))
+    if starts_with(l, "[LCR Data]") {
+      in_lcr = true
+    }
+    if in_lcr && !starts_with(l, "[LCR Data]") && l != "" {
+      if !header_skipped {
+        header_skipped = true
+      } else {
+        cols = split(to_string!(line), "	")
+        item = {
+          "MODEL_NAME": pcb_model,
+          "BOARD_NAME": pcb_board,
+          "REV": pcb_rev,
+          "TB": pcb_tb,
+          "PCB_LINE": pcb_line,
+          "MC": pcb_mc,
+          "DTIME": pcb_dtime,
+          "USERID": pcb_userid,
+          "USERNAME": pcb_username,
+          "LCR_CHK": pcb_lcr_chk,
+          "LCR_RESULT": pcb_lcr_result,
+          "LCR_MSG": pcb_lcr_msg,
+          "LCR_FULL": pcb_lcr_full,
+          "L_CNT": pcb_l_cnt,
+          "R_CNT": pcb_r_cnt,
+          "C_CNT": pcb_c_cnt,
+          "L_SKIP": pcb_l_skip,
+          "R_SKIP": pcb_r_skip,
+          "C_SKIP": pcb_c_skip,
+          "L_OK": pcb_l_ok,
+          "R_OK": pcb_r_ok,
+          "C_OK": pcb_c_ok,
+          "L_FAIL": pcb_l_fail,
+          "R_FAIL": pcb_r_fail,
+          "C_FAIL": pcb_c_fail,
+          "PCB_FILE": pcb_file,
+          "LOC": strip_whitespace(to_string!(get!(cols, [0]))),
+          "BOMCODE": strip_whitespace(to_string!(get!(cols, [1]))),
+          "X": strip_whitespace(to_string!(get!(cols, [2]))),
+          "Y": strip_whitespace(to_string!(get!(cols, [3]))),
+          "ANG": strip_whitespace(to_string!(get!(cols, [4]))),
+          "ARRY": strip_whitespace(to_string!(get!(cols, [5]))),
+          "COMP_TYPE": strip_whitespace(to_string!(get!(cols, [6]))),
+          "VALUE": strip_whitespace(to_string!(get!(cols, [7]))),
+          "RANGE": strip_whitespace(to_string!(get!(cols, [8]))),
+          "CHK": strip_whitespace(to_string!(get!(cols, [9]))),
+          "LCR_DATA": strip_whitespace(to_string!(get!(cols, [10]))),
+          "BOUND": strip_whitespace(to_string!(get!(cols, [11]))),
+          "CMT": strip_whitespace(to_string!(get!(cols, [12]))),
+          "LCRSKIP": strip_whitespace(to_string!(get!(cols, [13]))),
+          "LCR_SKIP2": strip_whitespace(to_string!(get!(cols, [14]))),
+          "FREQ": strip_whitespace(to_string!(get!(cols, [15]))),
+          "VOLT": strip_whitespace(to_string!(get!(cols, [16]))),
+          "MC_NO": strip_whitespace(to_string!(get!(cols, [17]))),
+          "P_NAME": strip_whitespace(to_string!(get!(cols, [18])))
+        }
+        .data.ROWS = push(.data.ROWS, item)
+      }
+    }
+  }
+
 } else {
   log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
   .data = {}
