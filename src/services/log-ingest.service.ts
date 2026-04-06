@@ -13,12 +13,21 @@ import { logger } from '../utils/logger.js';
 import { TARGET_TYPES } from '../config/constants.js';
 import type { LogRecord } from '../types/index.js';
 
+/** UTC 타임스탬프를 서버 로컬 시간 문자열로 변환 */
+function toLocalTimestamp(ts: string): string {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const ms = String(d.getMilliseconds()).padStart(3, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
+}
+
 class LogIngestService {
   async processLog(log: LogRecord): Promise<void> {
     const { equipment_id, target_type, target_table, data, timestamp, line_code, filename } = log;
     const extraFields: Record<string, unknown> = {
       equipment_id,
-      timestamp,
+      timestamp: toLocalTimestamp(timestamp),
       line_code: line_code || '',
       filename: filename || '',
     };
