@@ -49,14 +49,64 @@ export const logIngestRoute: FastifyPluginAsync = async (app) => {
     const parsed = logBatchSchema.safeParse(request.body);
 
     if (!parsed.success) {
-      const rawBody = JSON.stringify(request.body).substring(0, 4000);
-      await errorLogRepository.record({
-        source_table: 'LOG_INGEST',
-        equipment_id: 'UNKNOWN',
-        error_message: `Validation failed: ${parsed.error.message}`.substring(0, 4000),
-        raw_data: rawBody,
-        stage: 'HTTP_RECEIVE',
-      });
+      // 검증 실패한 배치에서 설비 정보 + null 항목을 개별 추출하여 구체적으로 기록
+      const body = request.body as unknown;
+      const items = Array.isArray(body) ? body : [];
+
+      if (items.length > 0) {
+        const nullIndices: { idx: number; equipmentId: string; equipmentType: string }[] = [];
+        const equipmentIds = new Set<string>();
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i] as Record<string, unknown> | null;
+          const eqId = (item?.equipment_id as string) || 'UNKNOWN';
+          const eqType = (item?.equipment_type as string) || '';
+          equipmentIds.add(eqId);
+
+          if (!item?.target_type || !item?.target_table || !item?.data) {
+            nullIndices.push({ idx: i, equipmentId: eqId, equipmentType: eqType });
+          }
+        }
+
+        // null 항목이 있으면 설비별로 구체적 에러 기록
+        if (nullIndices.length > 0) {
+          const grouped = new Map<string, number[]>();
+          for (const n of nullIndices) {
+            const key = n.equipmentId;
+            if (!grouped.has(key)) grouped.set(key, []);
+            grouped.get(key)!.push(n.idx);
+          }
+          for (const [eqId, indices] of grouped) {
+            const eqType = nullIndices.find(n => n.equipmentId === eqId)?.equipmentType || '';
+            await errorLogRepository.record({
+              source_table: 'VRL_PARSE_FAIL',
+              equipment_id: eqId,
+              error_message: `VRL 파싱 실패 — 배치 ${items.length}건 중 ${indices.length}건의 필수 필드(target_type/target_table/data)가 null. 인덱스: [${indices.join(', ')}]. equipment_type=${eqType}`,
+              raw_data: JSON.stringify(items[indices[0]]).substring(0, 4000),
+              stage: 'VRL_PARSE',
+            });
+          }
+        } else {
+          // null은 없지만 다른 이유로 검증 실패
+          await errorLogRepository.record({
+            source_table: 'LOG_INGEST',
+            equipment_id: [...equipmentIds].join(', ').substring(0, 200),
+            error_message: `Validation failed: ${parsed.error.message}`.substring(0, 4000),
+            raw_data: JSON.stringify(items[0]).substring(0, 4000),
+            stage: 'HTTP_RECEIVE',
+          });
+        }
+      } else {
+        // 배열이 아닌 경우 기존 방식
+        await errorLogRepository.record({
+          source_table: 'LOG_INGEST',
+          equipment_id: 'UNKNOWN',
+          error_message: `Validation failed: ${parsed.error.message}`.substring(0, 4000),
+          raw_data: JSON.stringify(body).substring(0, 4000),
+          stage: 'HTTP_RECEIVE',
+        });
+      }
+
       return reply.status(400).send({
         error: 'Validation failed',
         details: parsed.error.flatten(),
