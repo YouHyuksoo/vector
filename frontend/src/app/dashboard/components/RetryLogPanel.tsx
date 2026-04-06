@@ -37,6 +37,8 @@ export function RetryLogPanel() {
   const [retrying, setRetrying] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [showConfirmAll, setShowConfirmAll] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [page, setPage] = useState(1);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -116,6 +118,26 @@ export function RetryLogPanel() {
     setRetrying(false);
   };
 
+  const handleDeleteSelected = async () => {
+    setShowConfirmDelete(false);
+    if (selected.size === 0) return;
+    setDeleting(true);
+    setResult(null);
+    try {
+      const res = await apiFetch<{ success: boolean; deleted: number }>('/api/monitor/errors/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logIds: [...selected] }),
+      });
+      setResult({ ok: true, msg: `${res.deleted}건 삭제 완료` });
+      setSelected(new Set());
+      fetchLogs();
+    } catch (err) {
+      setResult({ ok: false, msg: err instanceof Error ? err.message : 'Delete failed' });
+    }
+    setDeleting(false);
+  };
+
   const handleRetryAll = async () => {
     setShowConfirmAll(false);
     setRetrying(true);
@@ -175,6 +197,11 @@ export function RetryLogPanel() {
           </Button>
           <Button variant="primary" leftIcon="replay" onClick={handleRetrySelected} disabled={retrying || selected.size === 0}>
             {retrying ? t('retry.retrying') : t('retry.retrySelected')} {selected.size > 0 && `(${selected.size})`}
+          </Button>
+          <Button variant="ghost" leftIcon="delete" onClick={() => { setResult(null); setShowConfirmDelete(true); }}
+            disabled={deleting || selected.size === 0}
+            className="!text-destructive hover:!bg-destructive/10">
+            선택 삭제 {selected.size > 0 && `(${selected.size})`}
           </Button>
           <Button variant="ghost" leftIcon="restart_alt" onClick={() => { setResult(null); setShowConfirmAll(true); }} disabled={retrying}>
             {t('retry.retryAll')}
@@ -253,6 +280,17 @@ export function RetryLogPanel() {
       )}
 
       {fetchError && <p className="text-sm text-error flex-shrink-0">{fetchError}</p>}
+
+      <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="선택 항목 삭제" size="sm">
+        <p className="text-base text-text dark:text-white mb-6">선택한 {selected.size}건의 에러 로그를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+        <div className="flex justify-end gap-3">
+          <Button variant="ghost" onClick={() => setShowConfirmDelete(false)}>{t('settings.cancel')}</Button>
+          <Button variant="primary" leftIcon="delete" onClick={handleDeleteSelected} disabled={deleting}
+            className="!bg-destructive hover:!bg-destructive/80">
+            {deleting ? '삭제 중...' : '삭제'}
+          </Button>
+        </div>
+      </Modal>
 
       <Modal isOpen={showConfirmAll} onClose={() => setShowConfirmAll(false)} title={t('retry.retryAll')} size="sm">
         <p className="text-base text-text dark:text-white mb-6">{t('retry.confirmAll')}</p>

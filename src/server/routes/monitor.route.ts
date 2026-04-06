@@ -1330,6 +1330,21 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     }
   });
 
+  /** 선택된 오류 로그 삭제 — LOG_ID 배열로 개별 삭제 */
+  app.post('/api/monitor/errors/delete', async (request, reply) => {
+    try {
+      const { logIds } = request.body as { logIds: number[] };
+      if (!Array.isArray(logIds) || logIds.length === 0) {
+        return reply.status(400).send({ error: 'logIds array required' });
+      }
+      const deleted = errorLogRepository.deleteByIds(logIds);
+      logger.info({ deleted, requested: logIds.length }, 'Error logs deleted by IDs');
+      return reply.send({ success: true, deleted });
+    } catch (err) {
+      return reply.status(500).send({ error: String(err) });
+    }
+  });
+
   // ─── 재전송(Retry) API ───
 
   /** 선택된 LOG_ID 배열로 개별 재전송 */

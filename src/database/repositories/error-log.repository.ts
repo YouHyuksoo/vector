@@ -201,6 +201,28 @@ class ProcessLogRepository {
     return updated;
   }
 
+  /** 선택한 로그 ID 삭제 */
+  deleteByIds(ids: number[]): number {
+    if (ids.length === 0) return 0;
+    const idSet = new Set(ids);
+    const files = this.listLogFiles().map(f => join(LOG_DIR, f));
+    let deleted = 0;
+    for (const fp of files) {
+      const records = this.readFile(fp);
+      const before = records.length;
+      const kept = records.filter(r => !idSet.has(r.LOG_ID));
+      if (kept.length < before) {
+        deleted += before - kept.length;
+        if (kept.length === 0) {
+          unlinkSync(fp);
+        } else {
+          writeFileSync(fp, kept.map(r => JSON.stringify(r)).join('\n') + '\n', 'utf-8');
+        }
+      }
+    }
+    return deleted;
+  }
+
   /** 로그 전체 삭제 */
   deleteAll(): number {
     const files = this.listLogFiles();
