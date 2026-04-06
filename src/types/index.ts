@@ -60,3 +60,14 @@ export interface TableSchema {
   columns: TableColumnInfo[];
   insertSql?: string;
 }
+
+/** 설비 레지스트리 항목 (data/equipment-registry.json) */
+export interface EquipmentRegistryEntry {
+  equipment_type: string;
+  line_code: string;
+  description: string;
+  registered_at: string;
+  last_seen: string;
+  excluded: boolean;
+  metadata?: Record<string, string>;
+}
