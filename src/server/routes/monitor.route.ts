@@ -22,7 +22,8 @@ import { errorLogRepository } from '../../database/repositories/error-log.reposi
 import { env, updateEnvValue } from '../../config/env.js';
 import type { Env } from '../../config/env.js';
 import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AGENT_CONFIG_DIR, FLUENT_CONFIG_DIR } from '../../services/vector-process.service.js';
-import type { LogRecord } from '../../types/index.js';
+import type { LogRecord, EquipmentStatus } from '../../types/index.js';
+import { equipmentRegistry } from '../../services/equipment-registry.service.js';
 
 /**
  * Win7(Vector 0.38) 호환 TOML 변환
@@ -117,8 +118,41 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       vector: vectorStatus.status === 'fulfilled'
         ? vectorStatus.value
         : { running: false, pid: null, apiReachable: false, uptime: null, version: null },
-      equipments: equipments.status === 'fulfilled'
-        ? mergeEquipmentDescriptions(equipments.value) : [],
+      equipments: (() => {
+        const heartbeats = equipments.status === 'fulfilled' ? equipments.value : [];
+        const heartbeatMap = new Map(heartbeats.map(h => [h.equipment_id, h]));
+        const registry = equipmentRegistry.getAll();
+        const ttlMs = env.HEARTBEAT_TTL_SECONDS * 1000;
+        const now = Date.now();
+        const result: EquipmentStatus[] = [];
+
+        // 레지스트리 기준으로 전체 장비 표시
+        for (const [id, entry] of Object.entries(registry)) {
+          const hb = heartbeatMap.get(id);
+          const online = hb ? hb.online : (now - new Date(entry.last_seen).getTime() < ttlMs);
+          result.push({
+            equipment_id: id,
+            online,
+            last_seen: hb?.last_seen || entry.last_seen,
+            metadata: {
+              equipment_type: entry.equipment_type,
+              line_code: entry.line_code,
+              description: entry.description,
+              excluded: String(entry.excluded),
+              registered_at: entry.registered_at,
+              ...(hb?.metadata || {}),
+            },
+          });
+          heartbeatMap.delete(id);
+        }
+
+        // 레지스트리에 없는 하트비트만 남은 것 추가
+        for (const hb of heartbeatMap.values()) {
+          result.push(hb);
+        }
+
+        return mergeEquipmentDescriptions(result);
+      })(),
       tables: tableStats.status === 'fulfilled' ? tableStats.value : [],
       recentErrors: recentErrors.status === 'fulfilled' ? recentErrors.value : [],
       recentLogs: recentLogs.status === 'fulfilled' ? recentLogs.value : [],
@@ -2215,6 +2249,28 @@ Generate VRL parsing code for this log.`;
       logger.error(err, 'Failed to apply VRL to TOML');
       return reply.status(500).send({ error: String(err) });
     }
+  });
+
+  /** 설비 레지스트리 전체 목록 */
+  app.get('/api/monitor/equipment-registry', async (_request, reply) => {
+    return reply.send(equipmentRegistry.getAll());
+  });
+
+  /** 설비 정보 수정 (description, excluded 등) */
+  app.put('/api/monitor/equipment-registry/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as { description?: string; excluded?: boolean };
+    const ok = equipmentRegistry.update(id, body);
+    if (!ok) return reply.status(404).send({ error: 'Equipment not found' });
+    return reply.send({ success: true });
+  });
+
+  /** 설비 삭제 */
+  app.delete('/api/monitor/equipment-registry/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const ok = equipmentRegistry.remove(id);
+    if (!ok) return reply.status(404).send({ error: 'Equipment not found' });
+    return reply.send({ success: true });
   });
 
   /** .env 설정 저장 (허용된 키만 업데이트) */
