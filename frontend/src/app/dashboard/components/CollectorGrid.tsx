@@ -231,20 +231,20 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
 
                 {/* 선택 시 원격 관리 탭 패널 */}
                 {isSelected && (
-                  <div className="flex items-center gap-2 px-3 py-2 mt-1 rounded-t-lg border border-b-0 border-border dark:border-border-dark bg-secondary/30">
+                  <div className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-t-lg border border-b-0 border-border dark:border-border-dark bg-secondary/30">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleToggleExclude(eq.equipment_id, excluded); }}
-                      className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                      className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border shadow-sm transition-all active:scale-95 ${
                         excluded
-                          ? 'bg-warning/20 text-warning hover:bg-warning/30'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          ? 'bg-warning/20 text-warning border-warning/40 hover:bg-warning/30'
+                          : 'bg-white dark:bg-slate-700 text-text dark:text-white border-border dark:border-border-dark hover:bg-surface dark:hover:bg-slate-600'
                       }`}
                     >
-                      <Icon name={excluded ? 'play_arrow' : 'block'} size="xs" />
+                      <Icon name={excluded ? 'play_arrow' : 'block'} size="sm" />
                       {excluded ? '파이프라인 활성화' : '파이프라인 배제'}
                     </button>
                     {excluded && (
-                      <span className="text-xs text-warning/80">파일 저장은 계속되며, DB INSERT만 스킵됩니다</span>
+                      <span className="text-sm text-warning/80">파일 저장은 계속되며, DB INSERT만 스킵됩니다</span>
                     )}
                   </div>
                 )}
