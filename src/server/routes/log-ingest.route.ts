@@ -15,6 +15,7 @@ import { join, dirname } from 'path';
 import { logBatchSchema } from '../../schemas/log-ingest.schema.js';
 import { logIngestService } from '../../services/log-ingest.service.js';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
+import { equipmentRegistry } from '../../services/equipment-registry.service.js';
 import { logger, localISOString } from '../../utils/logger.js';
 import type { LogRecord } from '../../types/index.js';
 
@@ -95,20 +96,39 @@ export const logIngestRoute: FastifyPluginAsync = async (app) => {
       );
     }
 
-    // 3단계: DB INSERT
+    // 3단계: DB INSERT (excluded 설비 제외)
+    const logsToInsert = logs.filter(log => {
+      if (equipmentRegistry.isExcluded(log.equipment_id)) {
+        logger.info({ equipment_id: log.equipment_id, target_table: log.target_table }, 'Pipeline excluded — skip DB insert');
+        errorLogRepository.success('PIPELINE_SKIP', log.target_table, log.equipment_id, '파이프라인 배제 설비 — DB INSERT 스킵');
+        return false;
+      }
+      return true;
+    });
+
+    if (logsToInsert.length === 0) {
+      return reply.status(202).send({
+        accepted: 0,
+        failed: 0,
+        skipped: logs.length,
+        timestamp: localISOString(),
+      });
+    }
+
     try {
-      const result = await logIngestService.processLogBatch(logs);
-      logger.info({ count: logs.length }, 'Logs processed');
+      const result = await logIngestService.processLogBatch(logsToInsert);
+      logger.info({ count: logsToInsert.length, skipped: logs.length - logsToInsert.length }, 'Logs processed');
 
       return reply.status(202).send({
         accepted: result.accepted,
         failed: result.failed,
+        skipped: logs.length - logsToInsert.length,
         timestamp: localISOString(),
       });
     } catch (err) {
       logger.error({ err }, 'Failed to process logs');
 
-      for (const log of logs) {
+      for (const log of logsToInsert) {
         await errorLogRepository.record({
           source_table: log.target_table,
           equipment_id: log.equipment_id,
