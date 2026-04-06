@@ -86,7 +86,7 @@ export default function ReceiverPage() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <Icon name="code" size="sm" className="text-info" />
-              <h3 className="text-sm font-bold">{t('sender.form.rawToml')}</h3>
+              <h3 className="text-base font-bold">{t('sender.form.rawToml')}</h3>
             </div>
             <Card noPadding className="flex-1">
               <textarea

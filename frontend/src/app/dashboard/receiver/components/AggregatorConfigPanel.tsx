@@ -10,12 +10,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Icon, Card, Button, Modal } from '@/components/ui';
+import { Icon, Card, Button } from '@/components/ui';
 import { apiFetch, type SystemConfig } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
 import { AggregatorConfigForm, syncApiPort } from './AggregatorConfigForm';
-import { AggregatorConfigView } from './AggregatorConfigView';
-import { AggregatorGuide } from './AggregatorGuide';
 
 interface Props {
   content: string;
@@ -30,8 +28,6 @@ export function AggregatorConfigPanel({ content, onChange, onSaved, refreshKey }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
-  const [viewMode, setViewMode] = useState(true);
 
   const hasChanges = content !== original;
 
@@ -87,64 +83,34 @@ export function AggregatorConfigPanel({ content, onChange, onSaved, refreshKey }
         <div className="flex items-center gap-2">
           <Icon name="download" className="text-success" />
           <div>
-            <h2 className="text-sm font-bold">{t('aggregator.receiver')}</h2>
-            <p className="text-[10px] text-muted-foreground">{t('aggregator.receiverDesc')}</p>
+            <h2 className="text-base font-bold">{t('aggregator.receiver')}</h2>
+            <p className="text-xs text-muted-foreground">{t('aggregator.receiverDesc')}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {result && (
-            <span className={`text-[10px] font-medium ${result.ok ? 'text-success' : 'text-error'}`}>
+            <span className={`text-sm font-medium ${result.ok ? 'text-success' : 'text-error'}`}>
               {result.msg}
             </span>
           )}
-          <div className="flex items-center bg-surface/60 dark:bg-surface-dark/60 rounded-lg p-0.5 border border-border/50">
-            <button onClick={() => setViewMode(true)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
-                viewMode ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-muted-foreground hover:text-text'
-              }`}>
-              <Icon name="visibility" size="xs" />{t('receiver.viewMode')}
-            </button>
-            <button onClick={() => setViewMode(false)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${
-                !viewMode ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-muted-foreground hover:text-text'
-              }`}>
-              <Icon name="edit" size="xs" />{t('receiver.editMode')}
-            </button>
-          </div>
-          <Button variant="ghost" leftIcon="help" onClick={() => setShowHelp(true)} className="!px-2 !py-1 !text-xs">
-            {t('aggregator.help')}
-          </Button>
-          <Button variant="ghost" leftIcon="refresh" onClick={load} className="!px-2 !py-1 !text-xs">
+          <Button variant="ghost" leftIcon="refresh" onClick={load} className="!px-4 !py-2 !text-sm">
             {t('settings.refresh')}
           </Button>
-          {!viewMode && (
-            <Button variant="primary" leftIcon="save" onClick={handleSave}
-              disabled={saving || !hasChanges} className="!px-2 !py-1 !text-xs">
-              {saving ? t('aggregator.saving') : t('aggregator.save')}
-            </Button>
-          )}
+          <Button variant="primary" leftIcon="save" onClick={handleSave}
+            disabled={saving || !hasChanges} className="!px-5 !py-2 !text-sm">
+            {saving ? t('aggregator.saving') : t('aggregator.save')}
+          </Button>
         </div>
       </div>
 
-      {/* 보기 모드 / 편집 모드 */}
-      {viewMode ? (
-        <AggregatorConfigView content={content} />
-      ) : (
-        <AggregatorConfigForm content={content} onChange={onChange} />
-      )}
+      <AggregatorConfigForm content={content} onChange={onChange} />
 
-      {!viewMode && hasChanges && (
-        <p className="text-[10px] text-warning flex items-center gap-1">
+      {hasChanges && (
+        <p className="text-xs text-warning flex items-center gap-1">
           <Icon name="edit" className="text-warning" />
           {t('aggregator.unsaved')}
         </p>
       )}
-
-      {/* 도움말 모달 */}
-      <Modal isOpen={showHelp} onClose={() => setShowHelp(false)}
-        title={t('receiver.guideTitle')} size="md">
-        <AggregatorGuide />
-      </Modal>
     </div>
   );
 }

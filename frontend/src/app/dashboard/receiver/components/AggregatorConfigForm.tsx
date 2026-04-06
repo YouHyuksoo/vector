@@ -188,9 +188,9 @@ export function AggregatorConfigForm({ content, onChange }: Props) {
   const u = (fn: (c: string) => string) => onChange(fn(content));
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       {/* API 전송 + 기본 설정 — 나란히 배치 */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         <Sec icon="send" title={t('receiver.form.apiSink')} hint={t('receiver.form.apiUriAuto')}>
           <div className="grid grid-cols-3 gap-2">
             <F label={t('receiver.form.batchMax')} value={f.batchMaxEvents} type="number" suffix={t('receiver.form.batchMaxUnit')}
@@ -218,15 +218,13 @@ export function AggregatorConfigForm({ content, onChange }: Props) {
               onChange={v => u(c => setDataDir(c, v))}
               tooltip={t('receiver.form.tooltip.dataDir')}
               placeholder="C:\Project\vector\vector-data" mono />
-            <div className="grid grid-cols-[1fr_70px] gap-2">
+            <div className="grid grid-cols-[1fr_80px_1fr_80px] gap-2">
               <F label={t('receiver.form.apiIp')} value={f.apiIp}
                 onChange={v => u(c => setApiAddr(c, v, f.apiPort))}
                 tooltip={t('receiver.form.tooltip.apiIp')} />
               <F label={t('receiver.form.apiPort')} value={f.apiPort} type="number"
                 onChange={v => u(c => setApiAddr(c, f.apiIp, v))}
                 tooltip={t('receiver.form.tooltip.apiPort')} />
-            </div>
-            <div className="grid grid-cols-[1fr_70px] gap-2">
               <F label={t('receiver.form.listenIp')} value={f.srcIp}
                 onChange={v => u(c => setSourceAddr(c, v, f.srcPort))}
                 tooltip={t('receiver.form.tooltip.listenIp')} />
@@ -239,7 +237,7 @@ export function AggregatorConfigForm({ content, onChange }: Props) {
       </div>
 
       {/* 파일 저장 + VRL 파싱 옵션 — 나란히 배치 */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         <Sec icon="folder_open" title={t('receiver.form.rawFile')}>
           <div className="grid grid-cols-[1fr_80px] gap-2">
             <F label={t('receiver.form.rawPath')} value={f.rawPath}

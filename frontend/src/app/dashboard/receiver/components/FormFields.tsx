@@ -19,11 +19,11 @@ export function Sec({ icon, title, hint, children, iconColor = 'text-success' }:
   icon: string; title: string; hint?: string; children: React.ReactNode; iconColor?: string;
 }) {
   return (
-    <div className="p-3 rounded-xl bg-surface/50 dark:bg-surface-dark/50 border border-border/50">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon name={icon} size="sm" className={iconColor} />
-        <span className="text-sm font-bold text-text dark:text-white">{title}</span>
-        {hint && <span className="text-[10px] text-muted-foreground ml-1">{hint}</span>}
+    <div className="px-4 py-3 rounded-lg bg-surface/50 dark:bg-surface-dark/50 border border-border/50">
+      <div className="flex items-center gap-2 mb-2.5">
+        <Icon name={icon} className={iconColor} />
+        <span className="text-base font-bold text-text dark:text-white">{title}</span>
+        {hint && <span className="text-sm text-muted-foreground ml-1">{hint}</span>}
       </div>
       {children}
     </div>
@@ -37,19 +37,19 @@ export function F({ label, value, onChange, type = 'text', suffix, placeholder, 
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground mb-0.5 flex items-center gap-0.5">
+      <label className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1">
         {label}
         {tooltip && <Tip text={tooltip} />}
       </label>
       <div className="relative">
         <input type={type} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full px-2 py-1.5 text-xs border rounded-lg
+          className={`w-full px-3 py-2 text-base border rounded-lg
             bg-white dark:bg-slate-800 border-border
             ${mono ? 'font-mono' : ''}
-            ${suffix ? 'pr-10' : ''}`} />
+            ${suffix ? 'pr-12' : ''}`} />
         {suffix && (
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
             {suffix}
           </span>
         )}
@@ -65,14 +65,14 @@ export function SF({ label, value, onChange, options, tooltip }: {
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground mb-0.5 flex items-center gap-0.5">
+      <label className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1">
         {label}
         {tooltip && <Tip text={tooltip} />}
       </label>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full px-2 py-1.5 text-xs border rounded-lg
+        className="w-full px-3 py-2 text-base border rounded-lg
           bg-white dark:bg-slate-800 border-border"
       >
         {options.map(o => (
@@ -89,7 +89,7 @@ export function TF({ label, checked, onChange, tooltip }: {
 }) {
   return (
     <div className="flex items-center gap-2">
-      <label className="text-xs font-medium text-muted-foreground flex items-center gap-0.5 flex-1">
+      <label className="text-sm font-medium text-muted-foreground flex items-center gap-1 flex-1">
         {label}
         {tooltip && <Tip text={tooltip} />}
       </label>
@@ -104,7 +104,7 @@ export function TF({ label, checked, onChange, tooltip }: {
           checked ? 'translate-x-4' : 'translate-x-0.5'
         }`} />
       </button>
-      <span className={`text-[10px] w-8 ${checked ? 'text-success' : 'text-muted-foreground'}`}>
+      <span className={`text-sm w-8 ${checked ? 'text-success' : 'text-muted-foreground'}`}>
         {checked ? 'ON' : 'OFF'}
       </span>
     </div>

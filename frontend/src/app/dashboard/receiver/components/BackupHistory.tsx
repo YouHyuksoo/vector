@@ -112,11 +112,11 @@ export function BackupHistory({ refreshKey, onRestored }: BackupHistoryProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon name="history" size="sm" className="text-warning" />
-          <h3 className="text-sm font-bold">{t('backup.title')}</h3>
-          <span className="text-[10px] text-muted-foreground">({backups.length})</span>
+          <h3 className="text-base font-bold">{t('backup.title')}</h3>
+          <span className="text-xs text-muted-foreground">({backups.length})</span>
         </div>
         {msg && (
-          <span className={`text-[10px] font-medium ${msg.ok ? 'text-success' : 'text-error'}`}>
+          <span className={`text-xs font-medium ${msg.ok ? 'text-success' : 'text-error'}`}>
             {msg.text}
           </span>
         )}
@@ -124,7 +124,7 @@ export function BackupHistory({ refreshKey, onRestored }: BackupHistoryProps) {
 
       <Card noPadding>
         {/* 헤더 */}
-        <div className="grid grid-cols-[1fr_80px_80px_100px] gap-2 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground
+        <div className="grid grid-cols-[1fr_100px_80px_100px] gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground
           border-b border-border dark:border-border-dark bg-surface/50 dark:bg-surface-dark/50">
           <span>{t('backup.date')}</span>
           <span>{t('backup.source')}</span>
@@ -140,17 +140,17 @@ export function BackupHistory({ refreshKey, onRestored }: BackupHistoryProps) {
 
             return (
               <div key={b.name}>
-                <div className={`grid grid-cols-[1fr_80px_80px_100px] gap-2 px-3 py-1.5 items-center
+                <div className={`grid grid-cols-[1fr_100px_80px_100px] gap-2 px-3 py-2 items-center
                   hover:bg-surface/50 dark:hover:bg-background-dark/50 transition-colors cursor-pointer
                   ${isOpen ? 'bg-primary/5' : ''}`}
                   onClick={() => handlePreview(b.name)}
                 >
-                  <span className="text-xs font-mono truncate">{formatTime(b.createdAt)}</span>
-                  <span className="flex items-center gap-1">
+                  <span className="text-sm font-mono truncate">{formatTime(b.createdAt)}</span>
+                  <span className="flex items-center gap-1.5">
                     <Icon name={srcMeta.icon} size="xs" className={srcMeta.color} />
-                    <span className="text-[10px]">{b.source}</span>
+                    <span className="text-xs">{b.source}</span>
                   </span>
-                  <span className="text-[10px] text-muted-foreground">{formatSize(b.size)}</span>
+                  <span className="text-xs text-muted-foreground">{formatSize(b.size)}</span>
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={e => { e.stopPropagation(); handlePreview(b.name); }}
@@ -177,7 +177,7 @@ export function BackupHistory({ refreshKey, onRestored }: BackupHistoryProps) {
                         <Icon name="progress_activity" size="xs" className="animate-spin text-primary" />
                       </div>
                     ) : (
-                      <pre className="text-[10px] font-mono text-muted-foreground max-h-[200px] overflow-auto whitespace-pre-wrap">
+                      <pre className="text-xs font-mono text-muted-foreground max-h-[200px] overflow-auto whitespace-pre-wrap">
                         {previewContent.slice(0, 3000)}
                         {previewContent.length > 3000 && '\n\n... (truncated)'}
                       </pre>
