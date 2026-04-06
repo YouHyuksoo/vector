@@ -37,6 +37,7 @@ interface Props { equipments: Equipment[]; logs?: LogEntry[]; serverTimestamp?: 
 const SKIP = new Set([
   'equipment_id', 'equipment_type', 'line_code', 'log_type',
   'description', 'last_seen', 'source', 'ip',
+  'excluded', 'registered_at',
 ]);
 
 /** 카드 클릭 시 표시되는 최근 처리 내역 패널 */
@@ -87,6 +88,19 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const serverNow = serverTimestamp ? new Date(serverTimestamp).getTime() : undefined;
 
+  const handleToggleExclude = async (equipmentId: string, currentExcluded: boolean) => {
+    try {
+      const res = await fetch(`/api/monitor/equipment-registry/${equipmentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ excluded: !currentExcluded }),
+      });
+      if (res.ok) {
+        // useMonitor가 자동 갱신하므로 별도 처리 불필요
+      }
+    } catch { /* 무시 */ }
+  };
+
   const stats = useMemo(() => {
     const m: Record<string, { ok: number; err: number }> = {};
     for (const log of logs) {
@@ -135,6 +149,7 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
             const log = m.log_type || '';
             const ip = m.ip || '';
             const ok = eq.online;
+            const excluded = m.excluded === 'true';
             const s = stats[eq.equipment_id] || { ok: 0, err: 0 };
             const total = s.ok + s.err;
             const rate = total > 0 ? Math.round(s.ok / total * 100) : -1;
@@ -147,7 +162,7 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                   onClick={() => setSelectedId(isSelected ? null : eq.equipment_id)}
                   className={`rounded-lg border bg-white dark:bg-background-dark p-3 transition-all
                     cursor-pointer hover:shadow-md
-                    ${ok ? 'border-border dark:border-border-dark' : 'border-destructive/30 dark:border-destructive/30'}
+                    ${excluded ? 'border-warning/40 dark:border-warning/40' : ok ? 'border-border dark:border-border-dark' : 'border-destructive/30 dark:border-destructive/30'}
                     ${isSelected ? 'ring-2 ring-primary/50' : ''}`}>
 
                   {/* 헤더: 라인코드 + ID + 상태 */}
@@ -162,8 +177,14 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                     <span className="font-mono text-base font-bold text-foreground dark:text-white truncate flex-1">
                       {eq.equipment_id}
                     </span>
+                    {excluded && (
+                      <span className="text-[10px] font-mono px-1 py-px rounded bg-warning/10 text-warning border border-warning/20"
+                        title="파이프라인 배제됨">
+                        SKIP
+                      </span>
+                    )}
                     <span className={`size-2 rounded-full shrink-0 ${
-                      ok ? 'bg-primary shadow-[0_0_4px_var(--primary)]' : 'bg-destructive'
+                      excluded ? 'bg-warning' : ok ? 'bg-primary shadow-[0_0_4px_var(--primary)]' : 'bg-destructive'
                     }`} />
                   </div>
 
@@ -209,6 +230,24 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                 </div>
 
                 {/* 선택 시 원격 관리 탭 패널 */}
+                {isSelected && (
+                  <div className="flex items-center gap-2 px-3 py-2 mt-1 rounded-t-lg border border-b-0 border-border dark:border-border-dark bg-secondary/30">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleToggleExclude(eq.equipment_id, excluded); }}
+                      className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                        excluded
+                          ? 'bg-warning/20 text-warning hover:bg-warning/30'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      <Icon name={excluded ? 'play_arrow' : 'block'} size="xs" />
+                      {excluded ? '파이프라인 활성화' : '파이프라인 배제'}
+                    </button>
+                    {excluded && (
+                      <span className="text-xs text-warning/80">파일 저장은 계속되며, DB INSERT만 스킵됩니다</span>
+                    )}
+                  </div>
+                )}
                 {isSelected && (
                   <RemoteTabPanel
                     equipmentId={eq.equipment_id}
