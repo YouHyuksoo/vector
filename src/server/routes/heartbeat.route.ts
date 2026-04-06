@@ -12,6 +12,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { heartbeatSchema } from '../../schemas/log-ingest.schema.js';
 import { heartbeatService } from '../../services/heartbeat.service.js';
+import { equipmentRegistry } from '../../services/equipment-registry.service.js';
 import { logger } from '../../utils/logger.js';
 
 /** Vector internal_metrics 형식에서 heartbeat 데이터 추출 */
@@ -51,6 +52,7 @@ export const heartbeatRoute: FastifyPluginAsync = async (app) => {
         const { equipment_id, timestamp, metadata } = parsed.data;
         const metaWithIp = { ...metadata, ...(!metadata?.ip && clientIp ? { ip: clientIp } : {}) };
         await heartbeatService.update(equipment_id, { timestamp, metadata: metaWithIp });
+        equipmentRegistry.upsert(equipment_id, metadata as Record<string, string>);
         logger.debug({ equipment_id }, 'Heartbeat received');
         processed++;
         continue;
@@ -63,6 +65,7 @@ export const heartbeatRoute: FastifyPluginAsync = async (app) => {
           timestamp: metric.timestamp,
           metadata: metric.metadata,
         });
+        equipmentRegistry.upsert(metric.equipment_id, metric.metadata as Record<string, string>);
         logger.debug({ equipment_id: metric.equipment_id }, 'Heartbeat received (metric)');
         processed++;
       }
