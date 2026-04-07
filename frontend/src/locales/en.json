@@ -886,7 +886,15 @@
     "colFilename": "Filename",
     "colSize": "Size",
     "colDate": "Upload Time",
-    "colAction": "Download",
-    "download": "Download"
+    "colAction": "Actions",
+    "download": "Download",
+    "delete": "Delete",
+    "deleteAll": "Delete All",
+    "deleteFiltered": "Delete Selected",
+    "deleteConfirm": "Delete this file?",
+    "deleteAllConfirm": "Delete all upload history?",
+    "deleteFilteredConfirm": "Delete all history for {{eq}}?",
+    "deleteSuccess": "Deleted successfully.",
+    "deleteFailed": "Delete failed"
   }
 }

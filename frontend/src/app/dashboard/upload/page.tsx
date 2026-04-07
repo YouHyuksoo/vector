@@ -41,6 +41,8 @@ export default function UploadPage() {
   const [equipments, setEquipments] = useState<string[]>([]);
   const [filterEq, setFilterEq] = useState('');
 
+  const [deleting, setDeleting] = useState(false);
+
   const loadHistory = useCallback(async () => {
     try {
       const params = filterEq ? `?equipmentId=${encodeURIComponent(filterEq)}` : '';
@@ -100,6 +102,36 @@ export default function UploadPage() {
       setMessage({ type: 'error', text: `${t('upload.failed')}: ${err instanceof Error ? err.message : err}` });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (f: UploadedFile) => {
+    if (!confirm(t('upload.deleteConfirm'))) return;
+    try {
+      await apiFetch(`/api/upload/file?path=${encodeURIComponent(`${f.equipmentId}/${f.date}/${f.filename}`)}`, { method: 'DELETE' });
+      setMessage({ type: 'success', text: t('upload.deleteSuccess') });
+      loadHistory();
+    } catch {
+      setMessage({ type: 'error', text: t('upload.deleteFailed') });
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const confirmMsg = filterEq
+      ? t('upload.deleteFilteredConfirm').replace('{{eq}}', filterEq)
+      : t('upload.deleteAllConfirm');
+    if (!confirm(confirmMsg)) return;
+    setDeleting(true);
+    try {
+      const params = filterEq ? `?equipmentId=${encodeURIComponent(filterEq)}` : '';
+      await apiFetch(`/api/upload/files${params}`, { method: 'DELETE' });
+      setMessage({ type: 'success', text: t('upload.deleteSuccess') });
+      if (filterEq) setFilterEq('');
+      loadHistory();
+    } catch {
+      setMessage({ type: 'error', text: t('upload.deleteFailed') });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -219,19 +251,32 @@ export default function UploadPage() {
             <Icon name="history" size="md" className="text-primary" />
             <p className="text-base font-bold text-text dark:text-white">{t('upload.history')}</p>
           </div>
-          {equipments.length > 0 && (
-            <select
-              value={filterEq}
-              onChange={e => setFilterEq(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border border-border dark:border-border-dark
-                bg-background-white dark:bg-background-dark text-text dark:text-white text-sm"
-            >
-              <option value="">{t('upload.allEquipments')}</option>
-              {equipments.map(eq => (
-                <option key={eq} value={eq}>{eq}</option>
-              ))}
-            </select>
-          )}
+          <div className="flex items-center gap-2">
+            {equipments.length > 0 && (
+              <select
+                value={filterEq}
+                onChange={e => setFilterEq(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border border-border dark:border-border-dark
+                  bg-background-white dark:bg-background-dark text-text dark:text-white text-sm"
+              >
+                <option value="">{t('upload.allEquipments')}</option>
+                {equipments.map(eq => (
+                  <option key={eq} value={eq}>{eq}</option>
+                ))}
+              </select>
+            )}
+            {history.length > 0 && (
+              <Button
+                leftIcon="delete_sweep"
+                variant="danger"
+                size="sm"
+                isLoading={deleting}
+                onClick={handleDeleteAll}
+              >
+                {filterEq ? t('upload.deleteFiltered') : t('upload.deleteAll')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {!history.length ? (
@@ -257,22 +302,32 @@ export default function UploadPage() {
                     <td className="py-2 px-3 text-right text-muted-foreground">{formatSize(f.size)}</td>
                     <td className="py-2 px-3 text-muted-foreground">{f.uploadedAt ?? '—'}</td>
                     <td className="py-2 px-3 text-center">
-                      <button
-                        onClick={() => {
-                          const url = `/api/upload/download?path=${encodeURIComponent(`${f.equipmentId}/${f.date}/${f.filename}`)}`;
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = '';
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                        }}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
-                          text-primary hover:bg-primary/10 border border-primary/30 transition-colors"
-                      >
-                        <Icon name="download" size="xs" />
-                        {t('upload.download')}
-                      </button>
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => {
+                            const url = `/api/upload/download?path=${encodeURIComponent(`${f.equipmentId}/${f.date}/${f.filename}`)}`;
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = '';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+                            text-primary hover:bg-primary/10 border border-primary/30 transition-colors"
+                        >
+                          <Icon name="download" size="xs" />
+                          {t('upload.download')}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFile(f)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+                            text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-300 dark:border-red-700 transition-colors"
+                        >
+                          <Icon name="delete" size="xs" />
+                          {t('upload.delete')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

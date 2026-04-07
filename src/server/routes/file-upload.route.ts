@@ -11,7 +11,7 @@
 
 import { FastifyPluginAsync } from 'fastify';
 import multipart from '@fastify/multipart';
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'fs';
 import { join, extname } from 'path';
 import { pipeline } from 'stream/promises';
 import { logger } from '../../utils/logger.js';
@@ -129,6 +129,69 @@ export const fileUploadRoute: FastifyPluginAsync = async (app) => {
     files.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
 
     return reply.send({ files, equipments });
+  });
+
+  /** DELETE /api/upload/file - 단일 파일 삭제 */
+  app.delete('/upload/file', async (request, reply) => {
+    const { path: relPath } = request.query as { path?: string };
+    if (!relPath) return reply.status(400).send({ error: 'path required' });
+    if (relPath.includes('..')) return reply.status(400).send({ error: 'Invalid path' });
+
+    const filePath = join(UPLOAD_BASE, relPath);
+    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+      return reply.status(404).send({ error: 'File not found' });
+    }
+    rmSync(filePath);
+
+    // 빈 디렉토리 정리 (날짜 폴더 → 설비 폴더)
+    const parts = relPath.replace(/\\/g, '/').split('/');
+    if (parts.length >= 2) {
+      const dateDir = join(UPLOAD_BASE, parts[0], parts[1]);
+      if (existsSync(dateDir) && readdirSync(dateDir).length === 0) {
+        rmSync(dateDir, { recursive: true });
+        const eqDir = join(UPLOAD_BASE, parts[0]);
+        if (existsSync(eqDir) && readdirSync(eqDir).length === 0) {
+          rmSync(eqDir, { recursive: true });
+        }
+      }
+    }
+
+    logger.info(`파일 삭제: ${relPath}`);
+    return reply.send({ success: true });
+  });
+
+  /** DELETE /api/upload/files - 전체 또는 설비별 이력 삭제 */
+  app.delete('/upload/files', async (request, reply) => {
+    const { equipmentId } = request.query as { equipmentId?: string };
+
+    if (!existsSync(UPLOAD_BASE)) return reply.send({ success: true, deleted: 0 });
+
+    let deleted = 0;
+    if (equipmentId) {
+      const eqDir = join(UPLOAD_BASE, sanitizeFilename(equipmentId));
+      if (existsSync(eqDir)) {
+        const files = readdirSync(eqDir, { recursive: true }).filter(
+          (f) => !statSync(join(eqDir, String(f))).isDirectory(),
+        );
+        deleted = files.length;
+        rmSync(eqDir, { recursive: true, force: true });
+      }
+    } else {
+      const equipments = readdirSync(UPLOAD_BASE).filter(
+        (d) => statSync(join(UPLOAD_BASE, d)).isDirectory(),
+      );
+      for (const eq of equipments) {
+        const eqDir = join(UPLOAD_BASE, eq);
+        const files = readdirSync(eqDir, { recursive: true }).filter(
+          (f) => !statSync(join(eqDir, String(f))).isDirectory(),
+        );
+        deleted += files.length;
+        rmSync(eqDir, { recursive: true, force: true });
+      }
+    }
+
+    logger.info(`업로드 이력 삭제: ${equipmentId ?? '전체'} (${deleted}개)`);
+    return reply.send({ success: true, deleted });
   });
 
   /** GET /api/upload/download - 업로드된 파일 다운로드 */

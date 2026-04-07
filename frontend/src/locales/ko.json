@@ -886,7 +886,15 @@
     "colFilename": "파일명",
     "colSize": "크기",
     "colDate": "업로드 시간",
-    "colAction": "다운로드",
-    "download": "다운로드"
+    "colAction": "작업",
+    "download": "다운로드",
+    "delete": "삭제",
+    "deleteAll": "전체 삭제",
+    "deleteFiltered": "선택 설비 삭제",
+    "deleteConfirm": "선택한 파일을 삭제하시겠습니까?",
+    "deleteAllConfirm": "업로드 이력을 전체 삭제하시겠습니까?",
+    "deleteFilteredConfirm": "{{eq}} 설비의 이력을 모두 삭제하시겠습니까?",
+    "deleteSuccess": "삭제되었습니다.",
+    "deleteFailed": "삭제 실패"
   }
 }
