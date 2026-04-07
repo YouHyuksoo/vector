@@ -68,7 +68,7 @@ function ActivityPanel({ logs, t }: { logs: LogEntry[]; t: (k: string) => string
               </td>
               <td className="py-1 pr-2 text-muted-foreground truncate max-w-[80px]">{log.SOURCE_TABLE || '—'}</td>
               <td className="py-1 pr-2">
-                <span className={log.STATUS === 'SUCCESS' ? 'text-primary' : 'text-destructive'}>
+                <span className={log.STATUS === 'SUCCESS' ? 'text-primary' : 'text-orange-400'}>
                   {log.STATUS}
                 </span>
               </td>
@@ -125,7 +125,7 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
         <div className="flex items-center gap-3 text-xs font-mono tabular-nums select-none">
           <span className="text-muted-foreground">{equipments.length} {t('collector.total')}</span>
           <span className="text-primary">{up} {t('collector.online')}</span>
-          {dn > 0 && <span className="text-destructive">{dn} {t('collector.offline')}</span>}
+          {dn > 0 && <span className="text-muted-foreground">{dn} {t('collector.offline')}</span>}
         </div>
       </div>
 
@@ -156,12 +156,11 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
             const extra = Object.entries(m).filter(([k]) => !SKIP.has(k));
             const isSelected = selectedId === eq.equipment_id;
 
-            const statusColor = excluded ? 'warning' : ok ? 'primary' : 'destructive';
             const cardGlow = excluded
               ? 'dark:shadow-[0_0_0_1px_oklch(0.78_0.180_60/0.35),0_4px_20px_oklch(0_0_0/0.5)]'
               : ok
               ? 'dark:shadow-[0_0_0_1px_oklch(0.75_0.260_341/0.3),0_4px_20px_oklch(0_0_0/0.5)]'
-              : 'dark:shadow-[0_0_0_1px_oklch(0.70_0.220_34/0.4),0_4px_20px_oklch(0_0_0/0.5)]';
+              : 'dark:shadow-[0_0_0_1px_oklch(0.55_0.010_270/0.4),0_4px_20px_oklch(0_0_0/0.5)]';
 
             return (
               <div key={eq.equipment_id} className="flex flex-col">
@@ -177,14 +176,14 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
 
                   {/* 상단 상태 바 */}
                   <div className={`h-[3px] w-full ${
-                    excluded ? 'bg-warning' : ok ? 'bg-primary' : 'bg-destructive'
+                    excluded ? 'bg-warning' : ok ? 'bg-primary' : 'bg-muted-foreground/40'
                   }`} />
 
                   <div className="p-3">
                     {/* 헤더: 아이콘 + ID + 상태 닷 */}
                     <div className="flex items-center gap-2 mb-1.5">
                       <Icon name={ICONS[type] || 'memory'} size="xs"
-                        className={`shrink-0 ${excluded ? 'text-warning' : ok ? 'text-primary' : 'text-destructive'}`} />
+                        className={`shrink-0 ${excluded ? 'text-warning' : ok ? 'text-primary' : 'text-muted-foreground/50'}`} />
                       <div className="min-w-0 flex-1 flex items-baseline gap-1.5 truncate">
                         {line && (
                           <span className="text-[10px] font-mono font-semibold text-muted-foreground dark:text-[oklch(0.65_0.020_270)] shrink-0">
@@ -207,7 +206,7 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                             ? 'bg-warning shadow-[0_0_6px_var(--warning)]'
                             : ok
                             ? 'bg-primary shadow-[0_0_8px_var(--primary)]'
-                            : 'bg-destructive shadow-[0_0_6px_var(--destructive)]'
+                            : 'bg-muted-foreground/40'
                         }`} />
                       </div>
                     </div>
@@ -235,14 +234,14 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                       <div className="h-1 rounded-full bg-border/50 dark:bg-[oklch(0.33_0.065_281)] overflow-hidden mb-1">
                         <div
                           className={`h-full rounded-full transition-all ${
-                            rate >= 90 ? 'bg-primary' : rate >= 70 ? 'bg-warning' : total > 0 ? 'bg-destructive' : 'bg-transparent'
+                            rate >= 90 ? 'bg-primary' : rate >= 70 ? 'bg-warning' : total > 0 ? 'bg-muted-foreground/50' : 'bg-transparent'
                           }`}
                           style={{ width: rate >= 0 ? `${rate}%` : '0%' }}
                         />
                       </div>
                       <div className="flex items-center gap-2 text-[11px] font-mono tabular-nums">
                         <span className="text-primary font-semibold">{s.ok}<span className="text-muted-foreground/60 font-normal">✓</span></span>
-                        <span className={s.err > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground/30'}>{s.err}<span className="text-muted-foreground/60 font-normal">✗</span></span>
+                        <span className={s.err > 0 ? 'text-orange-400 dark:text-orange-400 font-semibold' : 'text-muted-foreground/30'}>{s.err}<span className="text-muted-foreground/60 font-normal">✗</span></span>
                         <span className={`font-bold ${rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}`}>
                           {rate < 0 ? '—' : `${rate}%`}
                         </span>
