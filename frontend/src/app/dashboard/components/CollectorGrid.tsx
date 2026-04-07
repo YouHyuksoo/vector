@@ -136,7 +136,7 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
           <p className="text-xs text-muted-foreground/30 mt-1">{t('collector.emptyDesc')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {[...equipments].sort((a, b) => {
             const lineA = a.metadata?.line_code || '';
             const lineB = b.metadata?.line_code || '';
@@ -156,120 +156,148 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
             const extra = Object.entries(m).filter(([k]) => !SKIP.has(k));
             const isSelected = selectedId === eq.equipment_id;
 
-            // 상태별 스타일 결정
-            const accentColor = excluded ? 'border-t-warning' : ok ? 'border-t-primary' : 'border-t-destructive';
-            const cardBorder = excluded
-              ? 'border-warning/30 dark:border-warning/25'
+            const statusColor = excluded ? 'warning' : ok ? 'primary' : 'destructive';
+            const cardGlow = excluded
+              ? 'dark:shadow-[0_0_0_1px_oklch(0.78_0.180_60/0.35),0_4px_20px_oklch(0_0_0/0.5)]'
               : ok
-              ? 'border-border dark:border-[oklch(0.38_0.075_281)]'
-              : 'border-destructive/25 dark:border-destructive/20';
-            const cardBg = 'bg-white dark:bg-[oklch(0.22_0.045_281)]';
-            const cardShadow = ok
-              ? 'shadow-sm dark:shadow-[0_2px_12px_oklch(0_0_0/0.45)]'
-              : 'dark:shadow-[0_2px_8px_oklch(0_0_0/0.3)]';
+              ? 'dark:shadow-[0_0_0_1px_oklch(0.75_0.260_341/0.3),0_4px_20px_oklch(0_0_0/0.5)]'
+              : 'dark:shadow-[0_0_0_1px_oklch(0.70_0.220_34/0.4),0_4px_20px_oklch(0_0_0/0.5)]';
 
             return (
               <div key={eq.equipment_id} className="flex flex-col">
                 <div
                   onClick={() => setSelectedId(isSelected ? null : eq.equipment_id)}
-                  className={`rounded-lg border-t-2 border border-b border-l border-r ${accentColor} ${cardBorder} ${cardBg} ${cardShadow}
-                    p-3 transition-all cursor-pointer
-                    hover:dark:bg-[oklch(0.25_0.050_281)] hover:shadow-md hover:dark:shadow-[0_4px_16px_oklch(0_0_0/0.55)]
-                    ${isSelected ? 'ring-2 ring-primary/40 dark:ring-primary/30' : ''}`}>
+                  className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-200
+                    bg-white dark:bg-[oklch(0.26_0.055_281)]
+                    border border-border/60 dark:border-[oklch(0.42_0.080_281)]
+                    shadow-sm ${cardGlow}
+                    hover:dark:bg-[oklch(0.29_0.060_281)]
+                    hover:scale-[1.01] hover:dark:shadow-[0_0_0_1px_oklch(0.75_0.260_341/0.5),0_6px_24px_oklch(0_0_0/0.6)]
+                    ${isSelected ? 'ring-2 ring-primary dark:ring-primary/70 scale-[1.01]' : ''}`}>
 
-                  {/* 헤더: 라인코드 + ID + 상태 */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon name={ICONS[type] || 'memory'} size="xs"
-                      className={excluded ? 'text-warning' : ok ? 'text-primary' : 'text-destructive'} />
-                    {line && (
-                      <span className="font-mono text-[11px] font-semibold text-muted-foreground truncate">
-                        {line}
-                      </span>
-                    )}
-                    <span className="font-mono text-sm font-bold text-foreground dark:text-white truncate flex-1">
-                      {eq.equipment_id}
-                    </span>
-                    {excluded && (
-                      <span className="text-[10px] font-mono px-1 py-px rounded
-                        bg-warning/15 dark:bg-warning/10 text-warning border border-warning/30"
-                        title="파이프라인 배제됨">
-                        SKIP
-                      </span>
-                    )}
-                    <span className={`size-2 rounded-full shrink-0 ${
-                      excluded
-                        ? 'bg-warning'
-                        : ok
-                        ? 'bg-primary shadow-[0_0_6px_var(--primary)] dark:shadow-[0_0_8px_var(--primary)]'
-                        : 'bg-destructive'
-                    }`} />
-                  </div>
+                  {/* 상단 상태 바 */}
+                  <div className={`h-1 w-full ${
+                    excluded ? 'bg-warning' : ok ? 'bg-primary' : 'bg-destructive'
+                  }`} />
 
-                  {/* 타입 + 로그 */}
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2.5">
-                    {type && <span className="font-medium">{type}</span>}
-                    {type && log && <span className="opacity-40">·</span>}
-                    {log && <span className="font-mono opacity-70">{log}</span>}
-                  </div>
-
-                  {/* 성공률 바 */}
-                  {total > 0 && (
-                    <div className="mb-2 h-1 rounded-full bg-border/40 dark:bg-[oklch(0.30_0.060_281)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${rate}%` }}
-                      />
+                  <div className="p-4">
+                    {/* 헤더: 아이콘 + ID + 상태 닷 */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`flex items-center justify-center size-9 rounded-lg shrink-0 ${
+                          excluded
+                            ? 'bg-warning/15 dark:bg-warning/20'
+                            : ok
+                            ? 'bg-primary/10 dark:bg-primary/20'
+                            : 'bg-destructive/10 dark:bg-destructive/20'
+                        }`}>
+                          <Icon name={ICONS[type] || 'memory'} size="sm"
+                            className={excluded ? 'text-warning' : ok ? 'text-primary' : 'text-destructive'} />
+                        </div>
+                        <div className="min-w-0">
+                          {line && (
+                            <div className="text-xs font-mono font-semibold text-muted-foreground dark:text-[oklch(0.70_0.025_270)] mb-0.5 truncate">
+                              {line}
+                            </div>
+                          )}
+                          <div className="font-mono text-base font-bold text-foreground dark:text-white truncate leading-tight">
+                            {eq.equipment_id}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0 ml-2">
+                        <span className={`size-3 rounded-full ${
+                          excluded
+                            ? 'bg-warning shadow-[0_0_8px_var(--warning)]'
+                            : ok
+                            ? 'bg-primary shadow-[0_0_10px_var(--primary)] dark:shadow-[0_0_12px_var(--primary)]'
+                            : 'bg-destructive shadow-[0_0_8px_var(--destructive)]'
+                        }`} />
+                        {excluded && (
+                          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded
+                            bg-warning/20 dark:bg-warning/15 text-warning border border-warning/40">
+                            SKIP
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
 
-                  {/* 통계 + 경과시간 */}
-                  <div className="flex items-center justify-between text-xs font-mono tabular-nums
-                    pt-1.5 border-t border-border/40 dark:border-[oklch(0.32_0.065_281)]">
-                    <div className="flex items-center gap-2">
-                      <span className="text-primary">{s.ok}
-                        <span className="text-muted-foreground/50 ml-0.5 text-[10px]">{t('collector.success')}</span>
-                      </span>
-                      <span className={s.err > 0 ? 'text-destructive' : 'text-muted-foreground/25'}>
-                        {s.err}
-                        <span className="text-muted-foreground/50 ml-0.5 text-[10px]">{t('collector.fail')}</span>
-                      </span>
-                      <span className={`text-[11px] font-semibold ${rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}`}>
-                        {rate < 0 ? '—' : `${rate}%`}
-                      </span>
-                      {ip && (
-                        <>
-                          <span className="text-muted-foreground/20">|</span>
-                          <span className="text-muted-foreground/50 text-[10px]">{ip}</span>
-                        </>
+                    {/* 타입 + 로그 뱃지 */}
+                    <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                      {type && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full
+                          bg-secondary dark:bg-[oklch(0.33_0.065_281)]
+                          text-text dark:text-[oklch(0.85_0.020_270)]">
+                          {type}
+                        </span>
+                      )}
+                      {log && (
+                        <span className="text-xs font-mono px-2 py-0.5 rounded-full
+                          bg-border/40 dark:bg-[oklch(0.30_0.060_281)]
+                          text-muted-foreground dark:text-[oklch(0.70_0.020_270)]">
+                          {log}
+                        </span>
                       )}
                     </div>
-                    <span className="flex items-center gap-0.5 text-muted-foreground/50">
-                      <Icon name="schedule" size="xs" className="text-muted-foreground/35" />
-                      {elapsed(eq.last_seen, serverNow)}
-                    </span>
-                  </div>
 
-                  {extra.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {extra.map(([k, v]) => (
-                        <span key={k} className="text-[10px] font-mono px-1.5 py-px rounded
-                          bg-secondary dark:bg-[oklch(0.28_0.060_281)] text-muted-foreground">{k}:{v}</span>
-                      ))}
+                    {/* 성공률 바 */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-muted-foreground dark:text-[oklch(0.65_0.020_270)]">
+                          {t('collector.success')} {rate >= 0 ? `${rate}%` : '—'}
+                        </span>
+                        <span className="text-xs font-mono text-muted-foreground dark:text-[oklch(0.65_0.020_270)]">
+                          {s.ok}✓ {s.err > 0 && <span className="text-destructive">{s.err}✗</span>}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-border/50 dark:bg-[oklch(0.33_0.065_281)] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            rate >= 90 ? 'bg-primary' : rate >= 70 ? 'bg-warning' : 'bg-destructive'
+                          }`}
+                          style={{ width: rate >= 0 ? `${rate}%` : '0%' }}
+                        />
+                      </div>
                     </div>
-                  )}
+
+                    {/* 하단: IP + 경과시간 */}
+                    <div className="flex items-center justify-between pt-2.5
+                      border-t border-border/50 dark:border-[oklch(0.36_0.070_281)]">
+                      <span className="text-xs font-mono text-muted-foreground dark:text-[oklch(0.60_0.020_270)]">
+                        {ip || '—'}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs font-mono
+                        text-muted-foreground dark:text-[oklch(0.60_0.020_270)]">
+                        <Icon name="schedule" size="xs" />
+                        {elapsed(eq.last_seen, serverNow)}
+                      </span>
+                    </div>
+
+                    {extra.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {extra.map(([k, v]) => (
+                          <span key={k} className="text-[10px] font-mono px-1.5 py-0.5 rounded
+                            bg-secondary dark:bg-[oklch(0.31_0.062_281)]
+                            text-muted-foreground dark:text-[oklch(0.65_0.020_270)]">
+                            {k}:{v}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* 선택 시 원격 관리 탭 패널 */}
                 {isSelected && (
-                  <div className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-t-lg
-                    border border-b-0 border-border dark:border-[oklch(0.38_0.075_281)]
-                    bg-secondary/30 dark:bg-[oklch(0.19_0.040_281)]">
+                  <div className="flex items-center gap-3 px-4 py-3 mt-1 rounded-t-lg
+                    border border-b-0 border-border dark:border-[oklch(0.42_0.080_281)]
+                    bg-secondary/30 dark:bg-[oklch(0.22_0.045_281)]">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleToggleExclude(eq.equipment_id, excluded); }}
                       className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border shadow-sm transition-all active:scale-95 ${
                         excluded
                           ? 'bg-warning/20 text-warning border-warning/40 hover:bg-warning/30'
-                          : 'bg-white dark:bg-[oklch(0.28_0.060_281)] text-text dark:text-white border-border dark:border-[oklch(0.38_0.075_281)] hover:bg-surface dark:hover:bg-[oklch(0.32_0.065_281)]'
+                          : 'bg-white dark:bg-[oklch(0.32_0.065_281)] text-text dark:text-white border-border dark:border-[oklch(0.42_0.080_281)] hover:bg-surface dark:hover:bg-[oklch(0.36_0.070_281)]'
                       }`}
                     >
                       <Icon name={excluded ? 'play_arrow' : 'block'} size="sm" />
