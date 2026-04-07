@@ -156,65 +156,95 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
             const extra = Object.entries(m).filter(([k]) => !SKIP.has(k));
             const isSelected = selectedId === eq.equipment_id;
 
+            // 상태별 스타일 결정
+            const accentColor = excluded ? 'border-t-warning' : ok ? 'border-t-primary' : 'border-t-destructive';
+            const cardBorder = excluded
+              ? 'border-warning/30 dark:border-warning/25'
+              : ok
+              ? 'border-border dark:border-[oklch(0.38_0.075_281)]'
+              : 'border-destructive/25 dark:border-destructive/20';
+            const cardBg = 'bg-white dark:bg-[oklch(0.22_0.045_281)]';
+            const cardShadow = ok
+              ? 'shadow-sm dark:shadow-[0_2px_12px_oklch(0_0_0/0.45)]'
+              : 'dark:shadow-[0_2px_8px_oklch(0_0_0/0.3)]';
+
             return (
               <div key={eq.equipment_id} className="flex flex-col">
                 <div
                   onClick={() => setSelectedId(isSelected ? null : eq.equipment_id)}
-                  className={`rounded-lg border bg-white dark:bg-background-dark p-3 transition-all
-                    cursor-pointer hover:shadow-md
-                    ${excluded ? 'border-warning/40 dark:border-warning/40' : ok ? 'border-border dark:border-border-dark' : 'border-destructive/30 dark:border-destructive/30'}
-                    ${isSelected ? 'ring-2 ring-primary/50' : ''}`}>
+                  className={`rounded-lg border-t-2 border border-b border-l border-r ${accentColor} ${cardBorder} ${cardBg} ${cardShadow}
+                    p-3 transition-all cursor-pointer
+                    hover:dark:bg-[oklch(0.25_0.050_281)] hover:shadow-md hover:dark:shadow-[0_4px_16px_oklch(0_0_0/0.55)]
+                    ${isSelected ? 'ring-2 ring-primary/40 dark:ring-primary/30' : ''}`}>
 
                   {/* 헤더: 라인코드 + ID + 상태 */}
                   <div className="flex items-center gap-2 mb-2">
                     <Icon name={ICONS[type] || 'memory'} size="xs"
-                      className={ok ? 'text-primary' : 'text-destructive'} />
+                      className={excluded ? 'text-warning' : ok ? 'text-primary' : 'text-destructive'} />
                     {line && (
-                      <span className="font-mono text-base font-bold text-muted-foreground truncate">
+                      <span className="font-mono text-[11px] font-semibold text-muted-foreground truncate">
                         {line}
                       </span>
                     )}
-                    <span className="font-mono text-base font-bold text-foreground dark:text-white truncate flex-1">
+                    <span className="font-mono text-sm font-bold text-foreground dark:text-white truncate flex-1">
                       {eq.equipment_id}
                     </span>
                     {excluded && (
-                      <span className="text-[10px] font-mono px-1 py-px rounded bg-warning/10 text-warning border border-warning/20"
+                      <span className="text-[10px] font-mono px-1 py-px rounded
+                        bg-warning/15 dark:bg-warning/10 text-warning border border-warning/30"
                         title="파이프라인 배제됨">
                         SKIP
                       </span>
                     )}
                     <span className={`size-2 rounded-full shrink-0 ${
-                      excluded ? 'bg-warning' : ok ? 'bg-primary shadow-[0_0_4px_var(--primary)]' : 'bg-destructive'
+                      excluded
+                        ? 'bg-warning'
+                        : ok
+                        ? 'bg-primary shadow-[0_0_6px_var(--primary)] dark:shadow-[0_0_8px_var(--primary)]'
+                        : 'bg-destructive'
                     }`} />
                   </div>
 
                   {/* 타입 + 로그 */}
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                    {type && <span>{type}</span>}
-                    {type && log && <span>·</span>}
-                    {log && <span className="font-mono">{log}</span>}
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2.5">
+                    {type && <span className="font-medium">{type}</span>}
+                    {type && log && <span className="opacity-40">·</span>}
+                    {log && <span className="font-mono opacity-70">{log}</span>}
                   </div>
 
-                  {/* 통계 + 라인/IP/경과시간 (한 줄) */}
+                  {/* 성공률 바 */}
+                  {total > 0 && (
+                    <div className="mb-2 h-1 rounded-full bg-border/40 dark:bg-[oklch(0.30_0.060_281)] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${rate}%` }}
+                      />
+                    </div>
+                  )}
+
+                  {/* 통계 + 경과시간 */}
                   <div className="flex items-center justify-between text-xs font-mono tabular-nums
-                    pt-1.5 border-t border-border/50 dark:border-border-dark/50">
+                    pt-1.5 border-t border-border/40 dark:border-[oklch(0.32_0.065_281)]">
                     <div className="flex items-center gap-2">
-                      <span className="text-primary">{s.ok}<span className="text-muted-foreground/60 ml-0.5 text-[11px]">{t('collector.success')}</span></span>
-                      <span className={s.err > 0 ? 'text-destructive' : 'text-muted-foreground/30'}>
-                        {s.err}<span className="text-muted-foreground/60 ml-0.5 text-[11px]">{t('collector.fail')}</span>
+                      <span className="text-primary">{s.ok}
+                        <span className="text-muted-foreground/50 ml-0.5 text-[10px]">{t('collector.success')}</span>
                       </span>
-                      <span className={rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}>
+                      <span className={s.err > 0 ? 'text-destructive' : 'text-muted-foreground/25'}>
+                        {s.err}
+                        <span className="text-muted-foreground/50 ml-0.5 text-[10px]">{t('collector.fail')}</span>
+                      </span>
+                      <span className={`text-[11px] font-semibold ${rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}`}>
                         {rate < 0 ? '—' : `${rate}%`}
                       </span>
                       {ip && (
                         <>
-                          <span className="text-muted-foreground/30">|</span>
-                          <span className="text-muted-foreground/60">{ip}</span>
+                          <span className="text-muted-foreground/20">|</span>
+                          <span className="text-muted-foreground/50 text-[10px]">{ip}</span>
                         </>
                       )}
                     </div>
-                    <span className="flex items-center gap-0.5 text-muted-foreground/60">
-                      <Icon name="schedule" size="xs" className="text-muted-foreground/40" />
+                    <span className="flex items-center gap-0.5 text-muted-foreground/50">
+                      <Icon name="schedule" size="xs" className="text-muted-foreground/35" />
                       {elapsed(eq.last_seen, serverNow)}
                     </span>
                   </div>
@@ -222,8 +252,8 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                   {extra.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {extra.map(([k, v]) => (
-                        <span key={k} className="text-[11px] font-mono px-1.5 py-px rounded
-                          bg-secondary text-muted-foreground">{k}:{v}</span>
+                        <span key={k} className="text-[10px] font-mono px-1.5 py-px rounded
+                          bg-secondary dark:bg-[oklch(0.28_0.060_281)] text-muted-foreground">{k}:{v}</span>
                       ))}
                     </div>
                   )}
@@ -231,13 +261,15 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
 
                 {/* 선택 시 원격 관리 탭 패널 */}
                 {isSelected && (
-                  <div className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-t-lg border border-b-0 border-border dark:border-border-dark bg-secondary/30">
+                  <div className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-t-lg
+                    border border-b-0 border-border dark:border-[oklch(0.38_0.075_281)]
+                    bg-secondary/30 dark:bg-[oklch(0.19_0.040_281)]">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleToggleExclude(eq.equipment_id, excluded); }}
                       className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border shadow-sm transition-all active:scale-95 ${
                         excluded
                           ? 'bg-warning/20 text-warning border-warning/40 hover:bg-warning/30'
-                          : 'bg-white dark:bg-slate-700 text-text dark:text-white border-border dark:border-border-dark hover:bg-surface dark:hover:bg-slate-600'
+                          : 'bg-white dark:bg-[oklch(0.28_0.060_281)] text-text dark:text-white border-border dark:border-[oklch(0.38_0.075_281)] hover:bg-surface dark:hover:bg-[oklch(0.32_0.065_281)]'
                       }`}
                     >
                       <Icon name={excluded ? 'play_arrow' : 'block'} size="sm" />
