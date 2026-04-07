@@ -185,15 +185,15 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                     <div className="flex items-center gap-2 mb-1.5">
                       <Icon name={ICONS[type] || 'memory'} size="xs"
                         className={`shrink-0 ${excluded ? 'text-warning' : ok ? 'text-primary' : 'text-destructive'}`} />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 flex items-baseline gap-1.5 truncate">
                         {line && (
-                          <div className="text-[10px] font-mono font-semibold text-muted-foreground dark:text-[oklch(0.65_0.020_270)] truncate leading-none mb-0.5">
+                          <span className="text-[10px] font-mono font-semibold text-muted-foreground dark:text-[oklch(0.65_0.020_270)] shrink-0">
                             {line}
-                          </div>
+                          </span>
                         )}
-                        <div className="font-mono text-sm font-bold text-foreground dark:text-white truncate leading-tight">
+                        <span className="font-mono text-sm font-bold text-foreground dark:text-white truncate">
                           {eq.equipment_id}
-                        </div>
+                        </span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         {excluded && (
