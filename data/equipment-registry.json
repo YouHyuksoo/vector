@@ -4,7 +4,7 @@
     "line_code": "02",
     "description": "",
     "registered_at": "2026-04-06T14:29:42.801",
-    "last_seen": "2026-04-07T08:44:34.890",
+    "last_seen": "2026-04-07T08:46:35.357",
     "excluded": false
   },
   "SM-DL-02": {
@@ -12,7 +12,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:29:42.804",
-    "last_seen": "2026-04-07T08:44:36.143",
+    "last_seen": "2026-04-07T08:46:06.716",
     "excluded": false
   },
   "MAOI-15": {
@@ -20,7 +20,7 @@
     "line_code": "15",
     "description": "",
     "registered_at": "2026-04-06T14:29:43.121",
-    "last_seen": "2026-04-07T08:44:46.657",
+    "last_seen": "2026-04-07T08:46:17.014",
     "excluded": true
   },
   "SAOI-15": {
@@ -28,7 +28,7 @@
     "line_code": "15",
     "description": "",
     "registered_at": "2026-04-06T14:29:43.636",
-    "last_seen": "2026-04-07T08:44:50.226",
+    "last_seen": "2026-04-07T08:46:20.530",
     "excluded": true
   },
   "SPI-15": {
@@ -36,7 +36,7 @@
     "line_code": "15",
     "description": "",
     "registered_at": "2026-04-06T14:29:46.538",
-    "last_seen": "2026-04-07T08:44:26.866",
+    "last_seen": "2026-04-07T08:46:27.251",
     "excluded": false
   },
   "SPI-02": {
@@ -44,7 +44,7 @@
     "line_code": "02",
     "description": "",
     "registered_at": "2026-04-06T14:29:48.067",
-    "last_seen": "2026-04-07T08:44:34.784",
+    "last_seen": "2026-04-07T08:46:35.157",
     "excluded": false
   },
   "SM-FCT-01": {
@@ -52,7 +52,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:29:48.637",
-    "last_seen": "2026-04-07T08:44:43.258",
+    "last_seen": "2026-04-07T08:46:13.571",
     "excluded": false
   },
   "SM-CTV-01": {
@@ -60,7 +60,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:29:48.694",
-    "last_seen": "2026-04-07T08:44:47.463",
+    "last_seen": "2026-04-07T08:46:17.597",
     "excluded": false
   },
   "SM-CT2-01": {
@@ -68,7 +68,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:29:50.396",
-    "last_seen": "2026-04-07T08:44:33.960",
+    "last_seen": "2026-04-07T08:46:34.302",
     "excluded": false
   },
   "AOI-02": {
@@ -76,7 +76,7 @@
     "line_code": "02",
     "description": "",
     "registered_at": "2026-04-06T14:29:51.753",
-    "last_seen": "2026-04-07T08:44:50.172",
+    "last_seen": "2026-04-07T08:46:20.552",
     "excluded": false
   },
   "SM-CTR-01": {
@@ -84,7 +84,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:29:52.358",
-    "last_seen": "2026-04-07T08:44:26.860",
+    "last_seen": "2026-04-07T08:46:27.196",
     "excluded": false
   },
   "SM-ICT-01": {
@@ -92,7 +92,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:29:56.764",
-    "last_seen": "2026-04-07T08:44:38.616",
+    "last_seen": "2026-04-07T08:46:08.995",
     "excluded": false
   },
   "SP-01": {
@@ -100,7 +100,7 @@
     "line_code": "01",
     "description": "",
     "registered_at": "2026-04-06T14:29:59.807",
-    "last_seen": "2026-04-07T08:44:38.551",
+    "last_seen": "2026-04-07T08:46:08.841",
     "excluded": false
   },
   "MOUNTER-01": {
@@ -108,7 +108,7 @@
     "line_code": "01",
     "description": "",
     "registered_at": "2026-04-06T14:30:00.392",
-    "last_seen": "2026-04-07T08:44:34.917",
+    "last_seen": "2026-04-07T08:46:35.268",
     "excluded": false
   },
   "SM-DL-01": {
@@ -116,7 +116,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:30:01.483",
-    "last_seen": "2026-04-07T08:44:53.147",
+    "last_seen": "2026-04-07T08:46:23.606",
     "excluded": false
   },
   "SM-ICT-02": {
@@ -124,7 +124,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:30:01.737",
-    "last_seen": "2026-04-07T08:44:45.987",
+    "last_seen": "2026-04-07T08:46:16.305",
     "excluded": false
   },
   "SM-EOL-01": {
@@ -132,7 +132,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:30:01.816",
-    "last_seen": "2026-04-07T08:44:32.792",
+    "last_seen": "2026-04-07T08:46:33.328",
     "excluded": false
   },
   "SM-SS-01": {
@@ -140,7 +140,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:30:01.979",
-    "last_seen": "2026-04-07T08:44:53.563",
+    "last_seen": "2026-04-07T08:46:23.933",
     "excluded": false
   },
   "SM-CT1-01": {
@@ -148,7 +148,7 @@
     "line_code": "51",
     "description": "",
     "registered_at": "2026-04-06T14:30:02.442",
-    "last_seen": "2026-04-07T08:44:50.189",
+    "last_seen": "2026-04-07T08:46:20.471",
     "excluded": false
   },
   "MARKING-01": {
@@ -156,7 +156,7 @@
     "line_code": "01",
     "description": "",
     "registered_at": "2026-04-06T14:30:04.710",
-    "last_seen": "2026-04-07T08:44:48.511",
+    "last_seen": "2026-04-07T08:46:18.918",
     "excluded": false
   },
   "SPI-01": {
@@ -172,7 +172,7 @@
     "line_code": "00",
     "description": "",
     "registered_at": "2026-04-06T14:30:11.217",
-    "last_seen": "2026-04-07T08:44:35.622",
+    "last_seen": "2026-04-07T08:46:36.010",
     "excluded": false
   },
   "AOI-01": {
@@ -180,7 +180,7 @@
     "line_code": "01",
     "description": "",
     "registered_at": "2026-04-07T07:58:11.317",
-    "last_seen": "2026-04-07T08:44:34.699",
+    "last_seen": "2026-04-07T08:46:35.174",
     "excluded": false
   }
 }
