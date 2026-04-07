@@ -895,6 +895,9 @@
     "deleteAllConfirm": "Delete all upload history?",
     "deleteFilteredConfirm": "Delete all history for {{eq}}?",
     "deleteSuccess": "Deleted successfully.",
-    "deleteFailed": "Delete failed"
+    "deleteFailed": "Delete failed",
+    "confirmDelete": "Delete this?",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   }
 }

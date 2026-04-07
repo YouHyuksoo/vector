@@ -895,6 +895,9 @@
     "deleteAllConfirm": "업로드 이력을 전체 삭제하시겠습니까?",
     "deleteFilteredConfirm": "{{eq}} 설비의 이력을 모두 삭제하시겠습니까?",
     "deleteSuccess": "삭제되었습니다.",
-    "deleteFailed": "삭제 실패"
+    "deleteFailed": "삭제 실패",
+    "confirmDelete": "삭제할까요?",
+    "confirm": "확인",
+    "cancel": "취소"
   }
 }

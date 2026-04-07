@@ -42,6 +42,8 @@ export default function UploadPage() {
   const [filterEq, setFilterEq] = useState('');
 
   const [deleting, setDeleting] = useState(false);
+  // 삭제 확인 대기 상태: 'all' | 'filtered' | 파일 key(eq/date/filename)
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -105,22 +107,21 @@ export default function UploadPage() {
     }
   };
 
+  const fileKey = (f: UploadedFile) => `${f.equipmentId}/${f.date}/${f.filename}`;
+
   const handleDeleteFile = async (f: UploadedFile) => {
-    if (!confirm(t('upload.deleteConfirm'))) return;
     try {
-      await apiFetch(`/api/upload/file?path=${encodeURIComponent(`${f.equipmentId}/${f.date}/${f.filename}`)}`, { method: 'DELETE' });
+      await apiFetch(`/api/upload/file?path=${encodeURIComponent(fileKey(f))}`, { method: 'DELETE' });
       setMessage({ type: 'success', text: t('upload.deleteSuccess') });
       loadHistory();
     } catch {
       setMessage({ type: 'error', text: t('upload.deleteFailed') });
+    } finally {
+      setPendingDelete(null);
     }
   };
 
   const handleDeleteAll = async () => {
-    const confirmMsg = filterEq
-      ? t('upload.deleteFilteredConfirm').replace('{{eq}}', filterEq)
-      : t('upload.deleteAllConfirm');
-    if (!confirm(confirmMsg)) return;
     setDeleting(true);
     try {
       const params = filterEq ? `?equipmentId=${encodeURIComponent(filterEq)}` : '';
@@ -132,6 +133,7 @@ export default function UploadPage() {
       setMessage({ type: 'error', text: t('upload.deleteFailed') });
     } finally {
       setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -266,15 +268,34 @@ export default function UploadPage() {
               </select>
             )}
             {history.length > 0 && (
-              <Button
-                leftIcon="delete_sweep"
-                variant="danger"
-                size="sm"
-                isLoading={deleting}
-                onClick={handleDeleteAll}
-              >
-                {filterEq ? t('upload.deleteFiltered') : t('upload.deleteAll')}
-              </Button>
+              pendingDelete === 'bulk' ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground mr-1">{t('upload.confirmDelete')}</span>
+                  <button
+                    onClick={() => setPendingDelete(null)}
+                    className="px-2 py-1 text-xs rounded border border-border dark:border-border-dark text-muted-foreground hover:bg-surface/50 dark:hover:bg-surface-dark/50 transition-colors"
+                  >
+                    {t('upload.cancel')}
+                  </button>
+                  <button
+                    onClick={handleDeleteAll}
+                    disabled={deleting}
+                    className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {t('upload.confirm')}
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  leftIcon="delete_sweep"
+                  variant="danger"
+                  size="sm"
+                  isLoading={deleting}
+                  onClick={() => setPendingDelete('bulk')}
+                >
+                  {filterEq ? t('upload.deleteFiltered') : t('upload.deleteAll')}
+                </Button>
+              )
             )}
           </div>
         </div>
@@ -319,14 +340,31 @@ export default function UploadPage() {
                           <Icon name="download" size="xs" />
                           {t('upload.download')}
                         </button>
-                        <button
-                          onClick={() => handleDeleteFile(f)}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
-                            text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-300 dark:border-red-700 transition-colors"
-                        >
-                          <Icon name="delete" size="xs" />
-                          {t('upload.delete')}
-                        </button>
+                        {pendingDelete === fileKey(f) ? (
+                          <>
+                            <button
+                              onClick={() => setPendingDelete(null)}
+                              className="px-2 py-0.5 rounded text-xs border border-border dark:border-border-dark text-muted-foreground hover:bg-surface/50 dark:hover:bg-surface-dark/50 transition-colors"
+                            >
+                              {t('upload.cancel')}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFile(f)}
+                              className="px-2 py-0.5 rounded text-xs bg-red-600 text-white hover:bg-red-700 transition-colors"
+                            >
+                              {t('upload.confirm')}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setPendingDelete(fileKey(f))}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
+                              text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-300 dark:border-red-700 transition-colors"
+                          >
+                            <Icon name="delete" size="xs" />
+                            {t('upload.delete')}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

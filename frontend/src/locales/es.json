@@ -895,6 +895,9 @@
     "deleteAllConfirm": "¿Eliminar todo el historial?",
     "deleteFilteredConfirm": "¿Eliminar historial de {{eq}}?",
     "deleteSuccess": "Eliminado correctamente.",
-    "deleteFailed": "Error al eliminar"
+    "deleteFailed": "Error al eliminar",
+    "confirmDelete": "¿Eliminar?",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar"
   }
 }
