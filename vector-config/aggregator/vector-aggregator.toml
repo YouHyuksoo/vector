@@ -959,32 +959,28 @@ if .equipment_type == "SP" {
   }
 } else if .equipment_type == "SELECTIVE" {
   .target_table = "LOG_SELECTIVE"
-  # Log Structure: Multi-row CSV batch log with header row (line 0)
-  # Line 0: header row (Barcode,Date&Time,Solder_TEMP1,Solder_TEMP2,RPM1,RPM2,Pre_Heat_Time,Pre_Heat_TEMP)
-  # Lines 1+: data rows (batch of selective soldering records)
-  # All data rows must be parsed into .data.ROWS array for individual DB INSERT
+  # Log Structure: 누적 CSV 파일 — 행별로 수신 (multiline 없음)
+  # Header row: Barcode,Date&Time,Solder_TEMP1,Solder_TEMP2,RPM1,RPM2,Pre_Heat_Time,Pre_Heat_TEMP
+  # 헤더 행은 abort로 버리고, 데이터 행만 DB INSERT
 
-  lines = split!(.message, "\n")
-  .data.ROWS = []
+  line = strip_whitespace(to_string!(.message))
 
-  # Skip header (line 0), parse all data rows (lines 1+)
-  data_lines = slice!(lines, 1)
-  for_each(array!(data_lines)) -> |_idx, row| {
-    if row != "" {
-      cols = split(to_string!(row), ",")
-      item = {
-        "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
-        "DATE_TIME": strip_whitespace(to_string!(get!(cols, [1]))),
-        "SOLDER_TEMP1": strip_whitespace(to_string!(get!(cols, [2]))),
-        "SOLDER_TEMP2": strip_whitespace(to_string!(get!(cols, [3]))),
-        "RPM1": strip_whitespace(to_string!(get!(cols, [4]))),
-        "RPM2": strip_whitespace(to_string!(get!(cols, [5]))),
-        "PRE_HEAT_TIME": strip_whitespace(to_string!(get!(cols, [6]))),
-        "PRE_HEAT_TEMP": strip_whitespace(to_string!(get!(cols, [7]))),
-      }
-      .data.ROWS = push(.data.ROWS, item)
-    }
+  # 빈 줄 또는 헤더 행이면 버림
+  if line == "" || starts_with(line, "Barcode") {
+    abort
   }
+
+  cols = split(line, ",")
+  .data.ROWS = [{
+    "BARCODE": strip_whitespace(to_string!(get!(cols, [0]))),
+    "DATE_TIME": strip_whitespace(to_string!(get!(cols, [1]))),
+    "SOLDER_TEMP1": strip_whitespace(to_string!(get!(cols, [2]))),
+    "SOLDER_TEMP2": strip_whitespace(to_string!(get!(cols, [3]))),
+    "RPM1": strip_whitespace(to_string!(get!(cols, [4]))),
+    "RPM2": strip_whitespace(to_string!(get!(cols, [5]))),
+    "PRE_HEAT_TIME": strip_whitespace(to_string!(get!(cols, [6]))),
+    "PRE_HEAT_TEMP": strip_whitespace(to_string!(get!(cols, [7]))),
+  }]
 
 } else if .equipment_type == "REFLOW" {
   .target_table = "LOG_REFLOW_01"

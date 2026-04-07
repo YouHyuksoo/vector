@@ -50,6 +50,13 @@ class DynamicInsert {
       );
 
       return result.rowsAffected ?? 0;
+    } catch (err: unknown) {
+      // ORA-00001: unique constraint violated — 중복 행 무시 (재전송 시 이미 처리된 데이터)
+      if (typeof err === 'object' && err !== null && (err as { errorNum?: number }).errorNum === 1) {
+        logger.debug({ tableName }, 'Duplicate row skipped (ORA-00001)');
+        return 0;
+      }
+      throw err;
     } finally {
       await conn.close();
     }
