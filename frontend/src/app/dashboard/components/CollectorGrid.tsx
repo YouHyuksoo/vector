@@ -211,41 +211,32 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                       </div>
                     </div>
 
-                    {/* 타입 + 로그 뱃지 */}
-                    <div className="flex items-center gap-1 mb-2 flex-wrap">
+                    {/* 타입 뱃지 + 처리건수 한 줄 */}
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
                       {type && (
                         <span className="text-[11px] font-semibold px-1.5 py-px rounded
                           bg-secondary dark:bg-[oklch(0.33_0.065_281)]
-                          text-text dark:text-[oklch(0.82_0.020_270)]">
+                          text-text dark:text-[oklch(0.82_0.020_270)] shrink-0">
                           {type}
                         </span>
                       )}
-                      {log && (
-                        <span className="text-[10px] font-mono px-1.5 py-px rounded
-                          bg-border/40 dark:bg-[oklch(0.30_0.060_281)]
-                          text-muted-foreground dark:text-[oklch(0.68_0.018_270)]">
-                          {log}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 성공률 바 + 통계 한 줄 */}
-                    <div className="mb-2">
-                      <div className="h-1 rounded-full bg-border/50 dark:bg-[oklch(0.33_0.065_281)] overflow-hidden mb-1">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            rate >= 90 ? 'bg-primary' : rate >= 70 ? 'bg-warning' : total > 0 ? 'bg-muted-foreground/50' : 'bg-transparent'
-                          }`}
-                          style={{ width: rate >= 0 ? `${rate}%` : '0%' }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] font-mono tabular-nums">
-                        <span className="text-primary font-semibold">{s.ok}<span className="text-muted-foreground/60 font-normal">✓</span></span>
-                        <span className={s.err > 0 ? 'text-orange-400 dark:text-orange-400 font-semibold' : 'text-muted-foreground/30'}>{s.err}<span className="text-muted-foreground/60 font-normal">✗</span></span>
+                      <div className="flex items-center gap-1.5 text-[11px] font-mono tabular-nums">
+                        <span className="text-primary font-semibold">{s.ok}<span className="text-muted-foreground/50 font-normal ml-px">✓</span></span>
+                        <span className={s.err > 0 ? 'text-orange-400 font-semibold' : 'text-muted-foreground/30'}>{s.err}<span className="text-muted-foreground/50 font-normal ml-px">✗</span></span>
                         <span className={`font-bold ${rate < 0 ? 'text-muted-foreground/30' : 'text-foreground dark:text-white'}`}>
                           {rate < 0 ? '—' : `${rate}%`}
                         </span>
                       </div>
+                    </div>
+
+                    {/* 성공률 바 */}
+                    <div className="h-1 rounded-full bg-border/50 dark:bg-[oklch(0.33_0.065_281)] overflow-hidden mb-2">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          rate >= 90 ? 'bg-primary' : rate >= 70 ? 'bg-warning' : total > 0 ? 'bg-muted-foreground/50' : 'bg-transparent'
+                        }`}
+                        style={{ width: rate >= 0 ? `${rate}%` : '0%' }}
+                      />
                     </div>
 
                     {/* 하단: IP + 경과시간 */}
