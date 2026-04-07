@@ -1463,3 +1463,4 @@ Content-Type = "application/json"
 type = "blackhole"
 inputs = ["route_events.is_metric"]
 print_interval_secs = 0
+
