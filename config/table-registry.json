@@ -2364,48 +2364,6 @@
       "SOURCE_FIELD": "data.LANE",
       "IS_REQUIRED": "N",
       "COLUMN_ORDER": 13
-    },
-    {
-      "COLUMN_NAME": "MODULE_ID",
-      "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.MODULE_ID",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 14
-    },
-    {
-      "COLUMN_NAME": "REF_ID",
-      "DATA_TYPE": "VARCHAR2(100)",
-      "SOURCE_FIELD": "data.REF_ID",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 15
-    },
-    {
-      "COLUMN_NAME": "WINDOW_NO",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.WINDOW_NO",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 16
-    },
-    {
-      "COLUMN_NAME": "DEFECT_TYPE",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.DEFECT_TYPE",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 17
-    },
-    {
-      "COLUMN_NAME": "PART_NAME",
-      "DATA_TYPE": "VARCHAR2(500)",
-      "SOURCE_FIELD": "data.PART_NAME",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 18
-    },
-    {
-      "COLUMN_NAME": "INSPECTIONS",
-      "DATA_TYPE": "CLOB",
-      "SOURCE_FIELD": "data.INSPECTIONS",
-      "IS_REQUIRED": "N",
-      "COLUMN_ORDER": 19
     }
   ],
   "LOG_SELECTIVE": [

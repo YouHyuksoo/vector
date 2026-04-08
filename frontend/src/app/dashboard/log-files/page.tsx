@@ -43,21 +43,114 @@ function formatSize(bytes: number): string {
 }
 
 /** CSV 내용을 테이블로 렌더링 */
+/** CSV 한 줄을 파싱 (따옴표 처리 포함) */
+function parseCsvLine(line: string): string[] {
+  const cols: string[] = [];
+  let cur = '';
+  let inQuote = false;
+  for (const ch of line) {
+    if (ch === '"') { inQuote = !inQuote; continue; }
+    if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; continue; }
+    cur += ch;
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+/** 섹션 구분이 있는 CSV 감지 — 콤마 없는 단독 줄이 섹션 라벨 */
+interface CsvSection { label: string; header: string[]; data: string[][] }
+
+function parseSectionedCsv(lines: string[]): CsvSection[] | null {
+  const sections: CsvSection[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const parsed = parseCsvLine(lines[i]);
+    // 섹션 라벨: 콤마 없는 단독 텍스트 (알파벳/숫자만)
+    if (parsed.length === 1 && /^[A-Za-z][A-Za-z0-9_ ]*$/.test(parsed[0])) {
+      const label = parsed[0];
+      i++;
+      if (i >= lines.length) break;
+      const header = parseCsvLine(lines[i]);
+      i++;
+      const data: string[][] = [];
+      while (i < lines.length) {
+        const next = parseCsvLine(lines[i]);
+        if (next.length === 1 && /^[A-Za-z][A-Za-z0-9_ ]*$/.test(next[0])) break;
+        data.push(next);
+        i++;
+      }
+      sections.push({ label, header, data });
+    } else {
+      i++;
+    }
+  }
+  return sections.length >= 1 ? sections : null;
+}
+
+function CsvSectionTable({ section }: { section: CsvSection }) {
+  return (
+    <div className="mb-4">
+      <div className="px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 dark:bg-primary/20 rounded-t">
+        {section.label}
+      </div>
+      <table className="w-full text-xs font-mono border-collapse">
+        <thead>
+          <tr className="bg-surface dark:bg-surface-dark border-b border-border dark:border-border-dark">
+            <th className="px-3 py-2 text-left text-muted-foreground font-bold w-10">#</th>
+            {section.header.map((col, i) => (
+              <th key={i} className="px-3 py-2 text-left font-bold text-text dark:text-white whitespace-nowrap
+                border-l border-border/30 dark:border-border-dark/30">
+                {col}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {section.data.map((row, ri) => (
+            <tr key={ri} className="border-b border-border/20 dark:border-border-dark/20
+              hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors">
+              <td className="px-3 py-1.5 text-muted-foreground">{ri + 1}</td>
+              {section.header.map((_, ci) => (
+                <td key={ci} className="px-3 py-1.5 text-text dark:text-white whitespace-nowrap
+                  border-l border-border/20 dark:border-border-dark/20">
+                  {row[ci] ?? ''}
+                </td>
+              ))}
+            </tr>
+          ))}
+          {section.data.length === 0 && (
+            <tr>
+              <td colSpan={section.header.length + 1} className="px-3 py-8 text-center text-muted-foreground">
+                No data rows
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function CsvTableView({ content }: { content: string }) {
   if (!content.trim()) return null;
   const lines = content.split('\n').filter(l => l.trim());
-  const rows = lines.map(line => {
-    const cols: string[] = [];
-    let cur = '';
-    let inQuote = false;
-    for (const ch of line) {
-      if (ch === '"') { inQuote = !inQuote; continue; }
-      if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; continue; }
-      cur += ch;
-    }
-    cols.push(cur.trim());
-    return cols;
-  });
+
+  // 섹션 구조 감지 (AOI 등: BoardInfo / Inspection)
+  const sections = parseSectionedCsv(lines);
+  if (sections) {
+    return (
+      <Card noPadding className="flex-1 overflow-hidden min-h-0">
+        <div className="overflow-auto h-full p-2">
+          {sections.map((sec, i) => (
+            <CsvSectionTable key={i} section={sec} />
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
+  // 일반 CSV — 첫 줄 헤더, 나머지 데이터
+  const rows = lines.map(parseCsvLine);
   const header = rows[0] ?? [];
   const data = rows.slice(1);
 
