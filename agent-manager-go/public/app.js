@@ -28,7 +28,7 @@ const I18N = {
     'settings.formMode': '폼 모드', 'settings.tomlMode': 'TOML 편집', 'settings.equipInfo': '설비 정보',
     'settings.equipId': '설비 ID (equipment_id)', 'settings.equipType': '설비 타입 (equipment_type)',
     'settings.ipAddr': 'IP 주소', 'settings.lineCode': '라인 코드 (line_code)',
-    'settings.logType': '로그 타입 (log_type)', 'settings.logPath': '로그 경로 (include)',
+    'settings.logType': '로그 타입 (log_type)', 'settings.charset': '문자셋 (encoding)', 'settings.logPath': '로그 경로 (include)',
     'settings.aggAddr': 'Aggregator 주소', 'settings.aggPort': 'Aggregator 포트',
     'settings.saveSetup': '설비 정보 저장', 'settings.tomlConfig': 'TOML 설정',
     'settings.loadingConfig': '설정 파일을 불러오는 중...', 'settings.revert': '되돌리기',
@@ -71,7 +71,7 @@ const I18N = {
     'settings.formMode': 'Form Mode', 'settings.tomlMode': 'TOML Edit', 'settings.equipInfo': 'Equipment Info',
     'settings.equipId': 'Equipment ID', 'settings.equipType': 'Equipment Type',
     'settings.ipAddr': 'IP Address', 'settings.lineCode': 'Line Code',
-    'settings.logType': 'Log Type', 'settings.logPath': 'Log Path (include)',
+    'settings.logType': 'Log Type', 'settings.charset': 'Charset (encoding)', 'settings.logPath': 'Log Path (include)',
     'settings.aggAddr': 'Aggregator Address', 'settings.aggPort': 'Aggregator Port',
     'settings.saveSetup': 'Save Equipment Info', 'settings.tomlConfig': 'TOML Config',
     'settings.loadingConfig': 'Loading config file...', 'settings.revert': 'Revert',
@@ -112,7 +112,7 @@ const I18N = {
     'settings.formMode': 'Modo formulario', 'settings.tomlMode': 'Editar TOML', 'settings.equipInfo': 'Info del equipo',
     'settings.equipId': 'ID del equipo', 'settings.equipType': 'Tipo de equipo',
     'settings.ipAddr': 'Dirección IP', 'settings.lineCode': 'Código de línea',
-    'settings.logType': 'Tipo de log', 'settings.logPath': 'Ruta de log (include)',
+    'settings.logType': 'Tipo de log', 'settings.charset': 'Juego de caracteres', 'settings.logPath': 'Ruta de log (include)',
     'settings.aggAddr': 'Dirección Aggregator', 'settings.aggPort': 'Puerto Aggregator',
     'settings.saveSetup': 'Guardar info del equipo', 'settings.tomlConfig': 'Config TOML',
     'settings.loadingConfig': 'Cargando configuración...', 'settings.revert': 'Revertir',
@@ -152,7 +152,7 @@ const I18N = {
     'settings.formMode': 'Chế độ biểu mẫu', 'settings.tomlMode': 'Sửa TOML', 'settings.equipInfo': 'Thông tin thiết bị',
     'settings.equipId': 'ID thiết bị', 'settings.equipType': 'Loại thiết bị',
     'settings.ipAddr': 'Địa chỉ IP', 'settings.lineCode': 'Mã dây chuyền',
-    'settings.logType': 'Loại log', 'settings.logPath': 'Đường dẫn log (include)',
+    'settings.logType': 'Loại log', 'settings.charset': 'Bộ ký tự', 'settings.logPath': 'Đường dẫn log (include)',
     'settings.aggAddr': 'Địa chỉ Aggregator', 'settings.aggPort': 'Cổng Aggregator',
     'settings.saveSetup': 'Lưu thông tin thiết bị', 'settings.tomlConfig': 'Cấu hình TOML',
     'settings.loadingConfig': 'Đang tải cấu hình...', 'settings.revert': 'Hoàn tác',
@@ -339,6 +339,7 @@ async function loadSetup() {
     document.getElementById('inp-include').value = data.include_paths || '';
     document.getElementById('inp-resend-path').value = data.resend_path || '';
     document.getElementById('inp-resend-delete-secs').value = data.resend_delete_secs || '30';
+    document.getElementById('inp-encoding').value = data.encoding || 'utf-8';
     // Aggregator 주소가 비어있으면 masterServer IP에서 자동 추출
     let sinkAddr = data.sink_address || '';
     if (!sinkAddr) {
@@ -367,6 +368,7 @@ async function saveSetup() {
     include_paths: document.getElementById('inp-include').value,
     resend_path: document.getElementById('inp-resend-path').value,
     resend_delete_secs: document.getElementById('inp-resend-delete-secs').value,
+    encoding: document.getElementById('inp-encoding').value,
     sink_address: document.getElementById('inp-sink-addr').value,
     sink_port: document.getElementById('inp-sink-port').value,
   };

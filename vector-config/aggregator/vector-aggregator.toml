@@ -363,24 +363,7 @@ if .equipment_type == "SP" {
     .data.OPERATOR     = strip_whitespace(to_string!(get!(board, [7])))
     .data.LANE         = strip_whitespace(to_string!(get!(board, [8])))
 
-    # ── Inspection 상세 파싱 (줄6~) ──
-    .data.INSPECTIONS = []
-    detail_lines = slice!(lines, 5)
-    for_each(array!(detail_lines)) -> |_idx, row| {
-      if row != "" {
-        cols = split(to_string!(row), ",")
-        if length(cols) >= 5 {
-          inspection = {
-            "MODULE_ID":   strip_whitespace(to_string!(get!(cols, [0]))),
-            "REF_ID":      strip_whitespace(to_string!(get!(cols, [1]))),
-            "WINDOW_NO":   strip_whitespace(to_string!(get!(cols, [2]))),
-            "DEFECT_TYPE": strip_whitespace(to_string!(get!(cols, [3]))),
-            "PART_NAME":   strip_whitespace(to_string!(get!(cols, [4]))),
-          }
-          .data.INSPECTIONS = push(.data.INSPECTIONS, inspection)
-        }
-      }
-    }
+    # Inspection 섹션(줄4~) 무시 — BoardInfo 데이터(줄3)만 DB에 INSERT
   } else if .log_type == "ALARM" {
     .data = {}
   } else if .log_type == "PROCESS" {

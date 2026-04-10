@@ -7,6 +7,10 @@
     "description": "EOL 검사설비",
     "encoding": "euc-kr"
   },
+  "ICT": {
+    "description": "ICT 검사설비",
+    "encoding": "euc-kr"
+  },
   "LOWCURRENT": {
     "description": "저전류검사기",
     "encoding": "euc-kr"

@@ -239,7 +239,7 @@ func tomlSetSinkAddr(content, ip, port string) string {
 }
 
 func tomlGetEncoding(content string) string {
-	// [sources.work_logs] 섹션에서 encoding.codec 값 추출
+	// [sources.work_logs] 섹션에서 encoding.charset 값 추출
 	idx := strings.Index(content, "[sources.work_logs]")
 	if idx < 0 {
 		return "utf-8"
@@ -252,7 +252,7 @@ func tomlGetEncoding(content string) string {
 	}
 	for _, line := range strings.Split(sub, "\n") {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "encoding.codec") {
+		if strings.HasPrefix(trimmed, "encoding.charset") {
 			q1 := strings.Index(trimmed, `"`)
 			if q1 < 0 {
 				continue
@@ -267,13 +267,13 @@ func tomlGetEncoding(content string) string {
 	return "utf-8"
 }
 
-func tomlSetEncoding(content, codec string) string {
-	if codec == "" || codec == "utf-8" {
-		// utf-8이면 encoding.codec 줄 제거 (Vector 기본값)
+func tomlSetEncoding(content, charset string) string {
+	if charset == "" || charset == "utf-8" {
+		// utf-8이면 encoding.charset 줄 제거 (Vector 기본값)
 		lines := strings.Split(content, "\n")
 		var result []string
 		for _, line := range lines {
-			if !strings.Contains(strings.TrimSpace(line), "encoding.codec") {
+			if !strings.Contains(strings.TrimSpace(line), "encoding.charset") {
 				result = append(result, line)
 			}
 		}
@@ -282,32 +282,30 @@ func tomlSetEncoding(content, codec string) string {
 
 	// 이미 있으면 값 교체
 	lines := strings.Split(content, "\n")
+	found := false
 	for i, line := range lines {
-		if strings.Contains(strings.TrimSpace(line), "encoding.codec") {
-			lines[i] = fmt.Sprintf(`encoding.codec = "%s"`, codec)
-			return strings.Join(lines, "\n")
+		if strings.Contains(strings.TrimSpace(line), "encoding.charset") {
+			lines[i] = fmt.Sprintf(`encoding.charset = "%s"`, charset)
+			found = true
 		}
+	}
+	if found {
+		return strings.Join(lines, "\n")
 	}
 
-	// 없으면 [sources.work_logs] 섹션의 type 줄 바로 뒤에 추가
-	inSection := false
+	// 없으면 [sources.work_logs]와 [sources.resend_logs] 섹션의 read_from 줄 뒤에 추가
+	result := make([]string, 0, len(lines)+2)
 	for i, line := range lines {
+		result = append(result, line)
 		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "[sources.work_logs]") {
-			inSection = true
-			continue
-		}
-		if inSection && strings.HasPrefix(trimmed, "type =") {
-			// type = "file" 다음 줄에 삽입
-			newLine := fmt.Sprintf(`encoding.codec = "%s"`, codec)
-			result := make([]string, 0, len(lines)+1)
-			result = append(result, lines[:i+1]...)
-			result = append(result, newLine)
-			result = append(result, lines[i+1:]...)
-			return strings.Join(result, "\n")
+		if strings.HasPrefix(trimmed, `read_from =`) {
+			// 다음 줄이 이미 encoding.charset이 아닌 경우에만 추가
+			if i+1 >= len(lines) || !strings.Contains(strings.TrimSpace(lines[i+1]), "encoding.charset") {
+				result = append(result, fmt.Sprintf(`encoding.charset = "%s"`, charset))
+			}
 		}
 	}
-	return content
+	return strings.Join(result, "\n")
 }
 
 func tomlGetInclude(content string) string {
