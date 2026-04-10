@@ -26,6 +26,7 @@ address = "127.0.0.1:8686"
 
 [sources.work_logs]
 type = "file"
+encoding.charset = "euc-kr"
 include = [
   'C:\logs\eol\*.txt',
   'C:\logs\eol\*.csv',
@@ -45,6 +46,7 @@ timeout_ms = 5000
 
 [sources.resend_logs]
 type = "file"
+encoding.charset = "euc-kr"
 include = [
   'C:\logs\eol\resend\*',
 ]
