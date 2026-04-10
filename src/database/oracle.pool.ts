@@ -27,7 +27,7 @@ export async function initOraclePool(): Promise<Pool> {
       poolIncrement: 1,
     });
 
-    oracledb.fetchAsString = [oracledb.DB_TYPE_CLOB, oracledb.DB_TYPE_TIMESTAMP, oracledb.DB_TYPE_DATE];
+    oracledb.fetchAsString = [oracledb.DB_TYPE_CLOB, oracledb.DB_TYPE_TIMESTAMP];
     oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
 
     logger.info(
