@@ -19,6 +19,7 @@ export const logRecordSchema = z.object({
   data: z.record(z.unknown()),
   raw_message: z.string().optional(),
   filename: z.string().optional(),
+  line_code: z.string().optional(),
 });
 
 /** Vector HTTP sink는 단일 객체 또는 JSON 배열로 전송, 수동 호출은 { logs: [...] } 형식 */
