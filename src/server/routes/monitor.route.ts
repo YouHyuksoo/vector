@@ -1261,16 +1261,23 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
     const conn = await getConnection();
     try {
-      // 컬럼 목록 조회
-      const colResult = await conn.execute<{ COLUMN_NAME: string }>(
-        `SELECT COLUMN_NAME FROM USER_TAB_COLUMNS
+      // 컬럼 목록 + 타입 조회
+      const colResult = await conn.execute<{ COLUMN_NAME: string; DATA_TYPE: string }>(
+        `SELECT COLUMN_NAME, DATA_TYPE FROM USER_TAB_COLUMNS
          WHERE TABLE_NAME = :t ORDER BY COLUMN_ID`,
         { t: tableName },
       );
-      const columns = (colResult.rows ?? []).map((r: any) => r.COLUMN_NAME);
+      const colInfos = (colResult.rows ?? []) as { COLUMN_NAME: string; DATA_TYPE: string }[];
+      const columns = colInfos.map(r => r.COLUMN_NAME);
       if (columns.length === 0) {
         return reply.send({ columns: [], rows: [] });
       }
+
+      // TIMESTAMP/DATE 컬럼은 TO_CHAR로 변환 (JS Date 변환 방지)
+      const tsTypes = new Set(['TIMESTAMP(6)', 'TIMESTAMP', 'DATE']);
+      const selectCols = colInfos.map(r =>
+        tsTypes.has(r.DATA_TYPE) ? `TO_CHAR(${r.COLUMN_NAME}, 'YYYY-MM-DD HH24:MI:SS') AS ${r.COLUMN_NAME}` : r.COLUMN_NAME,
+      );
 
       // 날짜 필터 컬럼 결정 (LOG_TIMESTAMP 또는 CREATED_AT)
       const dateCol = columns.includes('LOG_TIMESTAMP') ? 'LOG_TIMESTAMP'
@@ -1288,7 +1295,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         binds.ed = endDate.replace('T', ' ').length < 19 ? `${endDate.replace('T', ' ')}:59` : endDate.replace('T', ' ');
       }
       const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-      const sql = `SELECT ${columns.join(', ')} FROM ${tableName}
+      const sql = `SELECT ${selectCols.join(', ')} FROM ${tableName}
                     ${whereStr} ORDER BY ROWID DESC FETCH FIRST :lim ROWS ONLY`;
       const result = await conn.execute(sql, binds);
       return reply.send({ columns, rows: result.rows ?? [] });
