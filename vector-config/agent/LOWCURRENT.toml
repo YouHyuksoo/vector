@@ -10,7 +10,7 @@ address = "127.0.0.1:8686"
 
 [sources.work_logs]
 type = "file"
-encoding.charset = "euc-kr"
+encoding.charset = "utf-8"
 include = [
   'C:\logs\lowcurrent\*.txt',
   'C:\logs\lowcurrent\*.csv',
@@ -33,6 +33,7 @@ include = [
   'C:\logs\lowcurrent\resend\*',
 ]
 read_from = "beginning"
+encoding.charset = "utf-8"
 fingerprint.strategy = "device_and_inode"
 fingerprint.bytes = 256
 remove_after_secs = 30

@@ -14,6 +14,7 @@ include = [
   'C:\logs\selective\*.csv',
 ]
 read_from = "beginning"
+encoding.charset = "utf-8"
 fingerprint.strategy = "device_and_inode"
 ignore_older_secs = 604800
 
@@ -32,6 +33,7 @@ include = [
   'C:\logs\selective\resend\*',
 ]
 read_from = "beginning"
+encoding.charset = "utf-8"
 fingerprint.strategy = "device_and_inode"
 fingerprint.bytes = 256
 remove_after_secs = 30

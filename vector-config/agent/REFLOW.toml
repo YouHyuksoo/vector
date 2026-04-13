@@ -10,7 +10,7 @@ address = "127.0.0.1:8686"
 
 [sources.work_logs]
 type = "file"
-encoding.charset = "utf-16le"
+encoding.charset = "utf-8"
 include = [
   'C:\logs\reflow\*.txt',
   'C:\logs\reflow\*.csv',
@@ -30,6 +30,7 @@ include = [
   'C:\logs\reflow\resend\*',
 ]
 read_from = "beginning"
+encoding.charset = "utf-8"
 fingerprint.strategy = "device_and_inode"
 fingerprint.bytes = 256
 remove_after_secs = 30

@@ -14,6 +14,7 @@ include = [
   'C:\logs\spi_vd\*.csv',
 ]
 read_from = "beginning"
+encoding.charset = "utf-8"
 fingerprint.strategy = "checksum"
 fingerprint.bytes = 256
 ignore_older_secs = 604800

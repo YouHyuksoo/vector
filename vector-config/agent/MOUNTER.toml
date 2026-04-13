@@ -30,6 +30,7 @@ include = [
   'C:\logs\mounter\*.trk',
 ]
 read_from = "beginning"
+encoding.charset = "utf-8"
 ignore_older_secs = 604800
 fingerprint.strategy = "device_and_inode"
 
@@ -48,6 +49,7 @@ include = [
   'C:\logs\mounter\resend\*',
 ]
 read_from = "beginning"
+encoding.charset = "utf-8"
 fingerprint.strategy = "device_and_inode"
 fingerprint.bytes = 256
 remove_after_secs = 30

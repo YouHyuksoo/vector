@@ -423,9 +423,42 @@ func tomlSetResendDeleteSecs(content, secs string) string {
 
 func tomlSetResendInclude(content, path string) string {
 	path = strings.TrimSpace(path)
+	if path == "" {
+		return content
+	}
 	idx := strings.Index(content, "[sources.resend_logs]")
 	if idx < 0 {
-		return content
+		// 섹션이 없으면 새로 생성하여 [transforms.add_metadata] 앞에 삽입
+		newSection := "\n# ── [소스] 재전송 폴더 — 여기에 복사하면 전송 후 자동 삭제 ──\n\n" +
+			"[sources.resend_logs]\n" +
+			"type = \"file\"\n" +
+			"include = [\n  '" + path + "',\n]\n" +
+			"read_from = \"beginning\"\n" +
+			"fingerprint.strategy = \"device_and_inode\"\n" +
+			"fingerprint.bytes = 256\n" +
+			"remove_after_secs = 30\n" +
+			"ignore_checkpoints = true\n\n" +
+			"[sources.resend_logs.multiline]\n" +
+			"start_pattern = '^.'\n" +
+			"condition_pattern = '.*'\n" +
+			"mode = \"continue_through\"\n" +
+			"timeout_ms = 5000\n"
+		transformsIdx := strings.Index(content, "[transforms.add_metadata]")
+		if transformsIdx < 0 {
+			content = content + newSection
+		} else {
+			content = content[:transformsIdx] + newSection + "\n" + content[transformsIdx:]
+		}
+		// transforms inputs에 "resend_logs" 추가
+		lines := strings.Split(content, "\n")
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "inputs") && strings.Contains(trimmed, "work_logs") && !strings.Contains(trimmed, "resend_logs") {
+				lines[i] = strings.Replace(line, `"work_logs"`, `"work_logs", "resend_logs"`, 1)
+				break
+			}
+		}
+		return strings.Join(lines, "\n")
 	}
 	sub := content[idx:]
 	incIdx := strings.Index(sub, "include = [")
@@ -1448,7 +1481,7 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 	// 기존 TOML에서 메타데이터 백업
 	tomlPath := filepath.Join(configDir, name+".toml")
 	var oldMeta map[string]string
-	var oldSinkIP, oldSinkPort, oldInclude, oldEncoding string
+	var oldSinkIP, oldSinkPort, oldInclude, oldEncoding, oldResendPath, oldResendSecs string
 	if oldContent, err := os.ReadFile(tomlPath); err == nil {
 		old := string(oldContent)
 		oldMeta = map[string]string{
@@ -1460,6 +1493,8 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 		oldSinkIP, oldSinkPort = tomlGetSinkAddr(old)
 		oldInclude = tomlGetInclude(old)
 		oldEncoding = tomlGetEncoding(old)
+		oldResendPath = tomlGetResendInclude(old)
+		oldResendSecs = tomlGetResendDeleteSecs(old)
 	}
 
 	resp, err := httpGet(masterServer + "/api/monitor/download/agent/" + name)
@@ -1487,8 +1522,14 @@ func handleTomlDownload(w http.ResponseWriter, r *http.Request) {
 		if oldEncoding != "" && oldEncoding != "utf-8" {
 			newToml = tomlSetEncoding(newToml, oldEncoding)
 		}
-		log.Printf("[TOML Download] %s — 기존 설비 설정 유지 (equipment_id=%s, sink=%s:%s, encoding=%s)",
-			name, oldMeta["equipment_id"], oldSinkIP, oldSinkPort, oldEncoding)
+		if oldResendPath != "" {
+			newToml = tomlSetResendInclude(newToml, oldResendPath)
+		}
+		if oldResendSecs != "" && oldResendSecs != "30" {
+			newToml = tomlSetResendDeleteSecs(newToml, oldResendSecs)
+		}
+		log.Printf("[TOML Download] %s — 기존 설비 설정 유지 (equipment_id=%s, sink=%s:%s, encoding=%s, resend=%s)",
+			name, oldMeta["equipment_id"], oldSinkIP, oldSinkPort, oldEncoding, oldResendPath)
 	}
 
 	os.MkdirAll(configDir, 0755)

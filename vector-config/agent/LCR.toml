@@ -18,6 +18,7 @@ include = [
   'C:\logs\lcr\*.docx',
 ]
 read_from = "beginning"
+encoding.charset = "utf-16le"
 fingerprint.strategy = "checksum"
 fingerprint.bytes = 256
 ignore_older_secs = 604800
@@ -38,6 +39,7 @@ include = [
   'C:\logs\lcr\resend\*',
 ]
 read_from = "beginning"
+encoding.charset = "utf-16le"
 fingerprint.strategy = "device_and_inode"
 fingerprint.bytes = 256
 remove_after_secs = 30
