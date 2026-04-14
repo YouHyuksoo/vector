@@ -60,13 +60,37 @@ function parseCsvLine(line: string): string[] {
 /** 섹션 구분이 있는 CSV 감지 — 콤마 없는 단독 줄이 섹션 라벨 */
 interface CsvSection { label: string; header: string[]; data: string[][] }
 
+/** 섹션 라벨 판별 */
+function isSectionLabel(parsed: string[]): boolean {
+  return parsed.length === 1 && /^[A-Za-z][A-Za-z0-9_ ]*$/.test(parsed[0]);
+}
+
 function parseSectionedCsv(lines: string[]): CsvSection[] | null {
   const sections: CsvSection[] = [];
   let i = 0;
+
+  // ── 1) 섹션 라벨 이전에 나타나는 CSV 줄들을 별도 섹션으로 수집 ──
+  //    (예: SPI_VD 파일의 MasterBarcode 헤더/데이터 행)
+  const preLines: string[] = [];
   while (i < lines.length) {
     const parsed = parseCsvLine(lines[i]);
-    // 섹션 라벨: 콤마 없는 단독 텍스트 (알파벳/숫자만)
-    if (parsed.length === 1 && /^[A-Za-z][A-Za-z0-9_ ]*$/.test(parsed[0])) {
+    if (isSectionLabel(parsed)) break;
+    preLines.push(lines[i]);
+    i++;
+  }
+  if (preLines.length >= 2) {
+    // 첫 줄 = 헤더, 나머지 = 데이터
+    sections.push({
+      label: '',
+      header: parseCsvLine(preLines[0]),
+      data: preLines.slice(1).map(parseCsvLine),
+    });
+  }
+
+  // ── 2) 섹션 라벨 블록 파싱 ──
+  while (i < lines.length) {
+    const parsed = parseCsvLine(lines[i]);
+    if (isSectionLabel(parsed)) {
       const label = parsed[0];
       i++;
       if (i >= lines.length) break;
@@ -75,7 +99,7 @@ function parseSectionedCsv(lines: string[]): CsvSection[] | null {
       const data: string[][] = [];
       while (i < lines.length) {
         const next = parseCsvLine(lines[i]);
-        if (next.length === 1 && /^[A-Za-z][A-Za-z0-9_ ]*$/.test(next[0])) break;
+        if (isSectionLabel(next)) break;
         data.push(next);
         i++;
       }
@@ -90,9 +114,11 @@ function parseSectionedCsv(lines: string[]): CsvSection[] | null {
 function CsvSectionTable({ section }: { section: CsvSection }) {
   return (
     <div className="mb-4">
-      <div className="px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 dark:bg-primary/20 rounded-t">
-        {section.label}
-      </div>
+      {section.label && (
+        <div className="px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 dark:bg-primary/20 rounded-t">
+          {section.label}
+        </div>
+      )}
       <table className="w-full text-xs font-mono border-collapse">
         <thead>
           <tr className="bg-surface dark:bg-surface-dark border-b border-border dark:border-border-dark">
