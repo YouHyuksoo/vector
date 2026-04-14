@@ -65,6 +65,7 @@ class DynamicInsert {
   async insertMany(
     tableName: string,
     dataArray: Record<string, unknown>[],
+    extraFields: Record<string, unknown> = {},
   ): Promise<number> {
     if (dataArray.length === 0) return 0;
 
@@ -75,7 +76,10 @@ class DynamicInsert {
     }
 
     const bindRows = dataArray.map((data) =>
-      schema.columns.map((col) => data[col.COLUMN_NAME] ?? null),
+      schema.columns.map((col) => {
+        const raw = this.resolveSourceField(col.SOURCE_FIELD, data, extraFields);
+        return raw != null ? this.convertParamValue(raw, col.DATA_TYPE) : null;
+      }),
     );
 
     const conn = await getConnection();

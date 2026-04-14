@@ -81,23 +81,36 @@ function ActivityPanel({ logs, t }: { logs: LogEntry[]; t: (k: string) => string
   );
 }
 
+/** 섹션 헤더 — 그룹 라벨 + 카운트 뱃지 */
+function SectionLabel({ label, count, dot }: { label: string; count: number; dot: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-2.5">
+      <span className={`size-2 rounded-full shrink-0 ${dot}`} />
+      <span className="text-xs font-semibold tracking-[0.15em] uppercase text-muted-foreground">
+        {label}
+      </span>
+      <span className="text-xs font-mono tabular-nums px-1.5 py-px rounded
+        bg-secondary dark:bg-[oklch(0.30_0.055_281)]
+        text-muted-foreground dark:text-[oklch(0.62_0.018_270)]">
+        {count}
+      </span>
+      <div className="flex-1 h-px bg-border/40 dark:bg-[oklch(0.36_0.070_281)]" />
+    </div>
+  );
+}
+
 export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props) {
-  const up = equipments.filter(e => e.online).length;
-  const dn = equipments.length - up;
   const { t } = useI18n();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const serverNow = serverTimestamp ? new Date(serverTimestamp).getTime() : undefined;
 
   const handleToggleExclude = async (equipmentId: string, currentExcluded: boolean) => {
     try {
-      const res = await fetch(`/api/monitor/equipment-registry/${equipmentId}`, {
+      await fetch(`/api/monitor/equipment-registry/${equipmentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ excluded: !currentExcluded }),
       });
-      if (res.ok) {
-        // useMonitor가 자동 갱신하므로 별도 처리 불필요
-      }
     } catch { /* 무시 */ }
   };
 
@@ -116,33 +129,23 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
     return logs.filter(l => l.EQUIPMENT_ID === selectedId);
   }, [logs, selectedId]);
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold tracking-[0.2em] uppercase text-muted-foreground">
-          {t('collector.title')}
-        </span>
-        <div className="flex items-center gap-3 text-xs font-mono tabular-nums select-none">
-          <span className="text-muted-foreground">{equipments.length} {t('collector.total')}</span>
-          <span className="text-primary">{up} {t('collector.online')}</span>
-          {dn > 0 && <span className="text-muted-foreground">{dn} {t('collector.offline')}</span>}
-        </div>
-      </div>
+  // 정렬 기준: line_code → equipment_id
+  const sorted = useMemo(() => [...equipments].sort((a, b) => {
+    const la = a.metadata?.line_code || '', lb = b.metadata?.line_code || '';
+    return la !== lb ? la.localeCompare(lb) : a.equipment_id.localeCompare(b.equipment_id);
+  }), [equipments]);
 
-      {!equipments.length ? (
-        <div className="flex flex-col items-center justify-center py-16 select-none">
-          <Icon name="sensors_off" size="xl" className="text-muted-foreground/20 mb-2" />
-          <p className="text-sm text-muted-foreground/50">{t('collector.empty')}</p>
-          <p className="text-xs text-muted-foreground/30 mt-1">{t('collector.emptyDesc')}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
-          {[...equipments].sort((a, b) => {
-            const lineA = a.metadata?.line_code || '';
-            const lineB = b.metadata?.line_code || '';
-            if (lineA !== lineB) return lineA.localeCompare(lineB);
-            return a.equipment_id.localeCompare(b.equipment_id);
-          }).map(eq => {
+  // 3개 그룹 분리
+  const groups = useMemo(() => ({
+    online:  sorted.filter(e => e.online && e.metadata?.excluded !== 'true'),
+    offline: sorted.filter(e => !e.online && e.metadata?.excluded !== 'true'),
+    skipped: sorted.filter(e => e.metadata?.excluded === 'true'),
+  }), [sorted]);
+
+  // 카드 목록 렌더링 (3개 섹션 공통)
+  const renderGrid = (eqs: Equipment[]) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5">
+      {eqs.map(eq => {
             const m = eq.metadata ?? {};
             const type = m.equipment_type || '';
             const line = m.line_code || '';
@@ -303,7 +306,59 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                 )}
               </div>
             );
-          })}
+      })}
+    </div>
+  );
+
+  const up = groups.online.length;
+  const dn = groups.offline.length;
+  const sk = groups.skipped.length;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold tracking-[0.2em] uppercase text-muted-foreground">
+          {t('collector.title')}
+        </span>
+        <div className="flex items-center gap-3 text-xs font-mono tabular-nums select-none">
+          <span className="text-muted-foreground">{equipments.length} {t('collector.total')}</span>
+          <span className="text-primary">{up} {t('collector.online')}</span>
+          {dn > 0 && <span className="text-muted-foreground">{dn} {t('collector.offline')}</span>}
+          {sk > 0 && <span className="text-warning">{sk} SKIP</span>}
+        </div>
+      </div>
+
+      {!equipments.length ? (
+        <div className="flex flex-col items-center justify-center py-16 select-none">
+          <Icon name="sensors_off" size="xl" className="text-muted-foreground/20 mb-2" />
+          <p className="text-sm text-muted-foreground/50">{t('collector.empty')}</p>
+          <p className="text-xs text-muted-foreground/30 mt-1">{t('collector.emptyDesc')}</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* 온라인 */}
+          {up > 0 && (
+            <div>
+              <SectionLabel label={t('collector.online')} count={up} dot="bg-primary shadow-[0_0_6px_var(--primary)]" />
+              {renderGrid(groups.online)}
+            </div>
+          )}
+
+          {/* 오프라인 */}
+          {dn > 0 && (
+            <div>
+              <SectionLabel label={t('collector.offline')} count={dn} dot="bg-muted-foreground/50" />
+              {renderGrid(groups.offline)}
+            </div>
+          )}
+
+          {/* 스킵 */}
+          {sk > 0 && (
+            <div>
+              <SectionLabel label="SKIP" count={sk} dot="bg-warning shadow-[0_0_6px_var(--warning)]" />
+              {renderGrid(groups.skipped)}
+            </div>
+          )}
         </div>
       )}
     </div>

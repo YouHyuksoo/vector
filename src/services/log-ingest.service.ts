@@ -13,13 +13,18 @@ import { logger } from '../utils/logger.js';
 import { TARGET_TYPES } from '../config/constants.js';
 import type { LogRecord } from '../types/index.js';
 
-/** UTC 타임스탬프를 서버 로컬 시간 문자열로 변환 */
-function toLocalTimestamp(ts: string): string {
-  const d = new Date(ts);
+/**
+ * 타임스탬프 문자열을 Date 객체로 파싱한다.
+ * - ISO 8601 (Z 포함/미포함), 공백 구분자 포맷 모두 처리
+ * - 파싱 실패 시 원본 문자열 반환 (OracleDB가 2차 파싱 시도)
+ * - Date 객체를 OracleDB에 넘기면 DB_TYPE_TIMESTAMP 로 정확하게 바인딩됨
+ */
+function parseTimestamp(ts: string): Date | string {
+  // "YYYY-MM-DD HH:MM:SS" 포맷: new Date()는 공백 구분자를 로컬로 파싱 — 명시적으로 T로 정규화
+  const normalized = ts.replace(' ', 'T');
+  const d = new Date(normalized);
   if (isNaN(d.getTime())) return ts;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const ms = String(d.getMilliseconds()).padStart(3, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${ms}`;
+  return d;
 }
 
 class LogIngestService {
@@ -27,7 +32,7 @@ class LogIngestService {
     const { equipment_id, target_type, target_table, data, timestamp, line_code, filename } = log;
     const extraFields: Record<string, unknown> = {
       equipment_id,
-      timestamp: toLocalTimestamp(timestamp),
+      timestamp: parseTimestamp(timestamp),
       line_code: line_code || '',
       filename: filename || '',
     };
@@ -35,8 +40,12 @@ class LogIngestService {
     if (target_type === TARGET_TYPES.PROCEDURE) {
       await dynamicInsert.callProcedure(target_table, data, extraFields);
     } else if (Array.isArray(data.ROWS) && data.ROWS.length > 0) {
-      for (const row of data.ROWS) {
-        await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
+      if (data.ROWS.length === 1) {
+        // 단건: 기존 경로 유지 (ORA-00001 중복 처리 포함)
+        await dynamicInsert.insert(target_table, data.ROWS[0] as Record<string, unknown>, extraFields);
+      } else {
+        // 다건: executeMany 배치 삽입 — 커넥션 1회 체크아웃으로 N행 처리
+        await dynamicInsert.insertMany(target_table, data.ROWS as Record<string, unknown>[], extraFields);
       }
     } else {
       await dynamicInsert.insert(target_table, data, extraFields);

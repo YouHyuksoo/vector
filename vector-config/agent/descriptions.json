@@ -5,7 +5,7 @@
   },
   "EOL": {
     "description": "EOL 검사설비",
-    "encoding": "euc-kr"
+    "encoding": "utf-8"
   },
   "ICT": {
     "description": "ICT 검사설비",
