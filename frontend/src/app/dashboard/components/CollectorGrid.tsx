@@ -102,6 +102,8 @@ function SectionLabel({ label, count, dot }: { label: string; count: number; dot
 export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props) {
   const { t } = useI18n();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const serverNow = serverTimestamp ? new Date(serverTimestamp).getTime() : undefined;
 
   const handleToggleExclude = async (equipmentId: string, currentExcluded: boolean) => {
@@ -112,6 +114,18 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
         body: JSON.stringify({ excluded: !currentExcluded }),
       });
     } catch { /* 무시 */ }
+  };
+
+  const handleDelete = async (equipmentId: string) => {
+    try {
+      const res = await fetch(`/api/monitor/equipment-registry/${equipmentId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDeletedIds(prev => new Set([...prev, equipmentId]));
+        setSelectedId(null);
+      }
+    } catch { /* 무시 */ } finally {
+      setDeletingId(null);
+    }
   };
 
   const stats = useMemo(() => {
@@ -129,11 +143,13 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
     return logs.filter(l => l.EQUIPMENT_ID === selectedId);
   }, [logs, selectedId]);
 
-  // 정렬 기준: line_code → equipment_id
-  const sorted = useMemo(() => [...equipments].sort((a, b) => {
-    const la = a.metadata?.line_code || '', lb = b.metadata?.line_code || '';
-    return la !== lb ? la.localeCompare(lb) : a.equipment_id.localeCompare(b.equipment_id);
-  }), [equipments]);
+  // 정렬 기준: line_code → equipment_id (삭제된 항목 제외)
+  const sorted = useMemo(() => [...equipments]
+    .filter(e => !deletedIds.has(e.equipment_id))
+    .sort((a, b) => {
+      const la = a.metadata?.line_code || '', lb = b.metadata?.line_code || '';
+      return la !== lb ? la.localeCompare(lb) : a.equipment_id.localeCompare(b.equipment_id);
+    }), [equipments, deletedIds]);
 
   // 3개 그룹 분리
   const groups = useMemo(() => ({
@@ -285,7 +301,40 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                       <Icon name={excluded ? 'play_arrow' : 'block'} size="sm" />
                       {excluded ? '파이프라인 활성화' : '파이프라인 배제'}
                     </button>
-                    {excluded && (
+
+                    {/* 삭제 버튼 / 확인 단계 */}
+                    {deletingId === eq.equipment_id ? (
+                      <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-sm text-error">정말 삭제하시겠습니까?</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(eq.equipment_id); }}
+                          className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg
+                            bg-error/20 text-error border border-error/40 hover:bg-error/30 transition-all active:scale-95"
+                        >
+                          <Icon name="check" size="sm" /> 삭제
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
+                          className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg
+                            bg-secondary text-muted-foreground border border-border dark:border-[oklch(0.42_0.080_281)]
+                            hover:bg-surface transition-all active:scale-95"
+                        >
+                          <Icon name="close" size="sm" /> 취소
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeletingId(eq.equipment_id); }}
+                        className="ml-auto flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border shadow-sm
+                          bg-white dark:bg-[oklch(0.32_0.065_281)] text-error border-error/30
+                          hover:bg-error/10 transition-all active:scale-95"
+                      >
+                        <Icon name="delete" size="sm" />
+                        삭제
+                      </button>
+                    )}
+
+                    {excluded && deletingId !== eq.equipment_id && (
                       <span className="text-sm text-warning/80">파일 저장은 계속되며, DB INSERT만 스킵됩니다</span>
                     )}
                   </div>
