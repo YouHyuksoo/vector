@@ -40,12 +40,8 @@ class LogIngestService {
     if (target_type === TARGET_TYPES.PROCEDURE) {
       await dynamicInsert.callProcedure(target_table, data, extraFields);
     } else if (Array.isArray(data.ROWS) && data.ROWS.length > 0) {
-      if (data.ROWS.length === 1) {
-        // 단건: 기존 경로 유지 (ORA-00001 중복 처리 포함)
-        await dynamicInsert.insert(target_table, data.ROWS[0] as Record<string, unknown>, extraFields);
-      } else {
-        // 다건: executeMany 배치 삽입 — 커넥션 1회 체크아웃으로 N행 처리
-        await dynamicInsert.insertMany(target_table, data.ROWS as Record<string, unknown>[], extraFields);
+      for (const row of data.ROWS) {
+        await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
       }
     } else {
       await dynamicInsert.insert(target_table, data, extraFields);
