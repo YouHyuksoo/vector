@@ -87,10 +87,17 @@ class DynamicInsert {
       const options: ExecuteManyOptions = {
         autoCommit: true,
         batchErrors: true,
-        bindDefs: schema.columns.map((col) => ({
-          type: this.getOracleType(col.DATA_TYPE),
-          maxSize: col.DATA_TYPE === 'VARCHAR2' ? 4000 : undefined,
-        })),
+        bindDefs: schema.columns.map((col) => {
+          const type = this.getOracleType(col.DATA_TYPE);
+          return {
+            type,
+            // DB_TYPE_VARCHAR·CLOB 계열은 maxSize 필수 (미지정 시 NJS-056)
+            // DATA_TYPE이 'VARCHAR2(50)' 형태로 저장돼 exact match 불가 → type으로 판별
+            maxSize: (type === oracledb.DB_TYPE_VARCHAR || type === oracledb.DB_TYPE_CLOB)
+              ? 4000
+              : undefined,
+          };
+        }),
       };
 
       const result = await conn.executeMany(schema.insertSql, bindRows, options);
