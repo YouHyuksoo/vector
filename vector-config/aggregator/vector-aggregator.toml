@@ -1295,19 +1295,7 @@ if .equipment_type == "SP" {
 type = "remap"
 inputs = ["parse_logs"]
 source = '''
-ts = if exists(.timestamp) { to_string!(.timestamp) } else if .equipment_type == "SELECTIVE" {
-  # ── SELECTIVE ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
-} else { to_string!(now()) }
+ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
 . = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "equipment_type": .equipment_type,   # 설비 유형 (raw 파일 저장 경로용)
