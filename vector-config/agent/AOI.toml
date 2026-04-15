@@ -42,7 +42,7 @@ fingerprint.strategy = "device_and_inode"
 start_pattern = '^.'
 condition_pattern = '.*'
 mode = "continue_through"
-timeout_ms = 5000
+timeout_ms = 10000
 
 # ── [하트비트] 주기적 상태 전송 (30초 간격) ──
 # Aggregator를 통해 Node.js API로 전달되어 Redis에 TTL 저장됩니다.
@@ -66,7 +66,7 @@ ignore_checkpoints = true
 start_pattern = '^.'
 condition_pattern = '.*'
 mode = "continue_through"
-timeout_ms = 5000
+timeout_ms = 10000
 
 # ── [설비 설정] ──
 

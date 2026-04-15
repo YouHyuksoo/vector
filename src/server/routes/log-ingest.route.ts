@@ -10,7 +10,7 @@
  */
 
 import { FastifyPluginAsync } from 'fastify';
-import { existsSync, unlinkSync, mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { logBatchSchema } from '../../schemas/log-ingest.schema.js';
 import { logIngestService } from '../../services/log-ingest.service.js';
@@ -22,8 +22,7 @@ import type { LogRecord } from '../../types/index.js';
 const RAW_LOG_BASE = 'C:\\data\\raw-logs';
 
 /**
- * 원본 로그 파일을 디스크에 저장 (기존 파일 삭제 → 새로 생성)
- * Aggregator의 raw_file 싱크를 대체하여 Node.js에서 순차 제어
+ * 원본 로그 파일을 디스크에 저장 — 항상 새 파일로 덮어쓰기
  */
 function saveRawLogFile(log: LogRecord): void {
   if (!log.raw_message || !log.filename || !log.equipment_type) return;
@@ -32,12 +31,6 @@ function saveRawLogFile(log: LogRecord): void {
   const dateDir = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const filePath = join(RAW_LOG_BASE, log.equipment_type, log.equipment_id, dateDir, log.filename);
 
-  // 기존 파일 삭제
-  if (existsSync(filePath)) {
-    unlinkSync(filePath);
-  }
-
-  // 디렉토리 생성 후 파일 쓰기
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, log.raw_message, 'utf-8');
 

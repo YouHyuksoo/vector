@@ -40,7 +40,7 @@ ignore_checkpoints = true
 start_pattern = '^.'
 condition_pattern = '.*'
 mode = "continue_through"
-timeout_ms = 5000
+timeout_ms = 10000
 [transforms.add_metadata]
 type = "remap"
 inputs = ["work_logs", "resend_logs"]

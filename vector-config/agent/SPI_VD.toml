@@ -15,17 +15,15 @@ include = [
 ]
 read_from = "beginning"
 encoding.charset = "utf-8"
-fingerprint.strategy = "checksum"
-fingerprint.bytes = 256
+fingerprint.strategy = "device_and_inode"
 ignore_older_secs = 604800
-
 
 # ── 파일 전체를 하나의 이벤트로 묶기 ──
 [sources.work_logs.multiline]
-start_pattern = "^"
-condition_pattern = 'ZZZZZ_NEVER_MATCH_ZZZZZ'
-mode = "halt_before"
-timeout_ms = 1000
+start_pattern = '^.'
+condition_pattern = '.*'
+mode = "continue_through"
+timeout_ms = 10000
 
 [transforms.add_metadata]
 type = "remap"

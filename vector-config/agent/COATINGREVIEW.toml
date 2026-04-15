@@ -25,7 +25,7 @@ fingerprint.strategy = "device_and_inode"
 start_pattern = '^.'
 condition_pattern = '.*'
 mode = "continue_through"
-timeout_ms = 5000
+timeout_ms = 10000
 
 # ── [소스] 재전송 폴더 — 여기에 복사하면 전송 후 자동 삭제 ──
 
@@ -45,7 +45,7 @@ ignore_checkpoints = true
 start_pattern = '^.'
 condition_pattern = '.*'
 mode = "continue_through"
-timeout_ms = 5000
+timeout_ms = 10000
 
 # ── [설비 설정] ──
 
