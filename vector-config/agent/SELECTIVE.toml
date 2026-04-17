@@ -18,12 +18,7 @@ encoding.charset = "utf-8"
 fingerprint.strategy = "device_and_inode"
 ignore_older_secs = 604800
 
-# ── 파일 전체를 하나의 이벤트로 묶기 ──
-[sources.work_logs.multiline]
-start_pattern = '^.'
-condition_pattern = '.*'
-mode = "continue_through"
-timeout_ms = 10000
+# 누적 CSV는 라인별 독립 레코드 — multiline 사용 금지 (그룹화로 인한 지연 발생)
 
 # ── [소스] 재전송 폴더 — 여기에 복사하면 전송 후 자동 삭제 ──
 
@@ -38,12 +33,6 @@ fingerprint.strategy = "device_and_inode"
 fingerprint.bytes = 256
 remove_after_secs = 30
 ignore_checkpoints = true
-
-[sources.resend_logs.multiline]
-start_pattern = '^.'
-condition_pattern = '.*'
-mode = "continue_through"
-timeout_ms = 10000
 
 # ── [설비 설정] ──
 [transforms.add_metadata]
