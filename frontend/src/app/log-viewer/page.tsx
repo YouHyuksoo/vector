@@ -70,11 +70,11 @@ function LogViewerInner() {
     return (
       <div className="h-screen flex items-center justify-center bg-white dark:bg-slate-900">
         <div className="text-center">
-          <div className="text-lg font-bold text-red-600 mb-2">필수 파라미터 누락</div>
+          <div className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">필수 파라미터 누락</div>
           <div className="text-sm text-gray-600 dark:text-gray-300">
             다음 파라미터가 필요합니다: <code>{missing.join(', ')}</code>
           </div>
-          <div className="text-xs text-gray-400 mt-2">
+          <div className="text-xs text-gray-400 dark:text-gray-500 mt-2">
             예) /log-viewer?line=AOI-001&amp;date=2026-04-16&amp;file=AOI_20260416.csv
           </div>
         </div>
@@ -87,11 +87,11 @@ function LogViewerInner() {
       {/* 헤더 */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
         <div className="text-sm font-mono text-gray-700 dark:text-gray-200 truncate">
-          <span className="text-gray-400">AOI / </span>
+          <span className="text-gray-400 dark:text-gray-500">AOI / </span>
           <span className="font-bold">{line}</span>
-          <span className="text-gray-400"> / </span>
+          <span className="text-gray-400 dark:text-gray-500"> / </span>
           <span>{date}</span>
-          <span className="text-gray-400"> / </span>
+          <span className="text-gray-400 dark:text-gray-500"> / </span>
           <span className="font-bold">{file}</span>
         </div>
         <button
@@ -123,13 +123,13 @@ function LogViewerInner() {
       {/* 본문 */}
       <div className="flex-1 overflow-hidden min-h-0 p-2">
         {loading && (
-          <div className="h-full flex items-center justify-center text-gray-500">
+          <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
             로그 파일 불러오는 중...
           </div>
         )}
         {!loading && error && (
           <div className="h-full flex flex-col items-center justify-center gap-3">
-            <div className="text-red-600 text-sm">{error}</div>
+            <div className="text-red-600 dark:text-red-400 text-sm">{error}</div>
             <button
               onClick={load}
               className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -150,7 +150,7 @@ function LogViewerInner() {
 export default function LogViewerPage() {
   return (
     <Suspense fallback={
-      <div className="h-screen flex items-center justify-center bg-white dark:bg-slate-900 text-gray-500">
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400">
         로딩 중...
       </div>
     }>
