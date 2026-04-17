@@ -6,11 +6,11 @@
  * 1. **주요 개념**: Vector HTTP sink가 보내는 배치 JSON을 수신 → 원본 파일 저장 → Oracle INSERT
  * 2. **데이터 흐름**: POST /api/logs → zod 검증 → 원본 파일 저장 → processLogBatch() → 202 응답
  * 3. **Vector 호환**: Vector는 JSON 배열로 전송, 수동 테스트는 { logs: [...] } 형식 지원
- * 4. **파일 저장**: raw_message가 있으면 기존 파일 삭제 후 새로 생성 (원본 보존)
+ * 4. **파일 저장**: 누적형 설비(SELECTIVE 등)는 append로 이어쓰고, 그 외는 덮어쓰기
  */
 
 import { FastifyPluginAsync } from 'fastify';
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync, appendFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { logBatchSchema } from '../../schemas/log-ingest.schema.js';
 import { logIngestService } from '../../services/log-ingest.service.js';
@@ -21,8 +21,13 @@ import type { LogRecord } from '../../types/index.js';
 
 const RAW_LOG_BASE = 'C:\\data\\raw-logs';
 
+// 누적형 로그(append 모드) 설비 유형 — 최초 전체 + 이후 delta가 같은 파일에 쌓여야 함
+const APPEND_EQUIPMENT_TYPES = new Set<string>(['SELECTIVE']);
+
 /**
- * 원본 로그 파일을 디스크에 저장 — 항상 새 파일로 덮어쓰기
+ * 원본 로그 파일을 디스크에 저장
+ * - APPEND_EQUIPMENT_TYPES: 기존 파일에 이어쓰기 (누적형)
+ * - 그 외: 덮어쓰기 (단일 파일 단위 전송)
  */
 function saveRawLogFile(log: LogRecord): void {
   if (!log.raw_message || !log.filename || !log.equipment_type) return;
@@ -32,9 +37,15 @@ function saveRawLogFile(log: LogRecord): void {
   const filePath = join(RAW_LOG_BASE, log.equipment_type, log.equipment_id, dateDir, log.filename);
 
   mkdirSync(dirname(filePath), { recursive: true });
-  writeFileSync(filePath, log.raw_message, 'utf-8');
 
-  logger.debug({ filePath }, 'Raw log file saved');
+  if (APPEND_EQUIPMENT_TYPES.has(log.equipment_type)) {
+    const separator = log.raw_message.endsWith('\n') ? '' : '\n';
+    appendFileSync(filePath, log.raw_message + separator, 'utf-8');
+  } else {
+    writeFileSync(filePath, log.raw_message, 'utf-8');
+  }
+
+  logger.debug({ filePath, equipment_type: log.equipment_type }, 'Raw log file saved');
 }
 
 export const logIngestRoute: FastifyPluginAsync = async (app) => {
