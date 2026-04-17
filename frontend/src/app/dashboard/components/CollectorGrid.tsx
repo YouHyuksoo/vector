@@ -6,7 +6,7 @@
  */
 'use client';
 import { useMemo, useState } from 'react';
-import { Icon } from '@/components/ui';
+import { Icon, Modal } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
 import { RemoteTabPanel } from '../equipment/components/RemoteTabPanel';
 
@@ -248,16 +248,6 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                       </div>
                     </div>
 
-                    {/* 성공률 바 */}
-                    <div className="h-1 rounded-full bg-border/50 dark:bg-[oklch(0.33_0.065_281)] overflow-hidden mb-2">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          rate >= 90 ? 'bg-primary' : rate >= 70 ? 'bg-warning' : total > 0 ? 'bg-muted-foreground/50' : 'bg-transparent'
-                        }`}
-                        style={{ width: rate >= 0 ? `${rate}%` : '0%' }}
-                      />
-                    </div>
-
                     {/* 하단: IP + 경과시간 */}
                     <div className="flex items-center justify-between pt-1.5
                       border-t border-border/40 dark:border-[oklch(0.36_0.070_281)]">
@@ -284,80 +274,15 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
                     )}
                   </div>
                 </div>
-
-                {/* 선택 시 원격 관리 탭 패널 */}
-                {isSelected && (
-                  <div className="flex items-center gap-3 px-4 py-3 mt-1 rounded-t-lg
-                    border border-b-0 border-border dark:border-[oklch(0.42_0.080_281)]
-                    bg-secondary/30 dark:bg-[oklch(0.22_0.045_281)]">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleToggleExclude(eq.equipment_id, excluded); }}
-                      className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border shadow-sm transition-all active:scale-95 ${
-                        excluded
-                          ? 'bg-warning/20 text-warning border-warning/40 hover:bg-warning/30'
-                          : 'bg-white dark:bg-[oklch(0.32_0.065_281)] text-text dark:text-white border-border dark:border-[oklch(0.42_0.080_281)] hover:bg-surface dark:hover:bg-[oklch(0.36_0.070_281)]'
-                      }`}
-                    >
-                      <Icon name={excluded ? 'play_arrow' : 'block'} size="sm" />
-                      {excluded ? '파이프라인 활성화' : '파이프라인 배제'}
-                    </button>
-
-                    {/* 삭제 버튼 / 확인 단계 */}
-                    {deletingId === eq.equipment_id ? (
-                      <div className="flex items-center gap-2 ml-auto">
-                        <span className="text-sm text-error">정말 삭제하시겠습니까?</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(eq.equipment_id); }}
-                          className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg
-                            bg-error/20 text-error border border-error/40 hover:bg-error/30 transition-all active:scale-95"
-                        >
-                          <Icon name="check" size="sm" /> 삭제
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
-                          className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg
-                            bg-secondary text-muted-foreground border border-border dark:border-[oklch(0.42_0.080_281)]
-                            hover:bg-surface transition-all active:scale-95"
-                        >
-                          <Icon name="close" size="sm" /> 취소
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDeletingId(eq.equipment_id); }}
-                        className="ml-auto flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border shadow-sm
-                          bg-white dark:bg-[oklch(0.32_0.065_281)] text-error border-error/30
-                          hover:bg-error/10 transition-all active:scale-95"
-                      >
-                        <Icon name="delete" size="sm" />
-                        삭제
-                      </button>
-                    )}
-
-                    {excluded && deletingId !== eq.equipment_id && (
-                      <span className="text-sm text-warning/80">파일 저장은 계속되며, DB INSERT만 스킵됩니다</span>
-                    )}
-                  </div>
-                )}
-                {isSelected && (
-                  <RemoteTabPanel
-                    equipmentId={eq.equipment_id}
-                    activityPanel={
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-foreground dark:text-white">
-                          <Icon name="history" size="xs" className="text-primary" />
-                          {t('collector.recentActivity')}
-                        </div>
-                        <ActivityPanel logs={selectedLogs} t={t} />
-                      </div>
-                    }
-                  />
-                )}
               </div>
             );
       })}
     </div>
   );
+
+  const selectedEquipment = selectedId ? sorted.find(e => e.equipment_id === selectedId) : null;
+  const selectedExcluded = selectedEquipment?.metadata?.excluded === 'true';
+  const selectedLine = selectedEquipment?.metadata?.line_code || '';
 
   const up = groups.online.length;
   const dn = groups.offline.length;
@@ -410,6 +335,86 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
           )}
         </div>
       )}
+
+      {/* 설비 상세 모달 — 카드 클릭 시 열림 */}
+      <Modal
+        isOpen={!!selectedEquipment}
+        onClose={() => { setSelectedId(null); setDeletingId(null); }}
+        size="6xl"
+        title={selectedEquipment
+          ? `${selectedLine ? selectedLine + ' · ' : ''}${selectedEquipment.equipment_id}`
+          : ''}
+      >
+        {selectedEquipment && (
+          <div className="space-y-3">
+            {/* 액션 바 */}
+            <div className="flex items-center gap-3 px-4 py-3 rounded-lg
+              border border-border dark:border-[oklch(0.42_0.080_281)]
+              bg-secondary/30 dark:bg-[oklch(0.22_0.045_281)]">
+              <button
+                onClick={() => handleToggleExclude(selectedEquipment.equipment_id, selectedExcluded)}
+                className={`flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border shadow-sm transition-all active:scale-95 ${
+                  selectedExcluded
+                    ? 'bg-warning/20 text-warning border-warning/40 hover:bg-warning/30'
+                    : 'bg-white dark:bg-[oklch(0.32_0.065_281)] text-text dark:text-white border-border dark:border-[oklch(0.42_0.080_281)] hover:bg-surface dark:hover:bg-[oklch(0.36_0.070_281)]'
+                }`}
+              >
+                <Icon name={selectedExcluded ? 'play_arrow' : 'block'} size="sm" />
+                {selectedExcluded ? '파이프라인 활성화' : '파이프라인 배제'}
+              </button>
+
+              {deletingId === selectedEquipment.equipment_id ? (
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-sm text-error">정말 삭제하시겠습니까?</span>
+                  <button
+                    onClick={() => handleDelete(selectedEquipment.equipment_id)}
+                    className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg
+                      bg-error/20 text-error border border-error/40 hover:bg-error/30 transition-all active:scale-95"
+                  >
+                    <Icon name="check" size="sm" /> 삭제
+                  </button>
+                  <button
+                    onClick={() => setDeletingId(null)}
+                    className="flex items-center gap-1 text-sm font-medium px-3 py-1.5 rounded-lg
+                      bg-secondary text-muted-foreground border border-border dark:border-[oklch(0.42_0.080_281)]
+                      hover:bg-surface transition-all active:scale-95"
+                  >
+                    <Icon name="close" size="sm" /> 취소
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setDeletingId(selectedEquipment.equipment_id)}
+                  className="ml-auto flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border shadow-sm
+                    bg-white dark:bg-[oklch(0.32_0.065_281)] text-error border-error/30
+                    hover:bg-error/10 transition-all active:scale-95"
+                >
+                  <Icon name="delete" size="sm" />
+                  삭제
+                </button>
+              )}
+
+              {selectedExcluded && deletingId !== selectedEquipment.equipment_id && (
+                <span className="text-sm text-warning/80">파일 저장은 계속되며, DB INSERT만 스킵됩니다</span>
+              )}
+            </div>
+
+            {/* 탭 패널 */}
+            <RemoteTabPanel
+              equipmentId={selectedEquipment.equipment_id}
+              activityPanel={
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-foreground dark:text-white">
+                    <Icon name="history" size="xs" className="text-primary" />
+                    {t('collector.recentActivity')}
+                  </div>
+                  <ActivityPanel logs={selectedLogs} t={t} />
+                </div>
+              }
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
