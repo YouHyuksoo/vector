@@ -13,6 +13,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Icon, Button, Card, Modal } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { useI18n } from '@/contexts/I18nContext';
+import BatchIngestModal from './components/BatchIngestModal';
 
 /** 경로에서 설비유형/설비ID 자동 추출 — RAW_LOG_BASE / equipType / equipId / date / file */
 function extractEquipInfo(filePath: string): { equipmentType: string; equipmentId: string } {
@@ -245,6 +246,8 @@ export default function LogFilesPage() {
   const [ingesting, setIngesting] = useState(false);
   const [ingestResult, setIngestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [vrlTargetMap, setVrlTargetMap] = useState<Record<string, { targetTable: string }>>({});
+  const [showBatchIngestModal, setShowBatchIngestModal] = useState(false);
+  const [batchFilePaths, setBatchFilePaths] = useState<string[]>([]);
 
   /** VRL 등록된 설비 목록 로드 (한 번만) */
   useEffect(() => {
@@ -492,16 +495,32 @@ export default function LogFilesPage() {
             ..
           </button>
         )}
-        {checked.size > 0 && (
-          <>
-            <Button variant="primary" leftIcon="download" size="sm" onClick={handleDownloadSelected}>
-              {t('logFiles.downloadSelected')} ({entries.filter(e => checked.has(e.name) && e.type === 'file').length})
-            </Button>
-            <Button variant="danger" leftIcon="delete" size="sm" onClick={() => { setDeleteMsg(null); setShowDeleteModal(true); }} disabled={deleting}>
-              {deleting ? '...' : `${t('logFiles.deleteSelected')} (${checked.size})`}
-            </Button>
-          </>
-        )}
+        {checked.size > 0 && (() => {
+          const selectedFileNames = entries.filter(e => checked.has(e.name) && e.type === 'file').map(e => e.name);
+          return (
+            <>
+              <Button variant="primary" leftIcon="download" size="sm" onClick={handleDownloadSelected}>
+                {t('logFiles.downloadSelected')} ({selectedFileNames.length})
+              </Button>
+              {selectedFileNames.length > 0 && (
+                <Button variant="primary" leftIcon="upload" size="sm"
+                  className="!bg-warning hover:!bg-warning/80"
+                  onClick={() => {
+                    const paths = selectedFileNames.map(name =>
+                      currentPath ? `${currentPath}/${name}` : name,
+                    );
+                    setBatchFilePaths(paths);
+                    setShowBatchIngestModal(true);
+                  }}>
+                  {t('logFiles.batchIngest')} ({selectedFileNames.length})
+                </Button>
+              )}
+              <Button variant="danger" leftIcon="delete" size="sm" onClick={() => { setDeleteMsg(null); setShowDeleteModal(true); }} disabled={deleting}>
+                {deleting ? '...' : `${t('logFiles.deleteSelected')} (${checked.size})`}
+              </Button>
+            </>
+          );
+        })()}
       </Card>
 
       <div className="flex gap-4" style={{ height: 'calc(100vh - 230px)' }}>
@@ -536,7 +555,7 @@ export default function LogFilesPage() {
               return (
                 <div
                   key={entry.name}
-                  className={`w-full text-left px-3 py-2 flex items-center gap-2 transition-colors border-b border-border/30 dark:border-border-dark/30
+                  className={`w-full text-left px-2 py-1 flex items-center gap-1.5 transition-colors border-b border-border/30 dark:border-border-dark/30
                     ${isSelected
                       ? 'bg-primary/10 text-text dark:text-white font-bold'
                       : 'hover:bg-surface dark:hover:bg-surface-dark text-text dark:text-white'
@@ -546,10 +565,10 @@ export default function LogFilesPage() {
                     checked={isChecked}
                     onChange={() => toggleCheck(entry.name)}
                     onClick={e => e.stopPropagation()}
-                    className="w-3.5 h-3.5 rounded border-border accent-primary shrink-0" />
+                    className="w-3 h-3 rounded border-border accent-primary shrink-0" />
                   <button
                     onClick={() => handleEntryClick(entry)}
-                    className="flex items-center gap-2 min-w-0 flex-1"
+                    className="flex items-center gap-1.5 min-w-0 flex-1"
                     title={entry.type === 'file' && entry.size != null
                       ? `${entry.name}  (${formatSize(entry.size)})`
                       : entry.name}
@@ -559,9 +578,9 @@ export default function LogFilesPage() {
                       size="xs"
                       className={`shrink-0 ${entry.type === 'dir' ? 'text-warning' : 'text-muted-foreground'}`}
                     />
-                    <span className="text-left text-sm whitespace-nowrap">{entry.name}</span>
+                    <span className="text-left text-[11px] whitespace-nowrap">{entry.name}</span>
                     {entry.type === 'file' && entry.size != null && (
-                      <span className="text-[10px] text-muted-foreground shrink-0">{formatSize(entry.size)}</span>
+                      <span className="text-[9px] text-muted-foreground shrink-0">{formatSize(entry.size)}</span>
                     )}
                     {entry.type === 'dir' && (
                       <Icon name="chevron_right" size="xs" className="text-muted-foreground shrink-0" />
@@ -684,6 +703,14 @@ export default function LogFilesPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* 일괄 수동 투입 모달 */}
+      <BatchIngestModal
+        isOpen={showBatchIngestModal}
+        onClose={() => setShowBatchIngestModal(false)}
+        filePaths={batchFilePaths}
+        vrlTargetMap={vrlTargetMap}
+      />
 
       {/* 수동 투입 모달 */}
       <Modal isOpen={showIngestModal} onClose={() => setShowIngestModal(false)} title={t('logFiles.manualIngest')} size="sm">
