@@ -29,13 +29,22 @@ function parseTimestamp(ts: string): Date | string {
 
 class LogIngestService {
   async processLog(log: LogRecord): Promise<void> {
-    const { equipment_id, target_type, target_table, data, timestamp, line_code, filename } = log;
+    const { equipment_id, equipment_type, target_type, target_table, data, timestamp, line_code, filename } = log;
     const extraFields: Record<string, unknown> = {
       equipment_id,
       timestamp: parseTimestamp(timestamp),
       line_code: line_code || '',
       filename: filename || '',
     };
+
+    // SELECTIVE: 헤더/빈 줄만 있는 이벤트는 .data.ROWS=[] 로 들어옴 — 빈 row INSERT 방지
+    if (
+      equipment_type === 'SELECTIVE' &&
+      Array.isArray(data.ROWS) &&
+      data.ROWS.length === 0
+    ) {
+      return;
+    }
 
     if (target_type === TARGET_TYPES.PROCEDURE) {
       await dynamicInsert.callProcedure(target_table, data, extraFields);
