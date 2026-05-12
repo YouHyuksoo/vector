@@ -93,6 +93,13 @@ jobs:
           $zip = "$env:DEPLOY_DIR\vector-bin\vector-x64.zip"
           $dst = "$env:DEPLOY_DIR\vector-bin"
           if (Test-Path $zip) {
+            # vector.exe 실행 중이면 Copy-Item 충돌 → 잠시 정지 (이후 Aggregator restart 단계에서 재시작)
+            $vectorProc = Get-Process -Name "vector" -ErrorAction SilentlyContinue
+            if ($vectorProc) {
+              Stop-Process -Name "vector" -Force
+              Start-Sleep -Seconds 2
+              Write-Host "vector.exe stopped for extract"
+            }
             Expand-Archive -Path $zip -DestinationPath "$dst\temp" -Force
             # zip 안에 bin/vector.exe 가 있음 → vector-bin/bin/vector.exe 로 이동
             if (Test-Path "$dst\temp\bin") {

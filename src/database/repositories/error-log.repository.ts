@@ -154,8 +154,16 @@ class ProcessLogRepository {
     const limit = Math.min(Math.max(params.limit || 100, 1), 500);
     const logs = filtered.slice(0, limit);
 
-    const sourceTables = [...new Set(all.flatMap(r => r.SOURCE_TABLE.split(',')))].sort();
-    const equipmentIds = [...new Set(all.flatMap(r => r.EQUIPMENT_ID.split(',')))].sort();
+    // flatMap은 중간 배열을 통째로 생성해 30만 행에서 heap을 크게 소모.
+    // Set에 직접 누적하여 메모리 사용 절감.
+    const sourceTablesSet = new Set<string>();
+    const equipmentIdsSet = new Set<string>();
+    for (const r of all) {
+      for (const t of r.SOURCE_TABLE.split(',')) sourceTablesSet.add(t);
+      for (const e of r.EQUIPMENT_ID.split(',')) equipmentIdsSet.add(e);
+    }
+    const sourceTables = [...sourceTablesSet].sort();
+    const equipmentIds = [...equipmentIdsSet].sort();
 
     return { logs, total, sourceTables, equipmentIds };
   }
@@ -285,9 +293,13 @@ class ProcessLogRepository {
   }
 
   private getMaxId(): number {
-    const files = this.listLogFiles().map(f => join(LOG_DIR, f));
+    const files = this.listLogFiles();
+    if (files.length === 0) return 0;
+    // LOG_ID는 증가형 카운터 — 최신 파일의 마지막 줄이 최대값.
+    // 날짜 경계 직후 새 파일이 비어있을 가능성을 대비해 최근 2개 파일만 스캔.
+    const recent = files.slice(-2).map(f => join(LOG_DIR, f));
     let max = 0;
-    for (const fp of files) {
+    for (const fp of recent) {
       for (const r of this.readFile(fp)) {
         if (r.LOG_ID > max) max = r.LOG_ID;
       }
