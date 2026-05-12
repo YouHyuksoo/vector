@@ -157,7 +157,10 @@
       "modified": "수정일",
       "watchPaths": "감시 경로",
       "noFiles": "감시 대상 파일 없음",
-      "resendTitle": "재전송 폴더"
+      "resendTitle": "재전송 폴더",
+      "vectorLog": "Vector 실행 로그 (마지막 100줄)",
+      "vectorLogEmpty": "Vector 실행 로그가 비어있습니다",
+      "vectorLogUnsupported": "이 설비의 Agent Manager가 응답하지 않거나 vector.log 조회를 지원하지 않습니다. Agent Manager를 업데이트해 주세요."
     }
   },
   "errors": {

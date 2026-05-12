@@ -157,7 +157,10 @@
       "modified": "Modified",
       "watchPaths": "Watch Paths",
       "noFiles": "No watched files",
-      "resendTitle": "Resend Folder"
+      "resendTitle": "Resend Folder",
+      "vectorLog": "Vector Execution Log (last 100 lines)",
+      "vectorLogEmpty": "Vector execution log is empty",
+      "vectorLogUnsupported": "Agent Manager is unreachable or does not support vector.log. Please update the Agent Manager."
     }
   },
   "errors": {

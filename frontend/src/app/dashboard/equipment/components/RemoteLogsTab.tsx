@@ -1,7 +1,7 @@
 /**
- * @file RemoteLogsTab.tsx — 원격 장비 감시 로그 파일 + 재전송 폴더 탭
- * @description agent-monitor의 /api/logs/recent, /api/logs/resend를 프록시로 조회.
- *   초보자 가이드: 원격 장비에서 Vector가 감시 중인 로그 파일과 재전송 폴더 파일을 보여줍니다.
+ * @file RemoteLogsTab.tsx — 원격 장비 감시 로그 파일 + 재전송 폴더 + Vector 실행 로그 탭
+ * @description agent-monitor의 /api/logs/recent, /api/logs/resend, /api/vector-log를 프록시로 조회.
+ *   초보자 가이드: 원격 장비에서 Vector가 감시 중인 로그 파일, 재전송 폴더, vector.log 마지막 100줄을 보여줍니다.
  */
 'use client';
 import { useEffect, useState, useCallback } from 'react';
@@ -27,6 +27,11 @@ interface ResendData {
   reachable: boolean;
   files?: FileEntry[];
   resendPath?: string;
+}
+
+interface VectorLogData {
+  reachable: boolean;
+  log?: string;
 }
 
 function formatBytes(bytes: number): string {
@@ -74,20 +79,24 @@ export function RemoteLogsTab({ equipmentId }: { equipmentId: string }) {
   const { t } = useI18n();
   const [data, setData] = useState<LogsData | null>(null);
   const [resend, setResend] = useState<ResendData | null>(null);
+  const [vectorLog, setVectorLog] = useState<VectorLogData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [logsRes, resendRes] = await Promise.all([
+      const [logsRes, resendRes, vectorLogRes] = await Promise.all([
         fetch(`/api/monitor/remote/${encodeURIComponent(equipmentId)}/logs`),
         fetch(`/api/monitor/remote/${encodeURIComponent(equipmentId)}/resend-logs`),
+        fetch(`/api/monitor/remote/${encodeURIComponent(equipmentId)}/vector-log`),
       ]);
       setData(await logsRes.json());
       setResend(await resendRes.json());
+      setVectorLog(await vectorLogRes.json());
     } catch {
       setData({ reachable: false });
       setResend({ reachable: false });
+      setVectorLog({ reachable: false });
     } finally {
       setLoading(false);
     }
@@ -156,6 +165,27 @@ export function RemoteLogsTab({ equipmentId }: { equipmentId: string }) {
           </div>
         )}
         <FileTable files={resendFiles} t={t} />
+      </div>
+
+      {/* Vector 실행 로그 (vector.log 마지막 100줄) */}
+      <div className="space-y-1.5 pt-2 border-t border-border/30 dark:border-border-dark/30">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+            <Icon name="terminal" size="xs" className="text-info" />
+            {t('remote.logs.vectorLog')}
+          </span>
+        </div>
+        {vectorLog?.reachable && vectorLog.log && vectorLog.log.length > 0 ? (
+          <pre className="max-h-60 overflow-auto text-[11px] leading-snug font-mono
+            bg-slate-50 dark:bg-slate-900/60 text-foreground dark:text-slate-200
+            border border-border/30 dark:border-border-dark/30 rounded p-2 whitespace-pre-wrap break-all">
+            {vectorLog.log}
+          </pre>
+        ) : (
+          <div className="text-center py-3 text-xs text-muted-foreground/60">
+            {vectorLog?.reachable ? t('remote.logs.vectorLogEmpty') : t('remote.logs.vectorLogUnsupported')}
+          </div>
+        )}
       </div>
     </div>
   );

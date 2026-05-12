@@ -157,7 +157,10 @@
       "modified": "Modificado",
       "watchPaths": "Rutas de Monitoreo",
       "noFiles": "Sin archivos monitoreados",
-      "resendTitle": "Carpeta de Reenvío"
+      "resendTitle": "Carpeta de Reenvío",
+      "vectorLog": "Registro de Ejecución de Vector (últimas 100 líneas)",
+      "vectorLogEmpty": "El registro de Vector está vacío",
+      "vectorLogUnsupported": "Agent Manager no responde o no admite vector.log. Actualice el Agent Manager."
     }
   },
   "errors": {
