@@ -264,7 +264,9 @@ class ProcessLogRepository {
   private readFiles(filePaths: string[]): ProcessLogRecord[] {
     const records: ProcessLogRecord[] = [];
     for (const fp of filePaths) {
-      records.push(...this.readFile(fp));
+      // spread(...) 사용 금지 — JSONL 한 파일이 ~65,536줄 초과 시
+      // V8 함수 인자 한계로 RangeError: Maximum call stack size exceeded 발생
+      for (const r of this.readFile(fp)) records.push(r);
     }
     return records;
   }
