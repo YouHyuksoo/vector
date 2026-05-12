@@ -147,8 +147,8 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
   const sorted = useMemo(() => [...equipments]
     .filter(e => !deletedIds.has(e.equipment_id))
     .sort((a, b) => {
-      const la = a.metadata?.line_code || '', lb = b.metadata?.line_code || '';
-      return la !== lb ? la.localeCompare(lb) : a.equipment_id.localeCompare(b.equipment_id);
+      const ta = a.metadata?.equipment_type || '', tb = b.metadata?.equipment_type || '';
+      return ta !== tb ? ta.localeCompare(tb) : a.equipment_id.localeCompare(b.equipment_id);
     }), [equipments, deletedIds]);
 
   // 3개 그룹 분리
