@@ -11,6 +11,7 @@ config/ai-config.json
 
 # 서버에서 동적 관리되는 파일
 config/parse-fields.json
+data/heartbeat-snapshot.json
 
 # Vector binary & runtime data
 vector-bin/
