@@ -215,37 +215,42 @@ if .equipment_type == "SP" {
 
 } else if .equipment_type == "SPI" {
   .target_table = "LOG_SPI"
-  # Log Structure:
-  # Line 0: Master header row (PCBName,MasterBarcode,InspectionDate,InspectionEndTime,PCBResult,Lane)
-  # Line 1: Master data row (single row)
-  # Line 2: Panel header row (PanelResult,PanelNo,ArrayBarcode,PanelInspectionStartTime,PanelInspectionEndTime)
-  # Line 3+: Panel data rows (multiple rows)
-  # Line X: PadDefectType header row (IGNORE this and all following lines)
+  # Log Structure (신규 KohYoung SPI 포맷, 2026-05~):
+  # Line 0: Master header (MasterBarcode,PCBID,InspectionDate,InspectionStartTime,InspectionEndTime,TotalPanelCnt,JobName,PCBResult,UserID,LotInfo,MachineID,Side,Lane)
+  # Line 1: Master data row
+  # Line 2: "Panel" separator
+  # Line 3: Panel header (ArrayBarcode,PanelResult)
+  # Line 4+: Panel data rows
+  # Line X: "ComponentID" header → IGNORE this and all following lines
   #
-  # User requirement:
-  # - Master data (line 1) + Panel data (lines 3+) must be combined into single rows in .data.ROWS
-  # - PadDefectType section (and any following) must be ignored
-  # - Each panel row becomes one row in .data.ROWS, with master data merged
+  # Master data (line 1) + Panel data (lines 4+) combined into .data.ROWS
 
   lines = split!(.message, "\n")
 
   # Parse Master section (line 1)
   master_cols = split(to_string!(get!(lines, [1])), ",")
   master_data = {
-    "PCB_NAME": strip_whitespace(to_string!(get!(master_cols, [0]))),
-    "MASTER_BARCODE": strip_whitespace(to_string!(get!(master_cols, [1]))),
+    "MASTER_BARCODE": strip_whitespace(to_string!(get!(master_cols, [0]))),
+    "PCBID": strip_whitespace(to_string!(get!(master_cols, [1]))),
     "INSPECTION_DATE": strip_whitespace(to_string!(get!(master_cols, [2]))),
-    "INSPECTION_END_TIME": strip_whitespace(to_string!(get!(master_cols, [3]))),
-    "PCB_RESULT": strip_whitespace(to_string!(get!(master_cols, [4]))),
-    "LANE": strip_whitespace(to_string!(get!(master_cols, [5])))
+    "INSPECTION_START_TIME": strip_whitespace(to_string!(get!(master_cols, [3]))),
+    "INSPECTION_END_TIME": strip_whitespace(to_string!(get!(master_cols, [4]))),
+    "TOTAL_PANEL_CNT": strip_whitespace(to_string!(get!(master_cols, [5]))),
+    "JOB_NAME": strip_whitespace(to_string!(get!(master_cols, [6]))),
+    "PCB_RESULT": strip_whitespace(to_string!(get!(master_cols, [7]))),
+    "USER_ID": strip_whitespace(to_string!(get!(master_cols, [8]))),
+    "LOT_INFO": strip_whitespace(to_string!(get!(master_cols, [9]))),
+    "MACHINE_ID": strip_whitespace(to_string!(get!(master_cols, [10]))),
+    "SIDE": strip_whitespace(to_string!(get!(master_cols, [11]))),
+    "LANE": strip_whitespace(to_string!(get!(master_cols, [12])))
   }
 
   .data.ROWS = []
-  panel_start_line = 3
+  panel_start_line = 4
   panel_end_line = length(lines)
 
   for_each(array!(slice!(lines, panel_start_line))) -> |idx, line| {
-    if starts_with(to_string!(line), "PadDefectType") {
+    if starts_with(to_string!(line), "ComponentID") {
       panel_end_line = panel_start_line + idx
     }
   }
@@ -255,17 +260,21 @@ if .equipment_type == "SP" {
     if row != "" {
       panel_cols = split(to_string!(row), ",")
       item = {
-        "PCB_NAME": master_data.PCB_NAME,
         "MASTER_BARCODE": master_data.MASTER_BARCODE,
+        "PCBID": master_data.PCBID,
         "INSPECTION_DATE": master_data.INSPECTION_DATE,
+        "INSPECTION_START_TIME": master_data.INSPECTION_START_TIME,
         "INSPECTION_END_TIME": master_data.INSPECTION_END_TIME,
+        "TOTAL_PANEL_CNT": master_data.TOTAL_PANEL_CNT,
+        "JOB_NAME": master_data.JOB_NAME,
         "PCB_RESULT": master_data.PCB_RESULT,
+        "USER_ID": master_data.USER_ID,
+        "LOT_INFO": master_data.LOT_INFO,
+        "MACHINE_ID": master_data.MACHINE_ID,
+        "SIDE": master_data.SIDE,
         "LANE": master_data.LANE,
-        "PANEL_RESULT": strip_whitespace(to_string!(get!(panel_cols, [0]))),
-        "PANEL_NO": strip_whitespace(to_string!(get!(panel_cols, [1]))),
-        "ARRAY_BARCODE": strip_whitespace(to_string!(get!(panel_cols, [2]))),
-        "PANEL_INSPECTION_START_TIME": strip_whitespace(to_string!(get!(panel_cols, [3]))),
-        "PANEL_INSPECTION_END_TIME": strip_whitespace(to_string!(get!(panel_cols, [4])))
+        "ARRAY_BARCODE": strip_whitespace(to_string!(get!(panel_cols, [0]))),
+        "PANEL_RESULT": strip_whitespace(to_string!(get!(panel_cols, [1])))
       }
       .data.ROWS = push(.data.ROWS, item)
     }
