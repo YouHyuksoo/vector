@@ -144,6 +144,36 @@ jobs:
           }
           pm2 save
 
+      - name: Verify backend port + cleanup orphan
+        # PM2 graceful shutdown stuck 시 구 backend가 port 3110 점유한 채 남아
+        # 신 backend가 EADDRINUSE로 재시작 반복하는 사고 방지 (2026-05-14 발생).
+        # PM2가 관리하는 PID와 실제 listen PID 다르면 orphan으로 보고 강제 정리.
+        run: |
+          Start-Sleep -Seconds 5
+          try {
+            $pm2Json = pm2 jlist 2>$null | ConvertFrom-Json
+            $backend = $pm2Json | Where-Object { $_.name -eq 'vector-backend' } | Select-Object -First 1
+            $pm2Pid = if ($backend -and $backend.pid) { [int]$backend.pid } else { 0 }
+            $listenLine = netstat -ano | Select-String '0\.0\.0\.0:3110\s+0\.0\.0\.0:0\s+LISTENING' | Select-Object -First 1
+            $listenPid = if ($listenLine) { [int](($listenLine.ToString() -split '\s+')[-1]) } else { 0 }
+            Write-Host "PM2 backend PID: $pm2Pid, Port 3110 listen PID: $listenPid"
+            if ($listenPid -ne 0 -and $listenPid -ne $pm2Pid) {
+              Write-Host "##[warning]Orphan PID $listenPid holding port 3110 — killing"
+              taskkill /F /PID $listenPid 2>$null
+              Start-Sleep -Seconds 2
+              pm2 restart vector-backend
+              Start-Sleep -Seconds 5
+              Write-Host "Backend restarted after orphan cleanup"
+            } elseif ($pm2Pid -ne 0 -and $listenPid -eq 0) {
+              Write-Host "##[warning]PM2 backend $pm2Pid not listening on 3110 yet — extra wait"
+              Start-Sleep -Seconds 5
+            } else {
+              Write-Host "Backend port verified clean"
+            }
+          } catch {
+            Write-Host "##[warning]Port verification failed: $_"
+          }
+
       - name: Restart Vector Aggregator if TOML changed
         run: |
           $dst = "$env:DEPLOY_DIR\vector-config\aggregator\vector-aggregator.toml"
