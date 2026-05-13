@@ -67,13 +67,31 @@ export interface ErrorLogEntry {
 
 class ProcessLogRepository {
   private idCounter = 0;
+  // 인메모리 인덱스 — query() 응답의 sourceTables/equipmentIds 캐시.
+  // 매 query마다 전체 파일을 풀 스캔하지 않도록 write 시 incremental 누적.
+  private sourceTablesSet = new Set<string>();
+  private equipmentIdsSet = new Set<string>();
 
   constructor() {
     if (!existsSync(LOG_DIR)) {
       mkdirSync(LOG_DIR, { recursive: true });
     }
-    this.idCounter = this.getMaxId();
+    this.initFromRecentFiles();
     this.cleanOldFiles();
+  }
+
+  /** 부팅 시 최근 7일 파일을 1회만 스캔 — idCounter 산출 + 인덱스 시드 */
+  private initFromRecentFiles(): void {
+    const files = this.listLogFiles();
+    if (files.length === 0) return;
+    const recent = files.slice(-7).map(f => join(LOG_DIR, f));
+    for (const fp of recent) {
+      for (const r of this.readFile(fp)) {
+        if (r.LOG_ID > this.idCounter) this.idCounter = r.LOG_ID;
+        for (const t of r.SOURCE_TABLE.split(',')) this.sourceTablesSet.add(t);
+        for (const e of r.EQUIPMENT_ID.split(',')) this.equipmentIdsSet.add(e);
+      }
+    }
   }
 
   /** 처리 로그 기록 (성공/오류 모두) */
@@ -92,6 +110,9 @@ class ProcessLogRepository {
         ...(entry.raw_data ? { RAW_DATA: entry.raw_data } : {}),
       };
       appendFileSync(this.getFilePath(now), JSON.stringify(record) + '\n', 'utf-8');
+      // 인덱스 incremental 갱신
+      for (const t of entry.source_table.split(',')) this.sourceTablesSet.add(t);
+      for (const e of entry.equipment_id.split(',')) this.equipmentIdsSet.add(e);
     } catch (err) {
       logger.error({ err, entry }, 'Failed to write process log to file');
     }
@@ -122,7 +143,12 @@ class ProcessLogRepository {
 
   /** 필터 조건에 맞는 로그 목록 조회 */
   query(params: ProcessQueryParams): ProcessQueryResult {
-    const files = this.getTargetFiles(params.startDate, params.endDate);
+    // 명시적 날짜 없으면 최근 1일만 로드 (전체 누적 파일 풀 스캔 방지).
+    // 더 긴 범위를 보려면 클라이언트가 startDate/endDate를 명시 호출.
+    const effectiveStart = (!params.startDate && !params.endDate)
+      ? new Date(Date.now() - 86400000).toISOString().substring(0, 10)
+      : params.startDate;
+    const files = this.getTargetFiles(effectiveStart, params.endDate);
     const all = this.readFiles(files);
 
     let filtered = all;
@@ -154,16 +180,9 @@ class ProcessLogRepository {
     const limit = Math.min(Math.max(params.limit || 100, 1), 500);
     const logs = filtered.slice(0, limit);
 
-    // flatMap은 중간 배열을 통째로 생성해 30만 행에서 heap을 크게 소모.
-    // Set에 직접 누적하여 메모리 사용 절감.
-    const sourceTablesSet = new Set<string>();
-    const equipmentIdsSet = new Set<string>();
-    for (const r of all) {
-      for (const t of r.SOURCE_TABLE.split(',')) sourceTablesSet.add(t);
-      for (const e of r.EQUIPMENT_ID.split(',')) equipmentIdsSet.add(e);
-    }
-    const sourceTables = [...sourceTablesSet].sort();
-    const equipmentIds = [...equipmentIdsSet].sort();
+    // sourceTables/equipmentIds는 인메모리 인덱스에서 즉시 반환 — 풀 스캔 불필요.
+    const sourceTables = [...this.sourceTablesSet].sort();
+    const equipmentIds = [...this.equipmentIdsSet].sort();
 
     return { logs, total, sourceTables, equipmentIds };
   }
@@ -240,6 +259,8 @@ class ProcessLogRepository {
       unlinkSync(join(LOG_DIR, file));
     }
     this.idCounter = 0;
+    this.sourceTablesSet.clear();
+    this.equipmentIdsSet.clear();
     return count;
   }
 
@@ -290,21 +311,6 @@ class ProcessLogRepository {
     } catch {
       return [];
     }
-  }
-
-  private getMaxId(): number {
-    const files = this.listLogFiles();
-    if (files.length === 0) return 0;
-    // LOG_ID는 증가형 카운터 — 최신 파일의 마지막 줄이 최대값.
-    // 날짜 경계 직후 새 파일이 비어있을 가능성을 대비해 최근 2개 파일만 스캔.
-    const recent = files.slice(-2).map(f => join(LOG_DIR, f));
-    let max = 0;
-    for (const fp of recent) {
-      for (const r of this.readFile(fp)) {
-        if (r.LOG_ID > max) max = r.LOG_ID;
-      }
-    }
-    return max;
   }
 
   private cleanOldFiles(): void {
