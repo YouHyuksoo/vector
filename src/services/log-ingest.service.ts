@@ -80,34 +80,38 @@ class LogIngestService {
     let accepted = 0;
     let failed = 0;
 
-    // 청크 단위 병렬 처리 — 서로 다른 logRecord는 독립이라 동시 INSERT 안전.
-    // 트리거는 row level lock으로 자체 처리, 같은 transaction 아니라 mutating 없음.
-    // 한 batch=100 logRecord가 직렬 400초 → 청크 10 병렬 약 40초로 단축.
-    const CHUNK_SIZE = 10;
-    for (let i = 0; i < logs.length; i += CHUNK_SIZE) {
-      const chunk = logs.slice(i, i + CHUNK_SIZE);
-      await Promise.allSettled(
-        chunk.map(async (log) => {
-          try {
-            await this.processLog(log);
-            accepted++;
-          } catch (err) {
-            failed++;
-            logger.error(
-              { err, table: log.target_table, equipment_id: log.equipment_id },
-              'Log insert failed',
-            );
-            await errorLogRepository.record({
-              source_table: log.target_table,
-              equipment_id: log.equipment_id,
-              error_message: err instanceof Error ? err.message : String(err),
-              raw_data: JSON.stringify(log),
-              stage: log.target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT',
-            });
-          }
-        }),
-      );
-    }
+    // Worker pool 패턴 — 청크 단위 직렬 처리 시 발생한 slowest-wins 문제 제거.
+    //  - 이전: 청크 10개 동시 처리 → 가장 느린 1건(ICT 1402행 7초 등)이 다음 청크 시작을 막음.
+    //  - 현재: CONCURRENCY worker가 큐에서 LogRecord 가져가 처리, 끝나는 즉시 다음 가져감.
+    // CONCURRENCY는 Oracle pool max(40) 안전 범위 — 10 여유로 30 유지.
+    const CONCURRENCY = 30;
+    let cursor = 0;
+
+    const worker = async () => {
+      while (cursor < logs.length) {
+        const log = logs[cursor++];
+        try {
+          await this.processLog(log);
+          accepted++;
+        } catch (err) {
+          failed++;
+          logger.error(
+            { err, table: log.target_table, equipment_id: log.equipment_id },
+            'Log insert failed',
+          );
+          await errorLogRepository.record({
+            source_table: log.target_table,
+            equipment_id: log.equipment_id,
+            error_message: err instanceof Error ? err.message : String(err),
+            raw_data: JSON.stringify(log),
+            stage: log.target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT',
+          });
+        }
+      }
+    };
+
+    const workerCount = Math.min(CONCURRENCY, logs.length);
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
     logger.info({ accepted, failed, total: logs.length }, 'Log batch processed');
     return { accepted, failed };
