@@ -17,6 +17,7 @@
     "menu": "Menu",
     "retry": "Retry",
     "systemLogs": "System Logs",
+    "diagnose": "Diagnose",
     "upload": "File Upload",
     "footer": "Vector Log Collector"
   },

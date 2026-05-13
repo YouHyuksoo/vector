@@ -19,6 +19,7 @@ import { monitorRoute } from './routes/monitor.route.js';
 import { remoteAgentRoute } from './routes/remote-agent.route.js';
 import { agentDownloadRoute } from './routes/agent-download.route.js';
 import { fileUploadRoute } from './routes/file-upload.route.js';
+import { diagnoseRoute } from './routes/diagnose.route.js';
 
 export async function buildApp() {
   const app = Fastify({
@@ -46,6 +47,7 @@ export async function buildApp() {
   await app.register(remoteAgentRoute);
   await app.register(agentDownloadRoute);
   await app.register(fileUploadRoute, { prefix: '/api' });
+  await app.register(diagnoseRoute);
 
   return app;
 }

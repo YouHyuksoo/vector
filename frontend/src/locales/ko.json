@@ -17,6 +17,7 @@
     "menu": "메뉴",
     "retry": "재전송",
     "systemLogs": "시스템 로그",
+    "diagnose": "진단",
     "upload": "파일 업로드",
     "footer": "Vector 로그 수집기"
   },

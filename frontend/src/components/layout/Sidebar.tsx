@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { labelKey: 'nav.vrlMapping', icon: 'swap_horiz', href: '/dashboard/vrl-mapping' },
   { labelKey: 'nav.logFileSearch', icon: 'folder_open', href: '/dashboard/log-files' },
   { labelKey: 'nav.systemLogs', icon: 'terminal', href: '/dashboard/system-logs' },
+  { labelKey: 'nav.diagnose', icon: 'monitor_heart', href: '/dashboard/diagnose' },
   { labelKey: 'nav.upload', icon: 'cloud_upload', href: '/dashboard/upload' },
   { labelKey: 'nav.download', icon: 'file_download', href: '/dashboard/download' },
   { labelKey: 'nav.settings', icon: 'settings', href: '/dashboard/settings' },
