@@ -2143,20 +2143,10 @@ Generate VRL parsing code for this log.`;
       const targetType = (output.target_type as string) || 'TABLE';
       const now = localISOString();
 
+      // ROWS 배열을 통째로 한 LogRecord에 담아 정상 vector 경로와 동일한 흐름 사용.
+      // 그래야 log-ingest.service의 data.ROWS 분기(LOG_ICT replaceMany 등)가 적용됨.
       const logs: LogRecord[] = [];
-      if (data && Array.isArray(data.ROWS) && data.ROWS.length > 0) {
-        for (const row of data.ROWS) {
-          logs.push({
-            equipment_id: equipmentId,
-            equipment_type: eqType,
-            log_type: 'INSPECTION',
-            target_type: targetType as 'TABLE' | 'PROCEDURE',
-            target_table: targetTable,
-            timestamp: now,
-            data: row as Record<string, unknown>,
-          });
-        }
-      } else if (data) {
+      if (data) {
         logs.push({
           equipment_id: equipmentId,
           equipment_type: eqType,
