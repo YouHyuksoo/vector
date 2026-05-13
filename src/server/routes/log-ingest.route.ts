@@ -28,8 +28,10 @@ const APPEND_EQUIPMENT_TYPES = new Set<string>(['SELECTIVE']);
  * 원본 로그 파일을 디스크에 저장
  * - APPEND_EQUIPMENT_TYPES: 기존 파일에 이어쓰기 (누적형)
  * - 그 외: 덮어쓰기 (단일 파일 단위 전송)
+ *
+ * retry API에서도 같은 저장 흐름을 쓰도록 export.
  */
-function saveRawLogFile(log: LogRecord): void {
+export function saveRawLogFile(log: LogRecord): void {
   if (!log.raw_message || !log.filename || !log.equipment_type) return;
 
   const today = new Date();

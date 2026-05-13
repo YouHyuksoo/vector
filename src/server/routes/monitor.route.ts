@@ -19,6 +19,7 @@ import { logger, localNow, localISOString } from '../../utils/logger.js';
 import { logBuffer } from '../../utils/log-buffer.js';
 import iconv from 'iconv-lite';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
+import { saveRawLogFile } from './log-ingest.route.js';
 import { env, updateEnvValue } from '../../config/env.js';
 import type { Env } from '../../config/env.js';
 import { getVectorStatus, startVector, stopVector, VECTOR_BIN, VECTOR_CONFIG, AGENT_CONFIG_DIR, FLUENT_CONFIG_DIR } from '../../services/vector-process.service.js';
@@ -1372,6 +1373,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         if (!rec.RAW_DATA) { failed++; continue; }
         try {
           const logRecord = JSON.parse(rec.RAW_DATA);
+          try { saveRawLogFile(logRecord); } catch (err) { logger.warn({ err, logId: rec.LOG_ID }, 'Failed to save raw log file on retry'); }
           await logIngestService.processLog(logRecord);
           retried++;
           retriedIds.push(rec.LOG_ID);
@@ -1404,6 +1406,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       for (const rec of records) {
         try {
           const logRecord = JSON.parse(rec.RAW_DATA!);
+          try { saveRawLogFile(logRecord); } catch (err) { logger.warn({ err, logId: rec.LOG_ID }, 'Failed to save raw log file on retry/all'); }
           await logIngestService.processLog(logRecord);
           retried++;
           retriedIds.push(rec.LOG_ID);
