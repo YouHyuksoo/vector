@@ -49,9 +49,9 @@ class LogIngestService {
     if (target_type === TARGET_TYPES.PROCEDURE) {
       await dynamicInsert.callProcedure(target_table, data, extraFields);
     } else if (Array.isArray(data.ROWS) && data.ROWS.length > 0) {
-      for (const row of data.ROWS) {
-        await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
-      }
+      // ROWS 일괄 처리 — 138 STEP 같은 큰 batch에서 네트워크 roundtrip 1회로 단축
+      // 트리거는 row마다 정상 실행 (BEFORE INSERT FOR EACH ROW)
+      await dynamicInsert.insertMany(target_table, data.ROWS as Record<string, unknown>[], extraFields);
     } else {
       await dynamicInsert.insert(target_table, data, extraFields);
     }
