@@ -1394,16 +1394,17 @@ codec = "json"
 
 [sinks.to_api.batch]
 max_events = 25                   # 100 → 25 (한 batch 점유 시간 단축)
+max_bytes = 2097152               # 2MB — 단일 batch 인코딩 크기 한계 (segment 한계 충돌 회피)
 timeout_secs = 5                  # 5초마다 전송 (25개 안 모여도)
 
 [sinks.to_api.buffer]
 type = "disk"
-max_size = 536870912              # 512MB
+max_size = 8589934592             # 8GB (이전 512MB) — 백엔드 적체 시 디스크에 충분히 보관
 when_full = "block"
 
 [sinks.to_api.request]
-timeout_secs = 180                # HTTP 요청 타임아웃
-concurrency = 4                   # 동시 HTTP 요청 4개 (default adaptive → 명시 4)
+timeout_secs = 300                # 180 → 300 (큰 batch 대비)
+concurrency = 8                   # 4 → 8 (동시 HTTP 요청 늘려 처리량 향상)
 retry_initial_backoff_secs = 1    # 실패 시 1초 후 첫 재시도
 retry_max_duration_secs = 30      # 재시도 간격 최대 30초
 

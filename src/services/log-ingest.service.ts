@@ -49,10 +49,23 @@ class LogIngestService {
     if (target_type === TARGET_TYPES.PROCEDURE) {
       await dynamicInsert.callProcedure(target_table, data, extraFields);
     } else if (Array.isArray(data.ROWS) && data.ROWS.length > 0) {
-      // 행별 INSERT 유지 — executeMany 사용 시 같은 transaction 내에서
-      // BEFORE INSERT trigger가 같은 테이블 UPDATE 시 ORA-04091 (mutating table) 발생
-      for (const row of data.ROWS) {
-        await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
+      // LOG_ICT: trigger의 self-UPDATE 제거 + DELETE → bulk INSERT 패턴
+      // (한 BARCODE = N test rows, 이력 보존 불필요 — 같은 BARCODE 이전 측정은 삭제하고 새 측정으로 대체)
+      if (target_table === 'LOG_ICT') {
+        const rows = data.ROWS as Record<string, unknown>[];
+        const barcodes = [...new Set(rows.map((r) => r.BARCODE).filter((v): v is string => typeof v === 'string' && v.length > 0))];
+        await dynamicInsert.replaceMany(
+          target_table,
+          { column: 'BARCODE', values: barcodes },
+          rows,
+          extraFields,
+        );
+      } else {
+        // 기타 LOG_* 테이블: 행별 INSERT 유지 — executeMany 사용 시 같은 transaction 내에서
+        // BEFORE INSERT trigger가 같은 테이블 UPDATE 시 ORA-04091 (mutating table) 발생
+        for (const row of data.ROWS) {
+          await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
+        }
       }
     } else {
       await dynamicInsert.insert(target_table, data, extraFields);

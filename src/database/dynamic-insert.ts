@@ -123,6 +123,91 @@ class DynamicInsert {
   }
 
   /**
+   * 같은 트랜잭션 안에서 DELETE → bulk INSERT 를 수행한다.
+   * trigger가 self-DML(UPDATE/DELETE)을 갖지 않는 테이블에만 사용해야 한다.
+   * (LOG_ICT 처럼 한 BARCODE = 한 측정 N rows 이고 이력 보존이 불필요한 경우)
+   */
+  async replaceMany(
+    tableName: string,
+    deleteKey: { column: string; values: (string | number)[] },
+    dataArray: Record<string, unknown>[],
+    extraFields: Record<string, unknown> = {},
+  ): Promise<number> {
+    if (dataArray.length === 0) return 0;
+
+    const schema = await tableRegistry.getSchema(tableName);
+    if (!schema.insertSql) {
+      throw new Error(`No INSERT SQL generated for table: ${tableName}`);
+    }
+
+    const bindRows = dataArray.map((data) =>
+      schema.columns.map((col) => {
+        const raw = this.resolveSourceField(col.SOURCE_FIELD, data, extraFields);
+        return raw != null ? this.convertParamValue(raw, col.DATA_TYPE) : null;
+      }),
+    );
+
+    const conn = await getConnection();
+    try {
+      // 1) DELETE 이전 동일 키 행 (같은 트랜잭션, autoCommit:false)
+      if (deleteKey.values.length > 0) {
+        const placeholders = deleteKey.values.map((_, i) => `:${i + 1}`).join(',');
+        await conn.execute(
+          `DELETE FROM ${tableName} WHERE ${deleteKey.column} IN (${placeholders})`,
+          deleteKey.values,
+          { autoCommit: false },
+        );
+      }
+
+      // 2) Bulk INSERT (같은 트랜잭션)
+      const options: ExecuteManyOptions = {
+        autoCommit: false,
+        batchErrors: true,
+        bindDefs: schema.columns.map((col) => {
+          const type = this.getOracleType(col.DATA_TYPE);
+          return {
+            type,
+            maxSize: (type === oracledb.DB_TYPE_VARCHAR || type === oracledb.DB_TYPE_CLOB)
+              ? 4000
+              : undefined,
+          };
+        }),
+      };
+
+      const result = await conn.executeMany(schema.insertSql, bindRows, options);
+      // oracledb 6.x Connection은 commit/rollback 있음 — 타입 정의 누락 회피
+      await (conn as unknown as { commit(): Promise<void> }).commit();
+
+      if (result.batchErrors && result.batchErrors.length > 0) {
+        logger.warn(
+          {
+            tableName,
+            totalRows: dataArray.length,
+            errorCount: result.batchErrors.length,
+          },
+          'Partial batch insert failure (replaceMany)',
+        );
+      }
+
+      const rowsInserted = result.rowsAffected ?? 0;
+      logger.info(
+        { tableName, deleteColumn: deleteKey.column, deletedKeys: deleteKey.values.length, rowsInserted },
+        'Replace+Insert completed',
+      );
+      return rowsInserted;
+    } catch (err) {
+      try {
+        await (conn as unknown as { rollback(): Promise<void> }).rollback();
+      } catch {
+        /* ignore */
+      }
+      throw err;
+    } finally {
+      await conn.close();
+    }
+  }
+
+  /**
    * 프로시져 레지스트리 키로 PL/SQL 프로시져를 호출한다.
    * callMode에 따라 NAMED(개별 파라미터) 또는 ARRAY(Oracle Collection) 방식으로 호출.
    * @param key - 레지스트리 키 (예: "PKG_BATCH.P_SPI_INSERT")
