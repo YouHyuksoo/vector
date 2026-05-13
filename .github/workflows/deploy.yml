@@ -179,26 +179,13 @@ jobs:
           }
           exit 0
 
-      - name: Restart Vector Aggregator if TOML changed
-        run: |
-          $dst = "$env:DEPLOY_DIR\vector-config\aggregator\vector-aggregator.toml"
-          if (!(Test-Path $dst)) {
-            Write-Host "Aggregator TOML not found - skipping"
-            return
-          }
-          # TOML은 이미 robocopy /MIR로 동기화됨 - Vector 재시작만 처리
-          $vectorProc = Get-Process -Name "vector" -ErrorAction SilentlyContinue
-          if ($vectorProc) {
-            Stop-Process -Name "vector" -Force
-            Start-Sleep -Seconds 2
-          }
-          $vectorExe = "$env:DEPLOY_DIR\vector-bin\bin\vector.exe"
-          if (Test-Path $vectorExe) {
-            Start-Process -FilePath $vectorExe -ArgumentList "--config", $dst -WindowStyle Hidden
-            Write-Host "Vector Aggregator restarted"
-          } else {
-            Write-Host "##[warning]vector.exe not found at $vectorExe"
-          }
+      # NOTE: 별도의 "Restart Vector Aggregator" 단계 제거 (2026-05-14).
+      # 이전엔 외부 Start-Process로 vector를 시작했으나, backend bootstrap의
+      # startVector()와 동시에 spawn하며 port 6000/8687/24224 점유 충돌로
+      # vector가 즉시 force-kill 되는 사고 발생.
+      # PM2 reload가 backend를 재시작하면 backend가 vector를 알아서 spawn한다.
+      # TOML만 변경된 경우엔 코드 변경이 없어 git push가 일어나지 않으므로,
+      # 운영에서 POST /api/monitor/vector/reload 로 처리.
 
       - name: Health check
         run: |
