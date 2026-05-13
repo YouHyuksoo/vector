@@ -67,24 +67,33 @@ class LogIngestService {
     let accepted = 0;
     let failed = 0;
 
-    for (const log of logs) {
-      try {
-        await this.processLog(log);
-        accepted++;
-      } catch (err) {
-        failed++;
-        logger.error(
-          { err, table: log.target_table, equipment_id: log.equipment_id },
-          'Log insert failed',
-        );
-        await errorLogRepository.record({
-          source_table: log.target_table,
-          equipment_id: log.equipment_id,
-          error_message: err instanceof Error ? err.message : String(err),
-          raw_data: JSON.stringify(log),
-          stage: log.target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT',
-        });
-      }
+    // 청크 단위 병렬 처리 — 서로 다른 logRecord는 독립이라 동시 INSERT 안전.
+    // 트리거는 row level lock으로 자체 처리, 같은 transaction 아니라 mutating 없음.
+    // 한 batch=100 logRecord가 직렬 400초 → 청크 10 병렬 약 40초로 단축.
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < logs.length; i += CHUNK_SIZE) {
+      const chunk = logs.slice(i, i + CHUNK_SIZE);
+      await Promise.allSettled(
+        chunk.map(async (log) => {
+          try {
+            await this.processLog(log);
+            accepted++;
+          } catch (err) {
+            failed++;
+            logger.error(
+              { err, table: log.target_table, equipment_id: log.equipment_id },
+              'Log insert failed',
+            );
+            await errorLogRepository.record({
+              source_table: log.target_table,
+              equipment_id: log.equipment_id,
+              error_message: err instanceof Error ? err.message : String(err),
+              raw_data: JSON.stringify(log),
+              stage: log.target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT',
+            });
+          }
+        }),
+      );
     }
 
     logger.info({ accepted, failed, total: logs.length }, 'Log batch processed');

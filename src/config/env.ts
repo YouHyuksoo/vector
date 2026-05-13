@@ -21,8 +21,8 @@ const envSchema = z.object({
   ORACLE_USER: z.string(),
   ORACLE_PASSWORD: z.string(),
   ORACLE_CONNECT_STRING: z.string(),
-  ORACLE_POOL_MIN: z.coerce.number().default(4),
-  ORACLE_POOL_MAX: z.coerce.number().default(20),
+  ORACLE_POOL_MIN: z.coerce.number().default(8),
+  ORACLE_POOL_MAX: z.coerce.number().default(40),
 
   RAW_LOG_BASE_PATH: z.string().default('C:\\data\\raw-logs'),
 
