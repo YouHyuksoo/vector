@@ -26,6 +26,10 @@ module.exports = {
       windowsHide: true,
       watch: false,
       max_memory_restart: '3000M',
+      // PM2가 SIGTERM 후 SIGKILL까지 대기 시간 (default 1600ms — 너무 짧음).
+      // backend의 graceful shutdown 중 stopVector가 최대 30s 대기하므로 60s 확보.
+      // 종료 직전 Vector buffer flush가 완료되어야 disk buffer corruption 방지.
+      kill_timeout: 60000,
       error_file: 'logs/backend-error.log',
       out_file: 'logs/backend-out.log',
       merge_logs: true,

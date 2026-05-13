@@ -151,29 +151,41 @@ export async function stopVector(): Promise<{ success: boolean; message: string 
     return { success: false, message: 'Vector is not running' };
   }
 
-  // 방법 1: 관리 중인 프로세스가 있으면 직접 kill
-  if (vectorProcess && vectorProcess.pid) {
-    try {
-      process.kill(vectorProcess.pid, 'SIGTERM');
-      vectorProcess = null;
-      await new Promise(r => setTimeout(r, 1000));
-      logger.info('Vector aggregator stopped via process kill');
-      return { success: true, message: 'Vector stopped' };
-    } catch (err) {
-      logger.warn({ err }, 'Failed to kill managed process, trying taskkill');
-    }
-  }
+  // graceful 종료 — Vector가 disk buffer flush할 시간을 충분히 줌.
+  // Windows에서 process.kill('SIGTERM')은 사실상 SIGKILL이라 사용 금지(buffer corrupt 위험).
+  // 대신 taskkill (without /F) 로 정상 종료 신호 전달.
+  const { execSync } = await import('child_process');
+  const GRACEFUL_WAIT_SECS = 30;
 
-  // 방법 2: taskkill로 vector.exe 프로세스 종료 (외부에서 시작된 경우)
   try {
-    const { execSync } = await import('child_process');
+    execSync('taskkill /IM vector.exe /T', { stdio: 'ignore', windowsHide: true, timeout: 5000 });
+    logger.info('Vector graceful shutdown signal sent, waiting for buffer flush');
+
+    // 1초씩 polling — vector가 buffer flush 후 자연 종료할 시간 확보
+    for (let i = 1; i <= GRACEFUL_WAIT_SECS; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      const s = await getVectorStatus();
+      if (!s.running) {
+        vectorProcess = null;
+        logger.info({ waitedSec: i }, 'Vector aggregator gracefully stopped');
+        return { success: true, message: `Vector stopped (graceful, ${i}s)` };
+      }
+    }
+
+    // GRACEFUL_WAIT_SECS 초과 시에만 강제 종료 (drift된 process 정리용)
+    logger.warn({ timeoutSec: GRACEFUL_WAIT_SECS }, 'Vector did not stop gracefully, forcing');
     execSync('taskkill /F /IM vector.exe', { stdio: 'ignore', windowsHide: true });
     vectorProcess = null;
-    await new Promise(r => setTimeout(r, 1000));
-    logger.info('Vector aggregator stopped via taskkill');
-    return { success: true, message: 'Vector stopped' };
-  } catch {
-    return { success: false, message: 'Failed to stop Vector process' };
+    return { success: true, message: 'Vector force-stopped after graceful timeout' };
+  } catch (err) {
+    logger.warn({ err }, 'taskkill failed, retrying with force');
+    try {
+      execSync('taskkill /F /IM vector.exe', { stdio: 'ignore', windowsHide: true });
+      vectorProcess = null;
+      return { success: true, message: 'Vector force-stopped (graceful path failed)' };
+    } catch {
+      return { success: false, message: 'Failed to stop Vector process' };
+    }
   }
 }
 
