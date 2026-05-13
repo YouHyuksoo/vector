@@ -25,7 +25,7 @@ module.exports = {
       exec_mode: 'fork',
       windowsHide: true,
       watch: false,
-      max_memory_restart: '512M',
+      max_memory_restart: '1500M',
       error_file: 'logs/backend-error.log',
       out_file: 'logs/backend-out.log',
       merge_logs: true,
