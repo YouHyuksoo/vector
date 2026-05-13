@@ -14,9 +14,85 @@ import { Card } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 
 const POLL_INTERVAL = 5000;
+const HISTORY_MAX = 120; // 5초 × 120 = 10분 추이
 
 interface BufferSegment { name: string; sizeMB: number; mtime: string; }
 interface VectorMetric { id: string; received?: number | null; sent?: number | null; }
+interface HistoryPoint { t: number; v: number; }
+
+/** 인라인 SVG 라인 차트 — 의존성 없이 추이 시각화 */
+function Sparkline({
+  data, width = 320, height = 80, color = '#3b82f6', max,
+  label, unit, threshold,
+}: {
+  data: HistoryPoint[]; width?: number; height?: number; color?: string;
+  max?: number; label?: string; unit?: string; threshold?: { warn?: number; critical?: number };
+}) {
+  if (data.length < 2) {
+    return (
+      <div style={{ width, height }} className="flex items-center justify-center text-xs text-muted-foreground border rounded">
+        데이터 수집 중...
+      </div>
+    );
+  }
+  const xs = data.map((_, i) => i);
+  const ys = data.map(p => p.v);
+  const minY = 0;
+  const maxY = max ?? Math.max(...ys, 1) * 1.1;
+  const W = width, H = height;
+  const PAD_L = 32, PAD_R = 8, PAD_T = 8, PAD_B = 18;
+  const plotW = W - PAD_L - PAD_R;
+  const plotH = H - PAD_T - PAD_B;
+  const xScale = (i: number) => PAD_L + (i / (xs.length - 1)) * plotW;
+  const yScale = (v: number) => PAD_T + plotH - ((v - minY) / (maxY - minY)) * plotH;
+  const pathD = xs.map((i, idx) => `${idx === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(ys[i])}`).join(' ');
+  const areaD = `${pathD} L ${xScale(xs[xs.length - 1])} ${PAD_T + plotH} L ${xScale(xs[0])} ${PAD_T + plotH} Z`;
+  const lastV = ys[ys.length - 1];
+  const firstT = new Date(data[0].t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  const lastT = new Date(data[data.length - 1].t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+  const warnY = threshold?.warn != null ? yScale(threshold.warn) : null;
+  const critY = threshold?.critical != null ? yScale(threshold.critical) : null;
+
+  return (
+    <div className="w-full">
+      {label && (
+        <div className="text-xs text-muted-foreground flex justify-between mb-1">
+          <span>{label}</span>
+          <span className="font-mono">현재 {lastV.toLocaleString()}{unit}</span>
+        </div>
+      )}
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="w-full">
+        {/* y축 격자 */}
+        {[0, 0.25, 0.5, 0.75, 1].map(p => {
+          const y = PAD_T + plotH * (1 - p);
+          const v = (minY + (maxY - minY) * p).toFixed(0);
+          return (
+            <g key={p}>
+              <line x1={PAD_L} x2={W - PAD_R} y1={y} y2={y} stroke="currentColor" strokeOpacity={0.08} />
+              <text x={PAD_L - 4} y={y + 3} textAnchor="end" fontSize="9" fill="currentColor" fillOpacity={0.5}>{v}</text>
+            </g>
+          );
+        })}
+        {/* 임계선 */}
+        {warnY != null && warnY > 0 && warnY < H && (
+          <line x1={PAD_L} x2={W - PAD_R} y1={warnY} y2={warnY} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.5} />
+        )}
+        {critY != null && critY > 0 && critY < H && (
+          <line x1={PAD_L} x2={W - PAD_R} y1={critY} y2={critY} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.5} />
+        )}
+        {/* 영역 + 라인 */}
+        <path d={areaD} fill={color} fillOpacity={0.12} />
+        <path d={pathD} fill="none" stroke={color} strokeWidth={1.5} />
+        {/* 마지막 점 */}
+        <circle cx={xScale(xs[xs.length - 1])} cy={yScale(lastV)} r={2.5} fill={color} />
+        {/* x축 시작/끝 라벨 */}
+        <text x={PAD_L} y={H - 4} fontSize="9" fill="currentColor" fillOpacity={0.5}>{firstT}</text>
+        <text x={W - PAD_R} y={H - 4} textAnchor="end" fontSize="9" fill="currentColor" fillOpacity={0.5}>{lastT}</text>
+      </svg>
+    </div>
+  );
+}
 interface EquipmentItem {
   equipment_id: string; equipment_type: string; ip: string | null;
   online: boolean; vector_running: boolean; last_seen: string;
@@ -29,6 +105,7 @@ interface DiagnoseResponse {
   backend: { pid: number; uptimeSec: number; heapMB: number; rssMB: number; systemMemoryPercent: number; cpuCores: number; };
   aggregator: {
     running: boolean; pid: number | null; apiReachable: boolean;
+    memoryMB: number | null;
     bufferTotalMB: number; bufferSegments: BufferSegment[];
     vectorMetrics: { sources: VectorMetric[]; sinks: VectorMetric[]; };
   };
@@ -65,6 +142,9 @@ export default function DiagnosePage() {
   const [data, setData] = useState<DiagnoseResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [bufferHistory, setBufferHistory] = useState<HistoryPoint[]>([]);
+  const [memoryHistory, setMemoryHistory] = useState<HistoryPoint[]>([]);
+  const [insertHistory, setInsertHistory] = useState<HistoryPoint[]>([]);
 
   const fetchHealth = useCallback(async () => {
     setLoading(true);
@@ -72,6 +152,12 @@ export default function DiagnosePage() {
       const json = await apiFetch<DiagnoseResponse>('/api/diagnose/health');
       setData(json);
       setErr(null);
+      const ts = Date.parse(json.timestamp) || Date.now();
+      setBufferHistory(prev => [...prev, { t: ts, v: json.aggregator.bufferTotalMB }].slice(-HISTORY_MAX));
+      if (json.aggregator.memoryMB != null) {
+        setMemoryHistory(prev => [...prev, { t: ts, v: json.aggregator.memoryMB! }].slice(-HISTORY_MAX));
+      }
+      setInsertHistory(prev => [...prev, { t: ts, v: json.throughput.insertPerMin ?? 0 }].slice(-HISTORY_MAX));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -259,6 +345,48 @@ export default function DiagnosePage() {
           </div>
         </Card>
       </div>
+
+      {/* 추이 차트 (10분치) */}
+      <Card>
+        <div className="p-4">
+          <h3 className="font-semibold text-base mb-3">📉 추이 (최근 10분 · 5초 간격)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Sparkline
+                data={bufferHistory}
+                color="#f59e0b"
+                label="Aggregator buffer (MB)"
+                unit=" MB"
+                max={data.config.vectorToApi.bufferMaxMB ?? undefined}
+                threshold={{
+                  warn: 100,
+                  critical: data.config.vectorToApi.bufferMaxMB ? data.config.vectorToApi.bufferMaxMB * 0.8 : undefined,
+                }}
+              />
+            </div>
+            <div>
+              <Sparkline
+                data={memoryHistory}
+                color="#3b82f6"
+                label="Vector.exe 메모리 (MB)"
+                unit=" MB"
+                threshold={{ warn: 500, critical: 1500 }}
+              />
+            </div>
+            <div>
+              <Sparkline
+                data={insertHistory}
+                color="#10b981"
+                label="DB INSERT (건/분)"
+                unit=" /분"
+              />
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground mt-2">
+            현재 buffer {data.aggregator.bufferTotalMB} MB · vector 메모리 {data.aggregator.memoryMB ?? '-'} MB · 분당 INSERT {data.throughput.insertPerMin ?? '-'} 건
+          </div>
+        </div>
+      </Card>
 
       {/* 설비 목록 */}
       <Card>

@@ -31,6 +31,27 @@ interface BufferSegment {
   mtime: string;
 }
 
+/** vector.exe process 메모리 (MB) — tasklist /fi 로 조회 */
+function getVectorMemoryMB(): number | null {
+  try {
+    const out = execSync('tasklist /fi "imagename eq vector.exe" /fo csv /nh', {
+      encoding: 'utf-8',
+      windowsHide: true,
+      timeout: 3000,
+    });
+    // CSV: "vector.exe","13592","Services","0","216,528 K"
+    const line = out.split('\n').find(l => l.toLowerCase().includes('vector.exe'));
+    if (!line) return null;
+    const cols = line.split('","').map(s => s.replace(/"/g, '').trim());
+    const memField = cols[4] || '';
+    const kb = parseInt(memField.replace(/[,\sK]/g, ''), 10);
+    if (isNaN(kb)) return null;
+    return +(kb / 1024).toFixed(1);
+  } catch {
+    return null;
+  }
+}
+
 /** Aggregator disk buffer 정보 — vector-data/buffer/v2/{component}/buffer-data-*.dat */
 function getAggregatorBuffer(): { totalMB: number; segments: BufferSegment[] } {
   const out: BufferSegment[] = [];
@@ -345,6 +366,7 @@ export const diagnoseRoute: FastifyPluginAsync = async (app) => {
         running: vectorStatus.running,
         pid: vectorStatus.pid,
         apiReachable: vectorStatus.apiReachable,
+        memoryMB: getVectorMemoryMB(),
         bufferTotalMB: aggregatorBuf.totalMB,
         bufferSegments: aggregatorBuf.segments,
         vectorMetrics,
