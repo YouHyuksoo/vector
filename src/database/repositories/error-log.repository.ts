@@ -18,6 +18,9 @@ const LOG_DIR = join(process.cwd(), 'data', 'process-logs');
 const FILE_PREFIX = 'process-';
 const FILE_EXT = '.jsonl';
 const RETENTION_DAYS = 30;
+// JSONL 배치 flush: 250ms 또는 50건마다 디스크 기록. event loop block 최소화.
+const FLUSH_THRESHOLD = 50;
+const FLUSH_INTERVAL_MS = 250;
 
 export interface ProcessLogEntry {
   source_table: string;
@@ -72,6 +75,12 @@ class ProcessLogRepository {
   private sourceTablesSet = new Set<string>();
   private equipmentIdsSet = new Set<string>();
 
+  // batch flush 버퍼: 파일경로 → 누적 라인 문자열. 50건/250ms마다 1회 appendFileSync.
+  // 매 LogRecord마다 동기 fs 호출하던 것을 묶어서 event loop block 횟수 감소.
+  private pendingLines = new Map<string, string>();
+  private pendingCount = 0;
+  private flushTimer: NodeJS.Timeout | null = null;
+
   constructor() {
     if (!existsSync(LOG_DIR)) {
       mkdirSync(LOG_DIR, { recursive: true });
@@ -94,7 +103,7 @@ class ProcessLogRepository {
     }
   }
 
-  /** 처리 로그 기록 (성공/오류 모두) */
+  /** 처리 로그 기록 (성공/오류 모두) — 메모리 버퍼에 누적, 50건/250ms마다 batch flush */
   write(entry: ProcessLogEntry): void {
     try {
       this.idCounter++;
@@ -109,12 +118,44 @@ class ProcessLogRepository {
         CREATED_AT: localNow(),
         ...(entry.raw_data ? { RAW_DATA: entry.raw_data } : {}),
       };
-      appendFileSync(this.getFilePath(now), JSON.stringify(record) + '\n', 'utf-8');
-      // 인덱스 incremental 갱신
+      const filePath = this.getFilePath(now);
+      const line = JSON.stringify(record) + '\n';
+      this.pendingLines.set(filePath, (this.pendingLines.get(filePath) ?? '') + line);
+      this.pendingCount++;
+      // 인덱스 incremental 갱신 (즉시 — query는 flushSync 후 파일에서 읽으므로 일관성 OK)
       for (const t of entry.source_table.split(',')) this.sourceTablesSet.add(t);
       for (const e of entry.equipment_id.split(',')) this.equipmentIdsSet.add(e);
+      this.scheduleFlush();
     } catch (err) {
       logger.error({ err, entry }, 'Failed to write process log to file');
+    }
+  }
+
+  private scheduleFlush(): void {
+    if (this.pendingCount >= FLUSH_THRESHOLD) {
+      this.flushSync();
+      return;
+    }
+    if (this.flushTimer) return;
+    this.flushTimer = setTimeout(() => this.flushSync(), FLUSH_INTERVAL_MS);
+  }
+
+  /** 버퍼된 모든 라인을 디스크로 동기 flush. shutdown / query / threshold 초과 시 호출. */
+  flushSync(): void {
+    if (this.flushTimer) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    if (this.pendingCount === 0) return;
+    const snapshot = this.pendingLines;
+    this.pendingLines = new Map();
+    this.pendingCount = 0;
+    for (const [fp, content] of snapshot) {
+      try {
+        appendFileSync(fp, content, 'utf-8');
+      } catch (err) {
+        logger.error({ err, fp }, 'Failed to flush process log batch');
+      }
     }
   }
 
@@ -143,6 +184,8 @@ class ProcessLogRepository {
 
   /** 필터 조건에 맞는 로그 목록 조회 */
   query(params: ProcessQueryParams): ProcessQueryResult {
+    // batch buffer 비우고 읽기 — 버퍼 내용이 누락되지 않도록.
+    this.flushSync();
     // 명시적 날짜 없으면 최근 1일만 로드 (전체 누적 파일 풀 스캔 방지).
     // 더 긴 범위를 보려면 클라이언트가 startDate/endDate를 명시 호출.
     const effectiveStart = (!params.startDate && !params.endDate)
@@ -189,6 +232,7 @@ class ProcessLogRepository {
 
   /** LOG_ID 배열로 특정 로그 조회 */
   findByIds(logIds: number[]): ProcessLogRecord[] {
+    this.flushSync();
     const files = this.listLogFiles().map(f => join(LOG_DIR, f));
     const all = this.readFiles(files);
     const idSet = new Set(logIds);
@@ -197,6 +241,7 @@ class ProcessLogRepository {
 
   /** ERROR 상태 + RAW_DATA 있는 로그 전체 조회 */
   findRetryable(): ProcessLogRecord[] {
+    this.flushSync();
     const files = this.listLogFiles().map(f => join(LOG_DIR, f));
     const all = this.readFiles(files);
     return all.filter(r => r.STATUS === 'ERROR' && r.RAW_DATA);
@@ -204,6 +249,7 @@ class ProcessLogRepository {
 
   /** 특정 LOG_ID들의 STATUS 업데이트 (JSONL 파일 재작성) */
   updateStatus(logIds: number[], newStatus: string): number {
+    this.flushSync();
     const idSet = new Set(logIds);
     let updated = 0;
 
@@ -231,6 +277,7 @@ class ProcessLogRepository {
   /** 선택한 로그 ID 삭제 */
   deleteByIds(ids: number[]): number {
     if (ids.length === 0) return 0;
+    this.flushSync();
     const idSet = new Set(ids);
     const files = this.listLogFiles().map(f => join(LOG_DIR, f));
     let deleted = 0;
@@ -252,6 +299,9 @@ class ProcessLogRepository {
 
   /** 로그 전체 삭제 */
   deleteAll(): number {
+    this.pendingLines.clear();
+    this.pendingCount = 0;
+    if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = null; }
     const files = this.listLogFiles();
     let count = 0;
     for (const file of files) {

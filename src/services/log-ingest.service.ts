@@ -5,13 +5,50 @@
  * 초보자 가이드:
  * 1. **주요 개념**: 수신된 로그를 Oracle DB에 직접 INSERT (BullMQ 큐 없이)
  * 2. **현재 구조**: dynamicInsert로 바로 DB 삽입, 실패 시 에러 로그 기록
+ * 3. **동시성**: 전역 Semaphore로 동시 처리 LogRecord 수를 Oracle pool 안에 묶음
+ *    — Vector concurrency(8) × 요청별 worker(30) = 240 worker가 pool 40을 두고 경쟁하던 문제 차단
  */
 
 import { dynamicInsert } from '../database/dynamic-insert.js';
 import { errorLogRepository } from '../database/repositories/error-log.repository.js';
 import { logger } from '../utils/logger.js';
 import { TARGET_TYPES } from '../config/constants.js';
+import { env } from '../config/env.js';
 import type { LogRecord } from '../types/index.js';
+
+/**
+ * 단순 Semaphore — 외부 의존성 없이 동시 acquire 수를 max로 제한.
+ * acquire()는 release 함수를 반환. release 호출 시 대기 중인 다음 acquire 깨움.
+ */
+class Semaphore {
+  private active = 0;
+  private waiters: Array<() => void> = [];
+  constructor(private readonly max: number) {}
+
+  async acquire(): Promise<() => void> {
+    if (this.active >= this.max) {
+      await new Promise<void>((resolve) => this.waiters.push(resolve));
+    }
+    this.active++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.active--;
+      const next = this.waiters.shift();
+      if (next) next();
+    };
+  }
+
+  get stats() {
+    return { active: this.active, waiting: this.waiters.length, max: this.max };
+  }
+}
+
+// 전역 DB 동시성 한도 — Oracle pool max에서 안전 마진 5 빼고 사용.
+// 모든 /api/logs 요청이 이 한도를 공유 → pool starvation 방지.
+const GLOBAL_DB_CONCURRENCY = Math.max(1, env.ORACLE_POOL_MAX - 5);
+const dbSemaphore = new Semaphore(GLOBAL_DB_CONCURRENCY);
 
 /**
  * 타임스탬프 문자열을 Date 객체로 파싱한다.
@@ -20,7 +57,6 @@ import type { LogRecord } from '../types/index.js';
  * - Date 객체를 OracleDB에 넘기면 DB_TYPE_TIMESTAMP 로 정확하게 바인딩됨
  */
 function parseTimestamp(ts: string): Date | string {
-  // "YYYY-MM-DD HH:MM:SS" 포맷: new Date()는 공백 구분자를 로컬로 파싱 — 명시적으로 T로 정규화
   const normalized = ts.replace(' ', 'T');
   const d = new Date(normalized);
   if (isNaN(d.getTime())) return ts;
@@ -28,6 +64,20 @@ function parseTimestamp(ts: string): Date | string {
 }
 
 class LogIngestService {
+  /** processLog 1건의 단계별 latency 계측 — batch summary에서 누적 */
+  private async processLogTimed(log: LogRecord): Promise<{ poolWaitMs: number; insertMs: number }> {
+    const acquireStart = Date.now();
+    const release = await dbSemaphore.acquire();
+    const poolWaitMs = Date.now() - acquireStart;
+    const insertStart = Date.now();
+    try {
+      await this.processLog(log);
+      return { poolWaitMs, insertMs: Date.now() - insertStart };
+    } finally {
+      release();
+    }
+  }
+
   async processLog(log: LogRecord): Promise<void> {
     const { equipment_id, equipment_type, target_type, target_table, data, timestamp, line_code, filename } = log;
     const extraFields: Record<string, unknown> = {
@@ -77,21 +127,25 @@ class LogIngestService {
   }
 
   async processLogBatch(logs: LogRecord[]): Promise<{ accepted: number; failed: number }> {
+    const batchStart = Date.now();
     let accepted = 0;
     let failed = 0;
+    // 단계별 latency 누적 — batch summary 로깅용
+    const stats = { poolWaitMs: 0, insertMs: 0, maxInsertMs: 0 };
 
-    // Worker pool 패턴 — 청크 단위 직렬 처리 시 발생한 slowest-wins 문제 제거.
-    //  - 이전: 청크 10개 동시 처리 → 가장 느린 1건(ICT 1402행 7초 등)이 다음 청크 시작을 막음.
-    //  - 현재: CONCURRENCY worker가 큐에서 LogRecord 가져가 처리, 끝나는 즉시 다음 가져감.
-    // CONCURRENCY는 Oracle pool max(40) 안전 범위 — 10 여유로 30 유지.
-    const CONCURRENCY = 30;
+    // Worker pool — 요청별 worker 수 한계. 실제 throttle은 모듈 레벨 Semaphore.
+    // worker가 cursor에서 LogRecord 가져가 처리, semaphore가 동시 DB 작업 수를 GLOBAL_DB_CONCURRENCY로 묶음.
+    const WORKER_LIMIT = 30;
     let cursor = 0;
 
     const worker = async () => {
       while (cursor < logs.length) {
         const log = logs[cursor++];
         try {
-          await this.processLog(log);
+          const { poolWaitMs, insertMs } = await this.processLogTimed(log);
+          stats.poolWaitMs += poolWaitMs;
+          stats.insertMs += insertMs;
+          if (insertMs > stats.maxInsertMs) stats.maxInsertMs = insertMs;
           accepted++;
         } catch (err) {
           failed++;
@@ -110,10 +164,25 @@ class LogIngestService {
       }
     };
 
-    const workerCount = Math.min(CONCURRENCY, logs.length);
+    const workerCount = Math.min(WORKER_LIMIT, logs.length);
     await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
-    logger.info({ accepted, failed, total: logs.length }, 'Log batch processed');
+    const totalMs = Date.now() - batchStart;
+    const n = Math.max(1, accepted + failed);
+    logger.info(
+      {
+        accepted,
+        failed,
+        total: logs.length,
+        totalMs,
+        avgPoolWaitMs: Math.round(stats.poolWaitMs / n),
+        avgInsertMs: Math.round(stats.insertMs / n),
+        maxInsertMs: stats.maxInsertMs,
+        semActive: dbSemaphore.stats.active,
+        semWaiting: dbSemaphore.stats.waiting,
+      },
+      'Log batch processed',
+    );
     return { accepted, failed };
   }
 }

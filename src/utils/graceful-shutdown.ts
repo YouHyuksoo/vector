@@ -10,6 +10,7 @@
 import { logger } from './logger.js';
 import { closeOraclePool } from '../database/oracle.pool.js';
 import { stopVector } from '../services/vector-process.service.js';
+import { errorLogRepository } from '../database/repositories/error-log.repository.js';
 
 /**
  * 단계별 timeout으로 stuck 방지. 전체 25초 안에 무조건 process.exit.
@@ -53,6 +54,14 @@ export function setupGracefulShutdown(app: { close(): Promise<void> }): void {
       // 3. Oracle 커넥션 풀 종료 — 최대 5초
       await withTimeout(closeOraclePool(), 5000, 'closeOraclePool');
       logger.info('Oracle pool close step finished');
+
+      // 4. process log batch 잔여 flush (메모리 버퍼 → 디스크 보장)
+      try {
+        errorLogRepository.flushSync();
+        logger.info('Process log buffer flushed');
+      } catch (err) {
+        logger.warn({ err }, 'Process log flush failed during shutdown');
+      }
 
       clearTimeout(forceExitTimer);
       logger.info('Graceful shutdown complete');
