@@ -106,7 +106,7 @@ interface DiagnoseResponse {
   aggregator: {
     running: boolean; pid: number | null; apiReachable: boolean;
     memoryMB: number | null;
-    bufferTotalMB: number; bufferSegments: BufferSegment[];
+    bufferTotalMB: number; bufferActiveMB: number; bufferSegments: BufferSegment[]; unsentEvents: number;
     vectorMetrics: { sources: VectorMetric[]; sinks: VectorMetric[]; };
   };
   oracle: { connected: boolean; poolMin: number; poolMax: number; };
@@ -153,7 +153,7 @@ export default function DiagnosePage() {
       setData(json);
       setErr(null);
       const ts = Date.parse(json.timestamp) || Date.now();
-      setBufferHistory(prev => [...prev, { t: ts, v: json.aggregator.bufferTotalMB }].slice(-HISTORY_MAX));
+      setBufferHistory(prev => [...prev, { t: ts, v: json.aggregator.bufferActiveMB }].slice(-HISTORY_MAX));
       if (json.aggregator.memoryMB != null) {
         setMemoryHistory(prev => [...prev, { t: ts, v: json.aggregator.memoryMB! }].slice(-HISTORY_MAX));
       }
@@ -179,38 +179,38 @@ export default function DiagnosePage() {
   }
 
   const bufferPercent = data.config.vectorToApi.bufferMaxMB
-    ? Math.round((data.aggregator.bufferTotalMB / data.config.vectorToApi.bufferMaxMB) * 100)
+    ? Math.round((data.aggregator.bufferActiveMB / data.config.vectorToApi.bufferMaxMB) * 100)
     : 0;
 
   return (
-    <div className="p-4 lg:p-6 space-y-4">
+    <div className="p-3 lg:p-4 space-y-3">
       {/* 종합 헬스 */}
-      <div className={`rounded-lg border-2 px-5 py-4 ${healthColor[data.health]}`}>
+      <div className={`rounded-lg border-2 px-4 py-3 ${healthColor[data.health]}`}>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold">
               {data.health === 'ok' ? '✓' : data.health === 'warn' ? '⚠️' : '🔴'} {healthLabel[data.health]}
             </div>
-            <div className="text-sm mt-1 opacity-80">
+            <div className="text-xs mt-0.5 opacity-80">
               {new Date(data.timestamp).toLocaleString('ko-KR')} · 진단 {data.diagnoseElapsedMs}ms
               {loading && ' · 갱신 중...'}
             </div>
           </div>
-          <button onClick={fetchHealth} className="px-3 py-1.5 rounded bg-white/30 hover:bg-white/50 text-sm font-medium">
+          <button onClick={fetchHealth} className="px-3 py-1 rounded bg-white/30 hover:bg-white/50 text-xs font-medium">
             새로고침
           </button>
         </div>
-        <ul className="mt-3 space-y-1 text-sm">
+        <ul className="mt-2 space-y-0.5 text-xs">
           {data.reasons.map((r, i) => <li key={i}>• {r}</li>)}
         </ul>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* 상태 */}
         <Card>
-          <div className="p-4">
-            <h3 className="font-semibold text-base mb-3">📊 상태 (Status)</h3>
-            <dl className="text-sm space-y-2">
+          <div className="p-3">
+            <h3 className="font-semibold text-sm mb-2">📊 상태 (Status)</h3>
+            <dl className="text-xs space-y-1">
               <div className="flex justify-between"><dt className="text-muted-foreground">Backend</dt>
                 <dd>PID {data.backend.pid} · uptime {formatUptime(data.backend.uptimeSec)} · heap {data.backend.heapMB}MB / rss {data.backend.rssMB}MB</dd>
               </div>
@@ -232,19 +232,24 @@ export default function DiagnosePage() {
 
         {/* 현상 */}
         <Card>
-          <div className="p-4">
-            <h3 className="font-semibold text-base mb-3">🔍 현상 (Symptoms)</h3>
-            <dl className="text-sm space-y-2">
-              <div className="flex justify-between items-center"><dt className="text-muted-foreground">Aggregator buffer</dt>
+          <div className="p-3">
+            <h3 className="font-semibold text-sm mb-2">🔍 현상 (Symptoms)</h3>
+            <dl className="text-xs space-y-1">
+              <div className="flex justify-between items-center"><dt className="text-muted-foreground">실질 적체 (unsent)</dt>
+                <dd className={data.aggregator.unsentEvents > 500 ? 'text-rose-600 font-medium' : data.aggregator.unsentEvents > 0 ? 'text-amber-600' : ''}>
+                  {data.aggregator.unsentEvents.toLocaleString()} 건
+                  <span className="text-muted-foreground"> (received − sent)</span>
+                </dd>
+              </div>
+              <div className="flex justify-between items-center"><dt className="text-muted-foreground">Buffer 파일</dt>
                 <dd>
-                  <span className={data.aggregator.bufferTotalMB > 100 ? 'text-amber-600 font-medium' : ''}>
-                    {data.aggregator.bufferTotalMB} MB
-                  </span>
-                  {data.config.vectorToApi.bufferMaxMB && ` / ${data.config.vectorToApi.bufferMaxMB} MB (${bufferPercent}%)`}
+                  <span>{data.aggregator.bufferActiveMB} MB</span>
+                  <span className="text-muted-foreground"> · 전체 {data.aggregator.bufferTotalMB} MB</span>
+                  {data.config.vectorToApi.bufferMaxMB && <span className="text-muted-foreground"> / {data.config.vectorToApi.bufferMaxMB} MB ({bufferPercent}%)</span>}
                 </dd>
               </div>
               <div className="flex justify-between"><dt className="text-muted-foreground">분당 INSERT</dt>
-                <dd className={(data.throughput.insertPerMin ?? 0) < 100 && data.aggregator.bufferTotalMB > 50 ? 'text-rose-600 font-medium' : ''}>
+                <dd className={(data.throughput.insertPerMin ?? 0) < 5 && data.aggregator.unsentEvents > 500 ? 'text-rose-600 font-medium' : ''}>
                   {data.throughput.insertPerMin ?? '-'} 건
                 </dd>
               </div>
@@ -262,14 +267,25 @@ export default function DiagnosePage() {
             </dl>
 
             {data.aggregator.bufferSegments.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-muted">
-                <div className="text-xs text-muted-foreground mb-1">Buffer 분해:</div>
-                {data.aggregator.bufferSegments.map(s => (
-                  <div key={s.name} className="text-xs flex justify-between">
-                    <span className="font-mono">{s.name}</span>
-                    <span>{s.sizeMB}MB · {new Date(s.mtime).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                ))}
+              <div className="mt-2 pt-2 border-t border-muted">
+                <div className="text-[10px] text-muted-foreground mb-1">
+                  Buffer 분해 · <span className="text-emerald-600">활성</span> / <span className="text-slate-500">회전 대기</span> / <span className="text-rose-600">orphan(청소 권장)</span>
+                </div>
+                {data.aggregator.bufferSegments.map(s => {
+                  const ageMs = Date.now() - new Date(s.mtime).getTime();
+                  const isOrphan = ageMs > 7 * 24 * 60 * 60 * 1000;     // 7일 이상 = orphan
+                  const isWaiting = !isOrphan && ageMs > 60 * 60 * 1000; // 1시간~7일 = rotation 대기
+                  const cls = isOrphan ? 'text-rose-600' : isWaiting ? 'text-slate-500' : 'text-emerald-700';
+                  return (
+                    <div key={s.name} className={`text-[10px] flex justify-between ${cls}`}>
+                      <span className="font-mono">{s.name}</span>
+                      <span>{s.sizeMB}MB · {new Date(s.mtime).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  );
+                })}
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  Vector disk_v2: ACK된 이벤트도 segment rotation 전까지 파일에 남음 — 적체 아님
+                </div>
               </div>
             )}
           </div>
@@ -277,9 +293,9 @@ export default function DiagnosePage() {
 
         {/* 설정 */}
         <Card>
-          <div className="p-4">
-            <h3 className="font-semibold text-base mb-3">⚙️ 설정 (Config)</h3>
-            <dl className="text-sm space-y-2">
+          <div className="p-3">
+            <h3 className="font-semibold text-sm mb-2">⚙️ 설정 (Config)</h3>
+            <dl className="text-xs space-y-1">
               <div className="flex justify-between"><dt className="text-muted-foreground">max_memory_restart</dt>
                 <dd className="font-mono">{data.config.maxMemoryRestart || '-'}</dd>
               </div>
@@ -301,9 +317,9 @@ export default function DiagnosePage() {
 
         {/* Vector 컴포넌트 메트릭 + 설비별 처리량 */}
         <Card>
-          <div className="p-4">
-            <h3 className="font-semibold text-base mb-3">📈 처리 흐름</h3>
-            <div className="text-sm space-y-3">
+          <div className="p-3">
+            <h3 className="font-semibold text-sm mb-2">📈 처리 흐름</h3>
+            <div className="text-xs space-y-2">
               {data.aggregator.vectorMetrics.sources.length > 0 && (
                 <div>
                   <div className="text-muted-foreground text-xs mb-1">Aggregator sources (받음):</div>
@@ -348,9 +364,9 @@ export default function DiagnosePage() {
 
       {/* 추이 차트 (10분치) */}
       <Card>
-        <div className="p-4">
-          <h3 className="font-semibold text-base mb-3">📉 추이 (최근 10분 · 5초 간격)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-3">
+          <h3 className="font-semibold text-sm mb-2">📉 추이 (최근 10분 · 5초 간격)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <Sparkline
                 data={bufferHistory}
@@ -382,20 +398,20 @@ export default function DiagnosePage() {
               />
             </div>
           </div>
-          <div className="text-xs text-muted-foreground mt-2">
-            현재 buffer {data.aggregator.bufferTotalMB} MB · vector 메모리 {data.aggregator.memoryMB ?? '-'} MB · 분당 INSERT {data.throughput.insertPerMin ?? '-'} 건
+          <div className="text-[10px] text-muted-foreground mt-1">
+            활성 buffer {data.aggregator.bufferActiveMB} MB · vector 메모리 {data.aggregator.memoryMB ?? '-'} MB · 분당 INSERT {data.throughput.insertPerMin ?? '-'} 건
           </div>
         </div>
       </Card>
 
       {/* 설비 목록 */}
       <Card>
-        <div className="p-4">
-          <h3 className="font-semibold text-base mb-3">🔌 설비 ({data.equipments.online}/{data.equipments.total} 온라인)</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
+        <div className="p-3">
+          <h3 className="font-semibold text-sm mb-2">🔌 설비 ({data.equipments.online}/{data.equipments.total} 온라인)</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-[11px]">
             {data.equipments.list.map(eq => (
               <div key={eq.equipment_id}
-                className={`p-2 rounded border ${eq.online ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-muted bg-muted/30'}`}>
+                className={`px-2 py-1 rounded border ${eq.online ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-muted bg-muted/30'}`}>
                 <div className="font-medium">{eq.online ? '✓' : '✗'} {eq.equipment_id}</div>
                 <div className="text-muted-foreground">{eq.equipment_type} · {eq.ip ?? '-'}</div>
               </div>

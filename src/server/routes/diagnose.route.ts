@@ -52,12 +52,19 @@ function getVectorMemoryMB(): number | null {
   }
 }
 
-/** Aggregator disk buffer 정보 — vector-data/buffer/v2/{component}/buffer-data-*.dat */
-function getAggregatorBuffer(): { totalMB: number; segments: BufferSegment[] } {
+/**
+ * Aggregator disk buffer 정보 — vector-data/buffer/v2/{component}/buffer-data-*.dat
+ * - totalMB: 모든 segment 합 (display용)
+ * - activeMB: 최근 1시간 이내 mtime segment만 합 — stuck 판정용 (raw_file 같은 stale sink 제외)
+ */
+function getAggregatorBuffer(): { totalMB: number; activeMB: number; segments: BufferSegment[] } {
   const out: BufferSegment[] = [];
   let totalBytes = 0;
+  let activeBytes = 0;
+  const ACTIVE_CUTOFF_MS = 60 * 60 * 1000; // 1시간 이내 = 활성
+  const now = Date.now();
   const bufRoot = join(VECTOR_DATA_DIR, 'buffer', 'v2');
-  if (!existsSync(bufRoot)) return { totalMB: 0, segments: [] };
+  if (!existsSync(bufRoot)) return { totalMB: 0, activeMB: 0, segments: [] };
 
   for (const comp of readdirSync(bufRoot)) {
     const compDir = join(bufRoot, comp);
@@ -67,6 +74,7 @@ function getAggregatorBuffer(): { totalMB: number; segments: BufferSegment[] } {
       const fp = join(compDir, f);
       const st = statSync(fp);
       totalBytes += st.size;
+      if (now - st.mtime.getTime() < ACTIVE_CUTOFF_MS) activeBytes += st.size;
       out.push({
         name: `${comp}/${f}`,
         sizeMB: +(st.size / 1024 / 1024).toFixed(2),
@@ -76,6 +84,7 @@ function getAggregatorBuffer(): { totalMB: number; segments: BufferSegment[] } {
   }
   return {
     totalMB: +(totalBytes / 1024 / 1024).toFixed(2),
+    activeMB: +(activeBytes / 1024 / 1024).toFixed(2),
     segments: out.sort((a, b) => b.sizeMB - a.sizeMB),
   };
 }
@@ -249,6 +258,8 @@ function getPort6000Connections(): string[] {
 /** 종합 판정 룰 */
 function judge(input: {
   bufferMB: number;
+  activeBufferMB: number;
+  unsentEvents: number | null; // source received - sink sent (실질 적체)
   insertPerMin: number | null;
   backendRestartsRecent: boolean;
   lagHours: number | null;
@@ -261,17 +272,27 @@ function judge(input: {
     else if (level === 'ok') level = 'warn';
   };
 
-  if (input.bufferMB > 400) {
+  // 실질 적체는 source received - sink sent. Vector disk_v2 segment 파일 크기는
+  // ACK 후에도 segment rotation까지 남기 때문에 buffer MB만으론 판단 불가.
+  const unsent = input.unsentEvents ?? 0;
+  if (unsent > 10000) {
     bump('critical');
-    reasons.push(`Aggregator buffer 위험 (${input.bufferMB} MB / max 512 MB)`);
-  } else if (input.bufferMB > 100) {
+    reasons.push(`실질 적체 위험 (Vector unsent ${unsent.toLocaleString()}건)`);
+  } else if (unsent > 1000) {
     bump('warn');
-    reasons.push(`Aggregator buffer 적체 (${input.bufferMB} MB)`);
+    reasons.push(`실질 적체 (Vector unsent ${unsent.toLocaleString()}건)`);
   }
 
-  if (input.bufferMB > 50 && (input.insertPerMin ?? 0) < 100) {
+  // 처리 stuck — 실질 적체가 있고 INSERT가 거의 0
+  if (unsent > 500 && (input.insertPerMin ?? 0) < 5) {
     bump('critical');
-    reasons.push(`처리 stuck — buffer ${input.bufferMB} MB 인데 분당 INSERT ${input.insertPerMin ?? 0}건`);
+    reasons.push(`처리 stuck — Vector unsent ${unsent.toLocaleString()}건인데 분당 INSERT ${input.insertPerMin ?? 0}건`);
+  }
+
+  // 디스크 buffer 자체 (write-ahead segment) 가 max에 근접 — 별도 경고
+  if (input.activeBufferMB > 4000) {
+    bump('warn');
+    reasons.push(`Buffer 파일 ${input.activeBufferMB} MB — segment rotation 지연 가능성`);
   }
 
   if (input.lagHours != null && input.lagHours > 1) {
@@ -346,8 +367,17 @@ export const diagnoseRoute: FastifyPluginAsync = async (app) => {
     const ecosystem = getEcosystemConfig();
     const toApi = getVectorToApiConfig();
 
+    // Vector unsent = source received 합 - sink sent 합. 실질 적체 지표.
+    const totalReceived = vectorMetrics.sources.reduce((a, s) => a + (s.received ?? 0), 0);
+    const totalSent = vectorMetrics.sinks
+      .filter(s => s.id !== 'drop_metrics')
+      .reduce((a, s) => a + (s.sent ?? 0), 0);
+    const unsentEvents = Math.max(0, totalReceived - totalSent);
+
     const judgment = judge({
       bufferMB: aggregatorBuf.totalMB,
+      activeBufferMB: aggregatorBuf.activeMB,
+      unsentEvents,
       insertPerMin: dbStats.insertPerMin,
       backendRestartsRecent: backend.uptimeSec < 120, // 2분 이내 = 방금 재시작
       lagHours: dbStats.lagHours,
@@ -368,7 +398,9 @@ export const diagnoseRoute: FastifyPluginAsync = async (app) => {
         apiReachable: vectorStatus.apiReachable,
         memoryMB: getVectorMemoryMB(),
         bufferTotalMB: aggregatorBuf.totalMB,
+        bufferActiveMB: aggregatorBuf.activeMB,
         bufferSegments: aggregatorBuf.segments,
+        unsentEvents,
         vectorMetrics,
       },
       oracle: {
