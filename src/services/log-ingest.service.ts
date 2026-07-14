@@ -17,6 +17,17 @@ import { env } from '../config/env.js';
 import type { LogRecord } from '../types/index.js';
 
 /**
+ * data.ROWS를 BARCODE 단위 DELETE 후 bulk INSERT로 적재하는 테이블.
+ * 자기 테이블을 UPDATE하는 trigger가 없는 테이블만 등록할 것 (executeMany + ORA-04091 회피).
+ */
+const BARCODE_REPLACE_TABLES = new Set([
+  'LOG_ICT',
+  'LOG_ISCM_ICT',
+  'LOG_ISCM_ICT_HDATA',
+  'LOG_ISCM_ICT_COMP',
+]);
+
+/**
  * 단순 Semaphore — 외부 의존성 없이 동시 acquire 수를 max로 제한.
  * acquire()는 release 함수를 반환. release 호출 시 대기 중인 다음 acquire 깨움.
  */
@@ -99,9 +110,11 @@ class LogIngestService {
     if (target_type === TARGET_TYPES.PROCEDURE) {
       await dynamicInsert.callProcedure(target_table, data, extraFields);
     } else if (Array.isArray(data.ROWS) && data.ROWS.length > 0) {
-      // LOG_ICT: trigger의 self-UPDATE 제거 + DELETE → bulk INSERT 패턴
-      // (한 BARCODE = N test rows, 이력 보존 불필요 — 같은 BARCODE 이전 측정은 삭제하고 새 측정으로 대체)
-      if (target_table === 'LOG_ICT') {
+      // BARCODE 단위 DELETE → bulk INSERT 패턴 (BARCODE_REPLACE_TABLES)
+      // 한 BARCODE = N rows, 이력 보존 불필요 — 재검사 시 이전 측정을 삭제하고 새 측정으로 대체.
+      // 행별 INSERT를 쓰면 ISCM_ICT_COMP(파일당 1221행)에서 왕복이 폭증해 적체가 난다.
+      // 전제: 이 테이블들에는 자기 테이블을 UPDATE하는 trigger가 없어야 함 (ORA-04091 mutating).
+      if (BARCODE_REPLACE_TABLES.has(target_table)) {
         const rows = data.ROWS as Record<string, unknown>[];
         const barcodes = [...new Set(rows.map((r) => r.BARCODE).filter((v): v is string => typeof v === 'string' && v.length > 0))];
         await dynamicInsert.replaceMany(
@@ -130,27 +143,41 @@ class LogIngestService {
     const batchStart = Date.now();
     let accepted = 0;
     let failed = 0;
-    // 단계별 latency 누적 — batch summary 로깅용
+    // 단계별 latency 누적 + target_table 분해 — batch summary 로깅용
     const stats = { poolWaitMs: 0, insertMs: 0, maxInsertMs: 0 };
+    const perTable = new Map<string, { count: number; totalMs: number; maxMs: number; maxRowCount: number }>();
+    let slowestLog: { table: string; equipmentType: string; equipmentId: string; rowCount: number; ms: number } | null = null;
 
     // Worker pool — 요청별 worker 수 한계. 실제 throttle은 모듈 레벨 Semaphore.
-    // worker가 cursor에서 LogRecord 가져가 처리, semaphore가 동시 DB 작업 수를 GLOBAL_DB_CONCURRENCY로 묶음.
     const WORKER_LIMIT = 30;
     let cursor = 0;
 
     const worker = async () => {
       while (cursor < logs.length) {
         const log = logs[cursor++];
+        const rowCount = Array.isArray(log.data?.ROWS) ? log.data.ROWS.length : 1;
         try {
           const { poolWaitMs, insertMs } = await this.processLogTimed(log);
           stats.poolWaitMs += poolWaitMs;
           stats.insertMs += insertMs;
           if (insertMs > stats.maxInsertMs) stats.maxInsertMs = insertMs;
           accepted++;
+
+          // perTable 분해
+          const entry = perTable.get(log.target_table) ?? { count: 0, totalMs: 0, maxMs: 0, maxRowCount: 0 };
+          entry.count++;
+          entry.totalMs += insertMs;
+          if (insertMs > entry.maxMs) entry.maxMs = insertMs;
+          if (rowCount > entry.maxRowCount) entry.maxRowCount = rowCount;
+          perTable.set(log.target_table, entry);
+
+          if (!slowestLog || insertMs > slowestLog.ms) {
+            slowestLog = { table: log.target_table, equipmentType: log.equipment_type ?? '', equipmentId: log.equipment_id, rowCount, ms: insertMs };
+          }
         } catch (err) {
           failed++;
           logger.error(
-            { err, table: log.target_table, equipment_id: log.equipment_id },
+            { err, table: log.target_table, equipment_id: log.equipment_id, rowCount },
             'Log insert failed',
           );
           await errorLogRepository.record({
@@ -169,6 +196,19 @@ class LogIngestService {
 
     const totalMs = Date.now() - batchStart;
     const n = Math.max(1, accepted + failed);
+
+    // Top 3 — maxMs 기준 worst tables (다음 병목 후보 식별)
+    const topTables = [...perTable.entries()]
+      .map(([table, s]) => ({
+        table,
+        count: s.count,
+        avgMs: Math.round(s.totalMs / s.count),
+        maxMs: s.maxMs,
+        maxRows: s.maxRowCount,
+      }))
+      .sort((a, b) => b.maxMs - a.maxMs)
+      .slice(0, 3);
+
     logger.info(
       {
         accepted,
@@ -180,6 +220,8 @@ class LogIngestService {
         maxInsertMs: stats.maxInsertMs,
         semActive: dbSemaphore.stats.active,
         semWaiting: dbSemaphore.stats.waiting,
+        topTables,
+        slowest: slowestLog,
       },
       'Log batch processed',
     );
