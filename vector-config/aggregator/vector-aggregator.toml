@@ -416,6 +416,136 @@ if .equipment_type == "SP" {
       .data.ROWS = push(.data.ROWS, item)
     }
   }
+} else if .equipment_type == "ISCM_ICT" {
+  # ── ISCM 모델 ICT 검사설비 (eTR5001SII) ──
+  # 로그 1파일 = 3개 섹션 → 3개 테이블로 분리 저장 (조인키: BARCODE)
+  #   1) 헤더블록      [KEY]:VALUE 72종  → LOG_ISCM_ICT        (1행)
+  #   2) // Header_Data  CSV 23필드      → LOG_ISCM_ICT_HDATA  (1행)
+  #   3) // Component_Data CSV 12필드    → LOG_ISCM_ICT_COMP   (N행)
+  #
+  # 다중 테이블 적재 규약: .data.TABLES = [{ "TABLE": 테이블명, "ROWS": [행...] }, ...]
+  # 이 배열만 채워두면 format_for_api 가 이벤트를 테이블별로 쪼개고,
+  # 수동 로그 투입(manual-ingest)도 동일 규약으로 처리한다.
+  # → "어느 테이블로 갈지"는 이 VRL 한 곳에서만 정의된다.
+
+  lines = split!(.message, "\n")
+
+  barcode = ""
+  section = "HEADER"
+  hdr = {}
+  hdata_line = ""
+  comp_lines = []
+
+  for_each(array!(lines)) -> |_idx, raw| {
+    line = to_string!(raw)
+    t = strip_whitespace(line)
+
+    if starts_with(t, "// Header_Data") {
+      section = "HDATA"
+    } else if starts_with(t, "// Component_Data") {
+      section = "COMP"
+    } else if starts_with(t, "//") || t == "" || starts_with(t, "*") {
+      null  # 주석/빈줄/구분선 무시
+    } else if section == "HEADER" {
+      # BARCODE : [ 6711001861B ]
+      bm = parse_regex(t, r'^BARCODE\s*:\s*\[\s*(?P<b>.*?)\s*\]\s*$') ?? {}
+      if is_string(get(bm, ["b"]) ?? null) {
+        barcode = to_string!(get!(bm, ["b"]))
+      } else {
+        # [KEY]:VALUE  /  [KEY   ] : VALUE
+        km = parse_regex(t, r'^\[(?P<k>[^\]]+)\]\s*:(?P<v>.*)$') ?? {}
+        if is_string(get(km, ["k"]) ?? null) {
+          k = strip_whitespace(to_string!(get!(km, ["k"])))
+          k = replace(k, "#", "")
+          k = upcase(replace(k, r'\s+', "_"))
+          v = strip_whitespace(to_string!(get!(km, ["v"])))
+          # 값이 "TEST_ISCM / " 처럼 후행 슬래시를 달고 오는 필드가 있어 정리
+          v = strip_whitespace(replace(v, r'\s*/\s*$', ""))
+          hdr = set!(hdr, [k], v)
+        }
+      }
+    } else if section == "HDATA" {
+      hdata_line = line
+    } else if section == "COMP" {
+      comp_lines = push(comp_lines, line)
+    }
+  }
+
+  # 바코드가 없으면 로그 본문이 아님 (선행 빈 줄이 별도 이벤트로 쪼개진 경우 등)
+  # → 빈 row INSERT 방지를 위해 이벤트를 버린다
+  if barcode == "" {
+    abort
+  }
+
+  # ── 1) 헤더블록 ──
+  hdr = set!(hdr, ["BARCODE"], barcode)
+
+  # ── 2) Header_Data (23필드 CSV 1행) ──
+  hd = {}
+  if hdata_line != "" {
+    c = split(hdata_line, ",")
+    hd = {
+      "BARCODE": barcode,
+      "ICT_ID": strip_whitespace(to_string!(get(c, [0]) ?? "")),
+      "SERIES_NO": strip_whitespace(to_string!(get(c, [1]) ?? "")),
+      "BOARD_NAME": strip_whitespace(to_string!(get(c, [2]) ?? "")),
+      "BOARD_BARCODE": strip_whitespace(to_string!(get(c, [3]) ?? "")),
+      "TEST_DATE": strip_whitespace(to_string!(get(c, [4]) ?? "")),
+      "TEST_TIME": strip_whitespace(to_string!(get(c, [5]) ?? "")),
+      "RESULT": strip_whitespace(to_string!(get(c, [6]) ?? "")),
+      "RETEST": strip_whitespace(to_string!(get(c, [7]) ?? "")),
+      "WORK_SCHEDULE": strip_whitespace(to_string!(get(c, [8]) ?? "")),
+      "OPER_ID": strip_whitespace(to_string!(get(c, [9]) ?? "")),
+      "DETAIL_RESULT": strip_whitespace(to_string!(get(c, [10]) ?? "")),
+      "MUL_BRD_NUM": strip_whitespace(to_string!(get(c, [11]) ?? "")),
+      "MUL_BRD_RESULT": strip_whitespace(to_string!(get(c, [12]) ?? "")),
+      "BEGIN_DATE": strip_whitespace(to_string!(get(c, [13]) ?? "")),
+      "BEGIN_TIME": strip_whitespace(to_string!(get(c, [14]) ?? "")),
+      "IDX": strip_whitespace(to_string!(get(c, [15]) ?? "")),
+      "DETAIL_TEST_RESULT": strip_whitespace(to_string!(get(c, [16]) ?? "")),
+      "VERSION": strip_whitespace(to_string!(get(c, [17]) ?? "")),
+      "BOARD_VERSION": strip_whitespace(to_string!(get(c, [18]) ?? "")),
+      "FIXTURE_BARCODE": strip_whitespace(to_string!(get(c, [19]) ?? "")),
+      "PIN_OFFSET": strip_whitespace(to_string!(get(c, [20]) ?? "")),
+      "LEFT_RIGHT": strip_whitespace(to_string!(get(c, [21]) ?? "")),
+      "TEST_TIME_SEC": strip_whitespace(to_string!(get(c, [22]) ?? "")),
+    }
+  }
+
+  # ── 3) Component_Data (12필드 CSV N행) ──
+  comp = []
+  seq = 0
+  for_each(array!(comp_lines)) -> |_i, row| {
+    cols = split(to_string!(row), ",")
+    seq = seq + 1
+    item = {
+      "BARCODE": barcode,
+      "SEQ_NO": to_string(seq),
+      "PART_NAME": strip_whitespace(to_string!(get(cols, [0]) ?? "")),
+      "ACT_V": strip_whitespace(to_string!(get(cols, [1]) ?? "")),
+      "STD_V": strip_whitespace(to_string!(get(cols, [2]) ?? "")),
+      "MSR_V": strip_whitespace(to_string!(get(cols, [3]) ?? "")),
+      "HLIM": strip_whitespace(to_string!(get(cols, [4]) ?? "")),
+      "LLIM": strip_whitespace(to_string!(get(cols, [5]) ?? "")),
+      "HPIN": strip_whitespace(to_string!(get(cols, [6]) ?? "")),
+      "LPIN": strip_whitespace(to_string!(get(cols, [7]) ?? "")),
+      "PART_TYPE": strip_whitespace(to_string!(get(cols, [8]) ?? "")),
+      "RESULT": strip_whitespace(to_string!(get(cols, [9]) ?? "")),
+      "DEV": strip_whitespace(to_string!(get(cols, [10]) ?? "")),
+      "SKIP_FLAG": strip_whitespace(to_string!(get(cols, [11]) ?? "")),
+    }
+    comp = push(comp, item)
+  }
+
+  # ── 적재 대상 선언 (테이블별 이벤트 분리는 format_for_api 가 수행) ──
+  .target_table = "LOG_ISCM_ICT"
+  .data = {
+    "TABLES": [
+      { "TABLE": "LOG_ISCM_ICT",       "ROWS": [hdr] },
+      { "TABLE": "LOG_ISCM_ICT_HDATA", "ROWS": [hd]  },
+      { "TABLE": "LOG_ISCM_ICT_COMP",  "ROWS": comp  }
+    ]
+  }
 } else if .equipment_type == "FCT" {
   lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_FCT"
@@ -1307,17 +1437,38 @@ type = "remap"
 inputs = ["parse_logs"]
 source = '''
 ts = if exists(.timestamp) { to_string!(.timestamp) } else { to_string!(now()) }
-. = {
+
+base = {
   "equipment_id": .equipment_id,       # 설비 코드 (Agent가 태깅)
   "equipment_type": .equipment_type,   # 설비 유형 (raw 파일 저장 경로용)
   "log_type": .log_type,               # 로그 유형 (INSPECTION/ALARM/PROCESS)
   "line_code": .line_code,             # 라인 코드 (Agent가 태깅)
   "target_type": .target_type,         # 저장 방식 (TABLE/PROCEDURE)
-  "target_table": .target_table,       # 저장 대상 (테이블명 또는 프로시져 레지스트리 키)
   "timestamp": ts,                     # 타임스탬프 (문자열로 변환)
-  "data": .data,                       # 파싱된 데이터 객체
   "raw_message": .raw_message,         # 원본 메시지 (파일 저장용)
   "filename": .filename                # 원본 파일명
+}
+
+if exists(.data.TABLES) {
+  # ── 다중 테이블 적재 ──
+  # parse_logs 가 .data.TABLES = [{ "TABLE": 테이블명, "ROWS": [행...] }, ...] 를 채운 경우,
+  # 테이블 하나당 이벤트 하나로 쪼갠다. VRL 루트에 배열을 assign하면 Vector가 개별 이벤트로 내보낸다.
+  # 대상 테이블 목록은 설비별 VRL 블록에만 존재하므로 이 코드는 설비를 알 필요가 없다.
+  out = []
+  for_each(array!(.data.TABLES)) -> |_i, entry| {
+    e = object!(entry)
+    out = push(out, merge(base, {
+      "target_table": to_string!(get!(e, ["TABLE"])),
+      "data": { "ROWS": array!(get!(e, ["ROWS"])) }
+    }))
+  }
+  . = out
+} else {
+  # ── 단일 테이블 적재 (기본) ──
+  . = merge(base, {
+    "target_table": .target_table,     # 저장 대상 (테이블명 또는 프로시져 레지스트리 키)
+    "data": .data                      # 파싱된 데이터 객체
+  })
 }
 '''
 

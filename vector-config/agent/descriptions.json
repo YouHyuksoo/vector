@@ -26,5 +26,9 @@
   "REFLOW": {
     "description": "REFLOW",
     "encoding": "utf-16le"
+  },
+  "ISCM_ICT": {
+    "description": "ICT 검사설비 (ISCM 모델)",
+    "encoding": "euc-kr"
   }
 }

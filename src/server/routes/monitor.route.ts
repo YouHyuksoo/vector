@@ -1373,7 +1373,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         if (!rec.RAW_DATA) { failed++; continue; }
         try {
           const logRecord = JSON.parse(rec.RAW_DATA);
-          try { saveRawLogFile(logRecord); } catch (err) { logger.warn({ err, logId: rec.LOG_ID }, 'Failed to save raw log file on retry'); }
+          try { await saveRawLogFile(logRecord); } catch (err) { logger.warn({ err, logId: rec.LOG_ID }, 'Failed to save raw log file on retry'); }
           await logIngestService.processLog(logRecord);
           retried++;
           retriedIds.push(rec.LOG_ID);
@@ -1406,7 +1406,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
       for (const rec of records) {
         try {
           const logRecord = JSON.parse(rec.RAW_DATA!);
-          try { saveRawLogFile(logRecord); } catch (err) { logger.warn({ err, logId: rec.LOG_ID }, 'Failed to save raw log file on retry/all'); }
+          try { await saveRawLogFile(logRecord); } catch (err) { logger.warn({ err, logId: rec.LOG_ID }, 'Failed to save raw log file on retry/all'); }
           await logIngestService.processLog(logRecord);
           retried++;
           retriedIds.push(rec.LOG_ID);
@@ -2144,18 +2144,28 @@ Generate VRL parsing code for this log.`;
       const now = localISOString();
 
       // ROWS 배열을 통째로 한 LogRecord에 담아 정상 vector 경로와 동일한 흐름 사용.
-      // 그래야 log-ingest.service의 data.ROWS 분기(LOG_ICT replaceMany 등)가 적용됨.
+      // 그래야 log-ingest.service의 data.ROWS 분기(replaceMany 등)가 적용됨.
+      //
+      // 다중 테이블 적재: VRL이 .data.TABLES = [{ TABLE, ROWS }, ...] 를 채운 경우
+      // 테이블 하나당 LogRecord 하나로 쪼갠다. aggregator의 format_for_api가 이벤트를
+      // 쪼개는 것과 동일한 규약이며, 대상 테이블 목록은 설비별 VRL 블록에만 존재한다.
       const logs: LogRecord[] = [];
-      if (data) {
-        logs.push({
-          equipment_id: equipmentId,
-          equipment_type: eqType,
-          log_type: 'INSPECTION',
-          target_type: targetType as 'TABLE' | 'PROCEDURE',
-          target_table: targetTable,
-          timestamp: now,
-          data,
-        });
+      const base = {
+        equipment_id: equipmentId,
+        equipment_type: eqType,
+        log_type: 'INSPECTION',
+        target_type: targetType as 'TABLE' | 'PROCEDURE',
+        timestamp: now,
+      };
+
+      const tables = data?.TABLES as Array<{ TABLE?: string; ROWS?: unknown[] }> | undefined;
+      if (Array.isArray(tables) && tables.length > 0) {
+        for (const entry of tables) {
+          if (!entry?.TABLE || !Array.isArray(entry.ROWS)) continue;
+          logs.push({ ...base, target_table: entry.TABLE, data: { ROWS: entry.ROWS } });
+        }
+      } else if (data) {
+        logs.push({ ...base, target_table: targetTable, data });
       }
 
       if (logs.length === 0) {
