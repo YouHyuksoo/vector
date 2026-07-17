@@ -201,19 +201,7 @@ file_str = to_string!(.file)
 #   }
 # =================================================
 
-if .equipment_type == "SP" {
-  # ── SP (Solder Paste Printer) ──
-  if .log_type == "INSPECTION" {
-    .data = {}
-  } else if .log_type == "ALARM" {
-    .data = {}
-  } else if .log_type == "PROCESS" {
-    .data = {}
-  } else {
-    .data = {}
-  }
-
-} else if .equipment_type == "SPI" {
+if .equipment_type == "SPI" {
   .target_table = "LOG_SPI"
   # Log Structure (신규 KohYoung SPI 포맷, 2026-05~):
   # Line 0: Master header (MasterBarcode,PCBID,InspectionDate,InspectionStartTime,InspectionEndTime,TotalPanelCnt,JobName,PCBResult,UserID,LotInfo,MachineID,Side,Lane)
