@@ -1417,6 +1417,171 @@ if .equipment_type == "SP" {
     }
   }
 
+} else if .equipment_type == "PRESSFIT" {
+  # ── PRESSFIT 압입기 (프레스핏) ──
+  # 로그 1파일 = 하루치 누적 CSV (파일명 예: 20260713.csv)
+  #   헤더 1줄 + 데이터 N행, 134칸 = 고정 9 + 높이 124포인트 + 후행 빈칸
+  #   후행 빈칸(index 133)은 버린다.
+  #
+  # 중복 처리: BARCODE(PCB Barcode) 는 파일 내 유니크.
+  #   backend BARCODE_REPLACE_TABLES 가 BARCODE 단위 DELETE 후 bulk INSERT 한다.
+  #   → 누적 파일이 매번 통째로 재전송돼도 중복이 쌓이지 않는다.
+  #
+  # 날짜: CSV 에 날짜/시각 컬럼이 없다. ACTUAL_DATE 는 트리거가 SYSDATE 로 채운다
+  #   (LOG_ICT 와 동일 규약).
+
+  lines = split!(.message, "\n")
+  data_lines = slice!(lines, 1)   # 헤더 1줄 건너뛰기
+
+  .target_table = "LOG_PRESSFIT"
+  .data.ROWS = []
+
+  for_each(array!(data_lines)) -> |_idx, row| {
+    line = strip_whitespace(to_string!(row))
+    if line != "" {
+      cols = split(to_string!(row), ",")
+      bc = strip_whitespace(to_string!(get(cols, [1]) ?? ""))
+      # 빈 행 / 재전송으로 섞여 들어온 헤더 행 방어
+      if bc != "" && bc != "PCB Barcode" {
+        item = {
+          "SEQ_NO": strip_whitespace(to_string!(get(cols, [0]) ?? "")),
+          "BARCODE": strip_whitespace(to_string!(get(cols, [1]) ?? "")),
+          "CONNECTOR_BARCODE": strip_whitespace(to_string!(get(cols, [2]) ?? "")),
+          "STAGE_NO": strip_whitespace(to_string!(get(cols, [3]) ?? "")),
+          "TOTAL_RESULT": strip_whitespace(to_string!(get(cols, [4]) ?? "")),
+          "CYCLE_TIME": strip_whitespace(to_string!(get(cols, [5]) ?? "")),
+          "PRESS_RESULT": strip_whitespace(to_string!(get(cols, [6]) ?? "")),
+          "PRESS_VALUE": strip_whitespace(to_string!(get(cols, [7]) ?? "")),
+          "HEIGHT_RESULT": strip_whitespace(to_string!(get(cols, [8]) ?? "")),
+          "H001": strip_whitespace(to_string!(get(cols, [9]) ?? "")),
+          "H002": strip_whitespace(to_string!(get(cols, [10]) ?? "")),
+          "H003": strip_whitespace(to_string!(get(cols, [11]) ?? "")),
+          "H004": strip_whitespace(to_string!(get(cols, [12]) ?? "")),
+          "H005": strip_whitespace(to_string!(get(cols, [13]) ?? "")),
+          "H006": strip_whitespace(to_string!(get(cols, [14]) ?? "")),
+          "H007": strip_whitespace(to_string!(get(cols, [15]) ?? "")),
+          "H008": strip_whitespace(to_string!(get(cols, [16]) ?? "")),
+          "H009": strip_whitespace(to_string!(get(cols, [17]) ?? "")),
+          "H010": strip_whitespace(to_string!(get(cols, [18]) ?? "")),
+          "H011": strip_whitespace(to_string!(get(cols, [19]) ?? "")),
+          "H012": strip_whitespace(to_string!(get(cols, [20]) ?? "")),
+          "H013": strip_whitespace(to_string!(get(cols, [21]) ?? "")),
+          "H014": strip_whitespace(to_string!(get(cols, [22]) ?? "")),
+          "H015": strip_whitespace(to_string!(get(cols, [23]) ?? "")),
+          "H016": strip_whitespace(to_string!(get(cols, [24]) ?? "")),
+          "H017": strip_whitespace(to_string!(get(cols, [25]) ?? "")),
+          "H018": strip_whitespace(to_string!(get(cols, [26]) ?? "")),
+          "H019": strip_whitespace(to_string!(get(cols, [27]) ?? "")),
+          "H020": strip_whitespace(to_string!(get(cols, [28]) ?? "")),
+          "H021": strip_whitespace(to_string!(get(cols, [29]) ?? "")),
+          "H022": strip_whitespace(to_string!(get(cols, [30]) ?? "")),
+          "H023": strip_whitespace(to_string!(get(cols, [31]) ?? "")),
+          "H024": strip_whitespace(to_string!(get(cols, [32]) ?? "")),
+          "H025": strip_whitespace(to_string!(get(cols, [33]) ?? "")),
+          "H026": strip_whitespace(to_string!(get(cols, [34]) ?? "")),
+          "H027": strip_whitespace(to_string!(get(cols, [35]) ?? "")),
+          "H028": strip_whitespace(to_string!(get(cols, [36]) ?? "")),
+          "H029": strip_whitespace(to_string!(get(cols, [37]) ?? "")),
+          "H030": strip_whitespace(to_string!(get(cols, [38]) ?? "")),
+          "H031": strip_whitespace(to_string!(get(cols, [39]) ?? "")),
+          "H032": strip_whitespace(to_string!(get(cols, [40]) ?? "")),
+          "H033": strip_whitespace(to_string!(get(cols, [41]) ?? "")),
+          "H034": strip_whitespace(to_string!(get(cols, [42]) ?? "")),
+          "H035": strip_whitespace(to_string!(get(cols, [43]) ?? "")),
+          "H036": strip_whitespace(to_string!(get(cols, [44]) ?? "")),
+          "H037": strip_whitespace(to_string!(get(cols, [45]) ?? "")),
+          "H038": strip_whitespace(to_string!(get(cols, [46]) ?? "")),
+          "H039": strip_whitespace(to_string!(get(cols, [47]) ?? "")),
+          "H040": strip_whitespace(to_string!(get(cols, [48]) ?? "")),
+          "H041": strip_whitespace(to_string!(get(cols, [49]) ?? "")),
+          "H042": strip_whitespace(to_string!(get(cols, [50]) ?? "")),
+          "H043": strip_whitespace(to_string!(get(cols, [51]) ?? "")),
+          "H044": strip_whitespace(to_string!(get(cols, [52]) ?? "")),
+          "H045": strip_whitespace(to_string!(get(cols, [53]) ?? "")),
+          "H046": strip_whitespace(to_string!(get(cols, [54]) ?? "")),
+          "H047": strip_whitespace(to_string!(get(cols, [55]) ?? "")),
+          "H048": strip_whitespace(to_string!(get(cols, [56]) ?? "")),
+          "H049": strip_whitespace(to_string!(get(cols, [57]) ?? "")),
+          "H050": strip_whitespace(to_string!(get(cols, [58]) ?? "")),
+          "H051": strip_whitespace(to_string!(get(cols, [59]) ?? "")),
+          "H052": strip_whitespace(to_string!(get(cols, [60]) ?? "")),
+          "H053": strip_whitespace(to_string!(get(cols, [61]) ?? "")),
+          "H054": strip_whitespace(to_string!(get(cols, [62]) ?? "")),
+          "H055": strip_whitespace(to_string!(get(cols, [63]) ?? "")),
+          "H056": strip_whitespace(to_string!(get(cols, [64]) ?? "")),
+          "H057": strip_whitespace(to_string!(get(cols, [65]) ?? "")),
+          "H058": strip_whitespace(to_string!(get(cols, [66]) ?? "")),
+          "H059": strip_whitespace(to_string!(get(cols, [67]) ?? "")),
+          "H060": strip_whitespace(to_string!(get(cols, [68]) ?? "")),
+          "H061": strip_whitespace(to_string!(get(cols, [69]) ?? "")),
+          "H062": strip_whitespace(to_string!(get(cols, [70]) ?? "")),
+          "H063": strip_whitespace(to_string!(get(cols, [71]) ?? "")),
+          "H064": strip_whitespace(to_string!(get(cols, [72]) ?? "")),
+          "H065": strip_whitespace(to_string!(get(cols, [73]) ?? "")),
+          "H066": strip_whitespace(to_string!(get(cols, [74]) ?? "")),
+          "H067": strip_whitespace(to_string!(get(cols, [75]) ?? "")),
+          "H068": strip_whitespace(to_string!(get(cols, [76]) ?? "")),
+          "H069": strip_whitespace(to_string!(get(cols, [77]) ?? "")),
+          "H070": strip_whitespace(to_string!(get(cols, [78]) ?? "")),
+          "H071": strip_whitespace(to_string!(get(cols, [79]) ?? "")),
+          "H072": strip_whitespace(to_string!(get(cols, [80]) ?? "")),
+          "H073": strip_whitespace(to_string!(get(cols, [81]) ?? "")),
+          "H074": strip_whitespace(to_string!(get(cols, [82]) ?? "")),
+          "H075": strip_whitespace(to_string!(get(cols, [83]) ?? "")),
+          "H076": strip_whitespace(to_string!(get(cols, [84]) ?? "")),
+          "H077": strip_whitespace(to_string!(get(cols, [85]) ?? "")),
+          "H078": strip_whitespace(to_string!(get(cols, [86]) ?? "")),
+          "H079": strip_whitespace(to_string!(get(cols, [87]) ?? "")),
+          "H080": strip_whitespace(to_string!(get(cols, [88]) ?? "")),
+          "H081": strip_whitespace(to_string!(get(cols, [89]) ?? "")),
+          "H082": strip_whitespace(to_string!(get(cols, [90]) ?? "")),
+          "H083": strip_whitespace(to_string!(get(cols, [91]) ?? "")),
+          "H084": strip_whitespace(to_string!(get(cols, [92]) ?? "")),
+          "H085": strip_whitespace(to_string!(get(cols, [93]) ?? "")),
+          "H086": strip_whitespace(to_string!(get(cols, [94]) ?? "")),
+          "H087": strip_whitespace(to_string!(get(cols, [95]) ?? "")),
+          "H088": strip_whitespace(to_string!(get(cols, [96]) ?? "")),
+          "H089": strip_whitespace(to_string!(get(cols, [97]) ?? "")),
+          "H090": strip_whitespace(to_string!(get(cols, [98]) ?? "")),
+          "H091": strip_whitespace(to_string!(get(cols, [99]) ?? "")),
+          "H092": strip_whitespace(to_string!(get(cols, [100]) ?? "")),
+          "H093": strip_whitespace(to_string!(get(cols, [101]) ?? "")),
+          "H094": strip_whitespace(to_string!(get(cols, [102]) ?? "")),
+          "H095": strip_whitespace(to_string!(get(cols, [103]) ?? "")),
+          "H096": strip_whitespace(to_string!(get(cols, [104]) ?? "")),
+          "H097": strip_whitespace(to_string!(get(cols, [105]) ?? "")),
+          "H098": strip_whitespace(to_string!(get(cols, [106]) ?? "")),
+          "H099": strip_whitespace(to_string!(get(cols, [107]) ?? "")),
+          "H100": strip_whitespace(to_string!(get(cols, [108]) ?? "")),
+          "H101": strip_whitespace(to_string!(get(cols, [109]) ?? "")),
+          "H102": strip_whitespace(to_string!(get(cols, [110]) ?? "")),
+          "H103": strip_whitespace(to_string!(get(cols, [111]) ?? "")),
+          "H104": strip_whitespace(to_string!(get(cols, [112]) ?? "")),
+          "H105": strip_whitespace(to_string!(get(cols, [113]) ?? "")),
+          "H106": strip_whitespace(to_string!(get(cols, [114]) ?? "")),
+          "H107": strip_whitespace(to_string!(get(cols, [115]) ?? "")),
+          "H108": strip_whitespace(to_string!(get(cols, [116]) ?? "")),
+          "H109": strip_whitespace(to_string!(get(cols, [117]) ?? "")),
+          "H110": strip_whitespace(to_string!(get(cols, [118]) ?? "")),
+          "H111": strip_whitespace(to_string!(get(cols, [119]) ?? "")),
+          "H112": strip_whitespace(to_string!(get(cols, [120]) ?? "")),
+          "H113": strip_whitespace(to_string!(get(cols, [121]) ?? "")),
+          "H114": strip_whitespace(to_string!(get(cols, [122]) ?? "")),
+          "H115": strip_whitespace(to_string!(get(cols, [123]) ?? "")),
+          "H116": strip_whitespace(to_string!(get(cols, [124]) ?? "")),
+          "H117": strip_whitespace(to_string!(get(cols, [125]) ?? "")),
+          "H118": strip_whitespace(to_string!(get(cols, [126]) ?? "")),
+          "H119": strip_whitespace(to_string!(get(cols, [127]) ?? "")),
+          "H120": strip_whitespace(to_string!(get(cols, [128]) ?? "")),
+          "H121": strip_whitespace(to_string!(get(cols, [129]) ?? "")),
+          "H122": strip_whitespace(to_string!(get(cols, [130]) ?? "")),
+          "H123": strip_whitespace(to_string!(get(cols, [131]) ?? "")),
+          "H124": strip_whitespace(to_string!(get(cols, [132]) ?? "")),
+        }
+        .data.ROWS = push(.data.ROWS, item)
+      }
+    }
+  }
 } else {
   log("Unknown equipment_type: " + to_string!(.equipment_type), level: "warn")
   .data = {}

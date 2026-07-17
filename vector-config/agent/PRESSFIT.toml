@@ -1,0 +1,94 @@
+# =============================================================================
+#  Vector Agent (송신기) - PRESSFIT 설비
+# =============================================================================
+#
+#  역할: PRESSFIT 압입기 PC의 작업처리결과 로그 파일(.csv)을
+#        중앙 서버(Aggregator)로 전송합니다.
+#
+#  ※ 로그 포맷: 하루치 누적 CSV (파일명 예: 20260713.csv)
+#     헤더 1줄 + 데이터 N행, 134칸 = 고정 9 + 높이 124포인트 + 후행 빈칸
+#     Aggregator 의 PRESSFIT VRL 블록이 파싱해 LOG_PRESSFIT 에 저장합니다.
+#
+#  ※ 누적형이지만 송신기는 파일을 통째로 보냅니다 (프로젝트 규약).
+#     중복 제거는 수신측 책임 — backend 가 BARCODE 단위 DELETE 후 INSERT 합니다.
+#
+#  설치 방법:
+#    1. 설비 PC에 Vector를 설치합니다 (vector.exe)
+#    2. 이 파일을 설비 PC에 복사합니다
+#    3. [설비 설정] 섹션에서 line_code, equipment_id를 변경합니다
+#    4. [소스] 섹션에서 include 경로를 실제 로그 위치로 변경합니다
+#    5. [출력] 섹션에서 address를 실제 서버 IP로 변경합니다
+#
+#  실행: vector --config PRESSFIT.toml
+#
+# =============================================================================
+
+data_dir = 'C:\vector-data-pressfit'
+
+[api]
+enabled = true
+address = "127.0.0.1:8686"
+
+# ── [소스] 파일 단위 전송 ──
+
+[sources.work_logs]
+type = "file"
+include = [
+  'C:\logs\pressfit\*.csv',
+]
+read_from = "beginning"
+encoding.charset = "utf-8"
+ignore_older_secs = 604800
+fingerprint.strategy = "device_and_inode"
+
+# ── 파일 전체를 하나의 이벤트로 묶기 ──
+# 누적 파일이라 하루 종일 행이 추가된다. timeout_ms 안에 추가 행이 없으면
+# 그 시점까지의 파일 내용이 한 이벤트로 전송된다.
+[sources.work_logs.multiline]
+start_pattern = '^.'
+condition_pattern = '.*'
+mode = "continue_through"
+timeout_ms = 10000
+
+# ── [소스] 재전송 폴더 — 여기에 복사하면 전송 후 자동 삭제 ──
+
+[sources.resend_logs]
+type = "file"
+include = [
+  'C:\logs\pressfit\resend\*',
+]
+read_from = "beginning"
+encoding.charset = "utf-8"
+fingerprint.strategy = "device_and_inode"
+fingerprint.bytes = 256
+remove_after_secs = 30
+ignore_checkpoints = true
+
+[sources.resend_logs.multiline]
+start_pattern = '^.'
+condition_pattern = '.*'
+mode = "continue_through"
+timeout_ms = 10000
+
+# ── [설비 설정] ──
+[transforms.add_metadata]
+type = "remap"
+inputs = ["work_logs", "resend_logs"]
+source = '''
+.equipment_type = "PRESSFIT"
+.log_type = "INSPECTION"
+.line_code = "LINE-01"
+.equipment_id = "PRESSFIT-001"
+'''
+
+# ── [출력] Aggregator 서버로 전송 ──
+
+[sinks.to_aggregator]
+type = "vector"
+inputs = ["add_metadata"]
+address = "20.10.30.112:6000"
+
+[sinks.to_aggregator.buffer]
+type = "memory"
+max_events = 500
+when_full = "block"

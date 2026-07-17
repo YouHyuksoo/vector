@@ -25,6 +25,7 @@ const BARCODE_REPLACE_TABLES = new Set([
   'LOG_ISCM_ICT',
   'LOG_ISCM_ICT_HDATA',
   'LOG_ISCM_ICT_COMP',
+  'LOG_PRESSFIT',
 ]);
 
 /**
