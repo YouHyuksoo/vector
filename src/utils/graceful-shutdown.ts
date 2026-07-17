@@ -56,7 +56,10 @@ export function setupGracefulShutdown(app: { close(): Promise<void> }): void {
       logger.info('Oracle pool close step finished');
 
       // 4. process log batch 잔여 flush (메모리 버퍼 → 디스크 보장)
+      //  - flush(): in-flight async writer 완료 대기 (최대 250ms 손실 방지)
+      //  - flushSync(): flush() 후에도 새로 들어온 pending(없을 가능성 큼) 강제 sync write
       try {
+        await withTimeout(errorLogRepository.flush(), 3000, 'errorLog.flush');
         errorLogRepository.flushSync();
         logger.info('Process log buffer flushed');
       } catch (err) {

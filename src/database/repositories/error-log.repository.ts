@@ -11,6 +11,7 @@
  */
 
 import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'fs';
+import { appendFile as appendFileAsync } from 'fs/promises';
 import { join } from 'path';
 import { logger, localNow } from '../../utils/logger.js';
 
@@ -75,11 +76,13 @@ class ProcessLogRepository {
   private sourceTablesSet = new Set<string>();
   private equipmentIdsSet = new Set<string>();
 
-  // batch flush 버퍼: 파일경로 → 누적 라인 문자열. 50건/250ms마다 1회 appendFileSync.
-  // 매 LogRecord마다 동기 fs 호출하던 것을 묶어서 event loop block 횟수 감소.
+  // batch flush 버퍼: 파일경로 → 누적 라인 문자열.
+  // single-writer 비동기 패턴 — pending에 push만 동기, 디스크 write는 fs.promises.appendFile
+  // 로 백그라운드 처리. event loop은 push 시 미세하게도 안 막음.
   private pendingLines = new Map<string, string>();
   private pendingCount = 0;
   private flushTimer: NodeJS.Timeout | null = null;
+  private writerInFlight: Promise<void> | null = null;
 
   constructor() {
     if (!existsSync(LOG_DIR)) {
@@ -132,15 +135,51 @@ class ProcessLogRepository {
   }
 
   private scheduleFlush(): void {
+    // threshold 초과 시 즉시 백그라운드 writer 가동 (단, in-flight면 중복 실행 안 함)
     if (this.pendingCount >= FLUSH_THRESHOLD) {
-      this.flushSync();
+      this.startWriter();
       return;
     }
     if (this.flushTimer) return;
-    this.flushTimer = setTimeout(() => this.flushSync(), FLUSH_INTERVAL_MS);
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      this.startWriter();
+    }, FLUSH_INTERVAL_MS);
   }
 
-  /** 버퍼된 모든 라인을 디스크로 동기 flush. shutdown / query / threshold 초과 시 호출. */
+  /** Single-writer 패턴 — 동시에 1개 writer만 실행. 끝날 때 새 pending 있으면 다시 돔. */
+  private startWriter(): void {
+    if (this.writerInFlight) return;
+    if (this.flushTimer) { clearTimeout(this.flushTimer); this.flushTimer = null; }
+    this.writerInFlight = this.runWriter().finally(() => {
+      this.writerInFlight = null;
+      // 도중에 pending이 다시 쌓였으면 재가동
+      if (this.pendingCount > 0) this.startWriter();
+    });
+  }
+
+  private async runWriter(): Promise<void> {
+    while (this.pendingCount > 0) {
+      const snapshot = this.pendingLines;
+      this.pendingLines = new Map();
+      this.pendingCount = 0;
+      for (const [fp, content] of snapshot) {
+        try {
+          await appendFileAsync(fp, content, 'utf-8');
+        } catch (err) {
+          logger.error({ err, fp }, 'Async append failed');
+        }
+      }
+    }
+  }
+
+  /** 백그라운드 writer 끝까지 대기 — async caller용 (route handler에서 await 가능) */
+  async flush(): Promise<void> {
+    if (this.pendingCount > 0 && !this.writerInFlight) this.startWriter();
+    if (this.writerInFlight) await this.writerInFlight;
+  }
+
+  /** 동기 flush — shutdown 전용. in-flight writer는 무시하고 남은 pending만 동기 write */
   flushSync(): void {
     if (this.flushTimer) {
       clearTimeout(this.flushTimer);

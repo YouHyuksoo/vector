@@ -10,44 +10,65 @@
  */
 
 import { FastifyPluginAsync } from 'fastify';
-import { mkdirSync, writeFileSync, appendFileSync } from 'fs';
+import { mkdir, writeFile, appendFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { logBatchSchema } from '../../schemas/log-ingest.schema.js';
 import { logIngestService } from '../../services/log-ingest.service.js';
 import { errorLogRepository } from '../../database/repositories/error-log.repository.js';
 import { equipmentRegistry } from '../../services/equipment-registry.service.js';
+import { env } from '../../config/env.js';
 import { logger, localISOString } from '../../utils/logger.js';
 import type { LogRecord } from '../../types/index.js';
 
-const RAW_LOG_BASE = 'C:\\data\\raw-logs';
+const RAW_LOG_BASE = env.RAW_LOG_BASE_PATH;
 
 // 누적형 로그(append 모드) 설비 유형 — 최초 전체 + 이후 delta가 같은 파일에 쌓여야 함
 const APPEND_EQUIPMENT_TYPES = new Set<string>(['SELECTIVE']);
 
+// Per-filePath promise chain — 같은 파일에 대한 write는 직렬화.
+// 다른 파일은 병렬. 동시 HTTP 요청(Vector concurrency=8) 간 race 방지.
+const fileWriteChains = new Map<string, Promise<void>>();
+
+async function performRawWrite(log: LogRecord, filePath: string): Promise<void> {
+  await mkdir(dirname(filePath), { recursive: true });
+  if (APPEND_EQUIPMENT_TYPES.has(log.equipment_type!)) {
+    const separator = log.raw_message!.endsWith('\n') ? '' : '\n';
+    await appendFile(filePath, log.raw_message! + separator, 'utf-8');
+  } else {
+    await writeFile(filePath, log.raw_message!, 'utf-8');
+  }
+}
+
 /**
- * 원본 로그 파일을 디스크에 저장
- * - APPEND_EQUIPMENT_TYPES: 기존 파일에 이어쓰기 (누적형)
- * - 그 외: 덮어쓰기 (단일 파일 단위 전송)
+ * 원본 로그 파일을 디스크에 저장 — fs.promises + per-filePath promise chain.
+ * - 같은 filePath에 대한 호출은 모두 직렬 (다른 HTTP 요청, retry 포함 전역 보장)
+ * - 다른 filePath는 병렬 (성능 유지)
+ * - chain 끝에 cleanup으로 메모리 누수 방지
  *
  * retry API에서도 같은 저장 흐름을 쓰도록 export.
  */
-export function saveRawLogFile(log: LogRecord): void {
+export async function saveRawLogFile(log: LogRecord): Promise<void> {
   if (!log.raw_message || !log.filename || !log.equipment_type) return;
 
   const today = new Date();
   const dateDir = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const filePath = join(RAW_LOG_BASE, log.equipment_type, log.equipment_id, dateDir, log.filename);
+  // Windows는 경로 대소문자 비구분 — Map key를 lower-case로 정규화해 case 흔들림 방지
+  const chainKey = filePath.toLowerCase();
 
-  mkdirSync(dirname(filePath), { recursive: true });
-
-  if (APPEND_EQUIPMENT_TYPES.has(log.equipment_type)) {
-    const separator = log.raw_message.endsWith('\n') ? '' : '\n';
-    appendFileSync(filePath, log.raw_message + separator, 'utf-8');
-  } else {
-    writeFileSync(filePath, log.raw_message, 'utf-8');
+  const prev = fileWriteChains.get(chainKey) ?? Promise.resolve();
+  const next = prev.then(() => performRawWrite(log, filePath));
+  // 다음 호출이 prev로 잡을 promise. catch로 chain breaking 방지 (한 write 실패해도 후속 진행).
+  const chained = next.catch(() => undefined);
+  fileWriteChains.set(chainKey, chained);
+  try {
+    await next; // 호출자에겐 원래 에러 그대로 전파
+  } finally {
+    // 내 chain이 여전히 끝점이면 cleanup. 후속 호출이 이미 set했으면 그쪽이 cleanup.
+    if (fileWriteChains.get(chainKey) === chained) {
+      fileWriteChains.delete(chainKey);
+    }
   }
-
-  logger.debug({ filePath, equipment_type: log.equipment_type }, 'Raw log file saved');
 }
 
 export const logIngestRoute: FastifyPluginAsync = async (app) => {
@@ -125,32 +146,26 @@ export const logIngestRoute: FastifyPluginAsync = async (app) => {
         ? parsed.data.logs
         : [parsed.data];
 
-    // 1단계: 원본 파일 저장 (기존 삭제 → 새로 생성)
-    for (const log of logs) {
-      try {
-        saveRawLogFile(log);
-      } catch (err) {
-        logger.warn({ err, filename: log.filename }, 'Failed to save raw log file');
-      }
-    }
+    const routeStart = Date.now();
 
-    // 2단계: 파일 수신 + HTTP 수신 성공 로그 기록
+    // 1단계: 원본 파일 저장 (saveRawLogFile 내부 per-filePath chain이 동시 요청 간 race 방지).
+    // 호출자는 단순 Promise.all로 병렬화 — 다른 파일은 진짜 병렬, 같은 파일은 chain으로 직렬.
+    const rawSaveStart = Date.now();
+    await Promise.all(logs.map(async (log) => {
+      try { await saveRawLogFile(log); }
+      catch (err) { logger.warn({ err, filename: log.filename }, 'Failed to save raw log file'); }
+    }));
+    const rawSaveMs = Date.now() - rawSaveStart;
+
+    // 2단계: 파일 수신 + HTTP 수신 성공 로그 (메모리 push만, 디스크 write는 background)
+    const receiveLogStart = Date.now();
     for (const log of logs) {
       if (log.filename) {
-        errorLogRepository.success(
-          'FILE_RECEIVE',
-          log.log_type,
-          log.equipment_id,
-          `파일 수신: ${log.filename}`,
-        );
+        errorLogRepository.success('FILE_RECEIVE', log.log_type, log.equipment_id, `파일 수신: ${log.filename}`);
       }
-      errorLogRepository.success(
-        'HTTP_RECEIVE',
-        log.target_table,
-        log.equipment_id,
-        `HTTP 수신 완료 (${logs.length}건 배치)`,
-      );
+      errorLogRepository.success('HTTP_RECEIVE', log.target_table, log.equipment_id, `HTTP 수신 완료 (${logs.length}건 배치)`);
     }
+    const receiveLogMs = Date.now() - receiveLogStart;
 
     // 3단계: DB INSERT (excluded 설비 제외)
     const logsToInsert = logs.filter(log => {
@@ -163,26 +178,35 @@ export const logIngestRoute: FastifyPluginAsync = async (app) => {
     });
 
     if (logsToInsert.length === 0) {
+      const routeTotalMs = Date.now() - routeStart;
+      logger.info({ batchSize: logs.length, rawSaveMs, receiveLogMs, routeTotalMs, accepted: 0, skipped: logs.length }, 'Logs processed (all skipped)');
       return reply.status(202).send({
-        accepted: 0,
-        failed: 0,
-        skipped: logs.length,
+        accepted: 0, failed: 0, skipped: logs.length,
         timestamp: localISOString(),
       });
     }
 
     try {
+      const batchStart = Date.now();
       const result = await logIngestService.processLogBatch(logsToInsert);
-      logger.info({ count: logsToInsert.length, skipped: logs.length - logsToInsert.length }, 'Logs processed');
+      const processBatchMs = Date.now() - batchStart;
+      const routeTotalMs = Date.now() - routeStart;
+
+      logger.info({
+        batchSize: logs.length,
+        toInsert: logsToInsert.length,
+        skipped: logs.length - logsToInsert.length,
+        rawSaveMs, receiveLogMs, processBatchMs, routeTotalMs,
+        accepted: result.accepted, failed: result.failed,
+      }, 'Logs processed');
 
       return reply.status(202).send({
-        accepted: result.accepted,
-        failed: result.failed,
+        accepted: result.accepted, failed: result.failed,
         skipped: logs.length - logsToInsert.length,
         timestamp: localISOString(),
       });
     } catch (err) {
-      logger.error({ err }, 'Failed to process logs');
+      logger.error({ err, rawSaveMs, receiveLogMs, routeTotalMs: Date.now() - routeStart }, 'Failed to process logs');
 
       for (const log of logsToInsert) {
         await errorLogRepository.record({
