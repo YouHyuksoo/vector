@@ -2259,7 +2259,12 @@ Generate VRL parsing code for this log.`;
         return reply.status(400).send({ error: `Equipment type "${eqType}" not found in VRL source` });
       }
 
-      const newToml = tomlContent.replace(sourceMatch[2], updatedSource);
+      // 치환값은 반드시 함수로 넘긴다.
+      // 문자열로 넘기면 JS가 replacement 안의 $ 패턴($&, $', $`, $1...)을 해석한다.
+      // VRL 정규식의 끝 앵커는 r'...$' 로 끝나므로 $' (= 매치 뒤쪽 전체)가 되어,
+      // 블록을 바꾸지 않아도 TOML 뒷부분(format_for_api/sinks)이 통째로 복제되고
+      // ''' 짝이 깨져 Vector가 기동 실패한다. 함수 형태는 $ 해석을 하지 않는다.
+      const newToml = tomlContent.replace(sourceMatch[2], () => updatedSource);
 
       // 백업 + 저장
       createTomlBackup('vrl-apply');
@@ -2719,7 +2724,10 @@ function removeEquipmentFromAggregatorVrl(name: string): void {
     }
   }
 
-  const newToml = tomlContent.replace(sourceMatch[2], newLines.join('\n'));
+  // 치환값은 함수로 넘긴다 — 문자열로 넘기면 VRL 정규식의 r'...$' 가 $' (매치 뒤쪽 전체)로
+  // 해석돼 TOML 뒷부분이 복제된다. vrl/apply 쪽과 동일한 이유.
+  const replacement = newLines.join('\n');
+  const newToml = tomlContent.replace(sourceMatch[2], () => replacement);
   // 백업은 DELETE 핸들러에서 처리 (createTomlBackup은 route 스코프 내부 함수)
   writeFileSync(VECTOR_CONFIG, newToml, 'utf-8');
   logger.info({ name }, 'Equipment block removed from aggregator VRL');
