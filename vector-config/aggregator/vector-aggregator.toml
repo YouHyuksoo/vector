@@ -405,23 +405,22 @@ if .equipment_type == "SPI" {
     }
   }
 } else if .equipment_type == "ISCM_ICT" {
-  # ── ISCM 모델 ICT 검사설비 (eTR5001SII) ──
-  # 로그 1파일 = 3개 섹션 → 3개 테이블로 분리 저장 (조인키: BARCODE)
-  #   1) 헤더블록      [KEY]:VALUE 72종  → LOG_ISCM_ICT        (1행)
-  #   2) // Header_Data  CSV 23필드      → LOG_ISCM_ICT_HDATA  (1행)
-  #   3) // Component_Data CSV 12필드    → LOG_ISCM_ICT_COMP   (N행)
+  # ── ISCM 모델 ICT 검사설비 (eTR5001SII) — 단일 테이블 ──
+  # 로그 1파일 = 헤더블록([KEY]:VALUE) + // Header_Data + // Component_Data.
+  #   Header_Data 는 폐기한다. 헤더블록에서 5종 그룹만 추출해 Component 각 행 앞에
+  #   병합 → 단일 테이블 LOG_ISCM_ICT (Component 행수만큼 N행).
   #
-  # 다중 테이블 적재 규약: .data.TABLES = [{ "TABLE": 테이블명, "ROWS": [행...] }, ...]
-  # 이 배열만 채워두면 format_for_api 가 이벤트를 테이블별로 쪼개고,
-  # 수동 로그 투입(manual-ingest)도 동일 규약으로 처리한다.
-  # → "어느 테이블로 갈지"는 이 VRL 한 곳에서만 정의된다.
+  # 추출 컬럼:
+  #   BARCODE, TOTAL_RESULT([RESULT]), RESULT_CURRENT([RESULT CURRENT]),
+  #   HEX_FILE_1..16([HEX FILE n]), CRC_1..16([HEX CRC32 n] → CRC_n).
+  # 중복: backend BARCODE_REPLACE_TABLES 가 BARCODE 단위 DELETE 후 bulk INSERT.
+  # 날짜: 헤더에 신뢰 가능한 날짜 없음 → 트리거가 SYSDATE 로 ACTUAL_DATE 채움.
 
   lines = split!(.message, "\n")
 
   barcode = ""
   section = "HEADER"
   hdr = {}
-  hdata_line = ""
   comp_lines = []
 
   for_each(array!(lines)) -> |_idx, raw| {
@@ -433,7 +432,7 @@ if .equipment_type == "SPI" {
     } else if starts_with(t, "// Component_Data") {
       section = "COMP"
     } else if starts_with(t, "//") || t == "" || starts_with(t, "*") {
-      null  # 주석/빈줄/구분선 무시
+      null  # 주석/빈줄/구분선 무시 (HDATA 섹션 본문은 어느 조건에도 매치되지 않아 자동 폐기됨)
     } else if section == "HEADER" {
       # BARCODE : [ 6711001861B ]
       bm = parse_regex(t, r'^BARCODE\s*:\s*\[\s*(?P<b>.*?)\s*\]\s*$') ?? {}
@@ -447,67 +446,67 @@ if .equipment_type == "SPI" {
           k = replace(k, "#", "")
           k = upcase(replace(k, r'\s+', "_"))
           v = strip_whitespace(to_string!(get!(km, ["v"])))
-          # 값이 "TEST_ISCM / " 처럼 후행 슬래시를 달고 오는 필드가 있어 정리
+          # 후행 슬래시 정리 (예: "TEST_ISCM / ")
           v = strip_whitespace(replace(v, r'\s*/\s*$', ""))
           hdr = set!(hdr, [k], v)
         }
       }
-    } else if section == "HDATA" {
-      hdata_line = line
     } else if section == "COMP" {
       comp_lines = push(comp_lines, line)
     }
   }
 
-  # 바코드가 없으면 로그 본문이 아님 (선행 빈 줄이 별도 이벤트로 쪼개진 경우 등)
-  # → 빈 row INSERT 방지를 위해 이벤트를 버린다
+  # 바코드가 없으면 로그 본문이 아님 → 빈 row INSERT 방지 위해 버림
   if barcode == "" {
     abort
   }
 
-  # ── 1) 헤더블록 ──
-  hdr = set!(hdr, ["BARCODE"], barcode)
-
-  # ── 2) Header_Data (23필드 CSV 1행) ──
-  hd = {}
-  if hdata_line != "" {
-    c = split(hdata_line, ",")
-    hd = {
-      "BARCODE": barcode,
-      "ICT_ID": strip_whitespace(to_string!(get(c, [0]) ?? "")),
-      "SERIES_NO": strip_whitespace(to_string!(get(c, [1]) ?? "")),
-      "BOARD_NAME": strip_whitespace(to_string!(get(c, [2]) ?? "")),
-      "BOARD_BARCODE": strip_whitespace(to_string!(get(c, [3]) ?? "")),
-      "TEST_DATE": strip_whitespace(to_string!(get(c, [4]) ?? "")),
-      "TEST_TIME": strip_whitespace(to_string!(get(c, [5]) ?? "")),
-      "RESULT": strip_whitespace(to_string!(get(c, [6]) ?? "")),
-      "RETEST": strip_whitespace(to_string!(get(c, [7]) ?? "")),
-      "WORK_SCHEDULE": strip_whitespace(to_string!(get(c, [8]) ?? "")),
-      "OPER_ID": strip_whitespace(to_string!(get(c, [9]) ?? "")),
-      "DETAIL_RESULT": strip_whitespace(to_string!(get(c, [10]) ?? "")),
-      "MUL_BRD_NUM": strip_whitespace(to_string!(get(c, [11]) ?? "")),
-      "MUL_BRD_RESULT": strip_whitespace(to_string!(get(c, [12]) ?? "")),
-      "BEGIN_DATE": strip_whitespace(to_string!(get(c, [13]) ?? "")),
-      "BEGIN_TIME": strip_whitespace(to_string!(get(c, [14]) ?? "")),
-      "IDX": strip_whitespace(to_string!(get(c, [15]) ?? "")),
-      "DETAIL_TEST_RESULT": strip_whitespace(to_string!(get(c, [16]) ?? "")),
-      "VERSION": strip_whitespace(to_string!(get(c, [17]) ?? "")),
-      "BOARD_VERSION": strip_whitespace(to_string!(get(c, [18]) ?? "")),
-      "FIXTURE_BARCODE": strip_whitespace(to_string!(get(c, [19]) ?? "")),
-      "PIN_OFFSET": strip_whitespace(to_string!(get(c, [20]) ?? "")),
-      "LEFT_RIGHT": strip_whitespace(to_string!(get(c, [21]) ?? "")),
-      "TEST_TIME_SEC": strip_whitespace(to_string!(get(c, [22]) ?? "")),
-    }
+  # ── 헤더블록 5종 그룹 추출 (문자열 리터럴 키만 사용) ──
+  head = {
+    "BARCODE": barcode,
+    "TOTAL_RESULT": to_string(get(hdr, ["RESULT"]) ?? "") ?? "",
+    "RESULT_CURRENT": to_string(get(hdr, ["RESULT_CURRENT"]) ?? "") ?? "",
+    "HEX_FILE_1": to_string(get(hdr, ["HEX_FILE_1"]) ?? "") ?? "",
+    "HEX_FILE_2": to_string(get(hdr, ["HEX_FILE_2"]) ?? "") ?? "",
+    "HEX_FILE_3": to_string(get(hdr, ["HEX_FILE_3"]) ?? "") ?? "",
+    "HEX_FILE_4": to_string(get(hdr, ["HEX_FILE_4"]) ?? "") ?? "",
+    "HEX_FILE_5": to_string(get(hdr, ["HEX_FILE_5"]) ?? "") ?? "",
+    "HEX_FILE_6": to_string(get(hdr, ["HEX_FILE_6"]) ?? "") ?? "",
+    "HEX_FILE_7": to_string(get(hdr, ["HEX_FILE_7"]) ?? "") ?? "",
+    "HEX_FILE_8": to_string(get(hdr, ["HEX_FILE_8"]) ?? "") ?? "",
+    "HEX_FILE_9": to_string(get(hdr, ["HEX_FILE_9"]) ?? "") ?? "",
+    "HEX_FILE_10": to_string(get(hdr, ["HEX_FILE_10"]) ?? "") ?? "",
+    "HEX_FILE_11": to_string(get(hdr, ["HEX_FILE_11"]) ?? "") ?? "",
+    "HEX_FILE_12": to_string(get(hdr, ["HEX_FILE_12"]) ?? "") ?? "",
+    "HEX_FILE_13": to_string(get(hdr, ["HEX_FILE_13"]) ?? "") ?? "",
+    "HEX_FILE_14": to_string(get(hdr, ["HEX_FILE_14"]) ?? "") ?? "",
+    "HEX_FILE_15": to_string(get(hdr, ["HEX_FILE_15"]) ?? "") ?? "",
+    "HEX_FILE_16": to_string(get(hdr, ["HEX_FILE_16"]) ?? "") ?? "",
+    "CRC_1": to_string(get(hdr, ["HEX_CRC32_1"]) ?? "") ?? "",
+    "CRC_2": to_string(get(hdr, ["HEX_CRC32_2"]) ?? "") ?? "",
+    "CRC_3": to_string(get(hdr, ["HEX_CRC32_3"]) ?? "") ?? "",
+    "CRC_4": to_string(get(hdr, ["HEX_CRC32_4"]) ?? "") ?? "",
+    "CRC_5": to_string(get(hdr, ["HEX_CRC32_5"]) ?? "") ?? "",
+    "CRC_6": to_string(get(hdr, ["HEX_CRC32_6"]) ?? "") ?? "",
+    "CRC_7": to_string(get(hdr, ["HEX_CRC32_7"]) ?? "") ?? "",
+    "CRC_8": to_string(get(hdr, ["HEX_CRC32_8"]) ?? "") ?? "",
+    "CRC_9": to_string(get(hdr, ["HEX_CRC32_9"]) ?? "") ?? "",
+    "CRC_10": to_string(get(hdr, ["HEX_CRC32_10"]) ?? "") ?? "",
+    "CRC_11": to_string(get(hdr, ["HEX_CRC32_11"]) ?? "") ?? "",
+    "CRC_12": to_string(get(hdr, ["HEX_CRC32_12"]) ?? "") ?? "",
+    "CRC_13": to_string(get(hdr, ["HEX_CRC32_13"]) ?? "") ?? "",
+    "CRC_14": to_string(get(hdr, ["HEX_CRC32_14"]) ?? "") ?? "",
+    "CRC_15": to_string(get(hdr, ["HEX_CRC32_15"]) ?? "") ?? "",
+    "CRC_16": to_string(get(hdr, ["HEX_CRC32_16"]) ?? "") ?? "",
   }
 
-  # ── 3) Component_Data (12필드 CSV N행) ──
-  comp = []
+  # ── Component_Data (12필드 CSV N행) + 헤더 병합 ──
+  rows = []
   seq = 0
   for_each(array!(comp_lines)) -> |_i, row| {
     cols = split(to_string!(row), ",")
     seq = seq + 1
-    item = {
-      "BARCODE": barcode,
+    item = merge(head, {
       "SEQ_NO": to_string(seq),
       "PART_NAME": strip_whitespace(to_string!(get(cols, [0]) ?? "")),
       "ACT_V": strip_whitespace(to_string!(get(cols, [1]) ?? "")),
@@ -521,19 +520,13 @@ if .equipment_type == "SPI" {
       "RESULT": strip_whitespace(to_string!(get(cols, [9]) ?? "")),
       "DEV": strip_whitespace(to_string!(get(cols, [10]) ?? "")),
       "SKIP_FLAG": strip_whitespace(to_string!(get(cols, [11]) ?? "")),
-    }
-    comp = push(comp, item)
+    })
+    rows = push(rows, item)
   }
 
-  # ── 적재 대상 선언 (테이블별 이벤트 분리는 format_for_api 가 수행) ──
+  # ── 단일 테이블 적재 (BARCODE_REPLACE_TABLES 경로) ──
   .target_table = "LOG_ISCM_ICT"
-  .data = {
-    "TABLES": [
-      { "TABLE": "LOG_ISCM_ICT",       "ROWS": [hdr] },
-      { "TABLE": "LOG_ISCM_ICT_HDATA", "ROWS": [hd]  },
-      { "TABLE": "LOG_ISCM_ICT_COMP",  "ROWS": comp  }
-    ]
-  }
+  .data = { "ROWS": rows }
 } else if .equipment_type == "FCT" {
   lines = split!(to_string!(.message), "\n")
   .target_table = "LOG_FCT"
