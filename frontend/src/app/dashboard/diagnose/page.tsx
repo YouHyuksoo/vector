@@ -1,98 +1,24 @@
 /**
  * @file src/app/dashboard/diagnose/page.tsx
- * @description 운영 진단 페이지 — 설정·현상·상태를 한 화면에서 판단
+ * @description 운영 진단 페이지 — Vector.OPS 미션 컨트롤 UI
  *
  * 초보자 가이드:
- * 1. **목적**: 적체/지연/재시작 등 운영 이상을 한눈에 진단
+ * 1. **컨셉**: 항공우주 control room / Bloomberg terminal — 다크 인더스트리얼 + 모노스페이스 + 형광 액센트
  * 2. **데이터**: GET /api/diagnose/health 5초 polling
- * 3. **종합 헬스**: ok / warn / critical 색상 + reasons 목록
+ * 3. **위계**: HEADER → KPI 6개 → CHART 3개 → BUFFER+DATAFLOW → EQUIPMENT MATRIX → CONFIG
  */
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
+import { Sparkline, type HistoryPoint } from './components/Sparkline';
 
 const POLL_INTERVAL = 5000;
-const HISTORY_MAX = 120; // 5초 × 120 = 10분 추이
+const HISTORY_MAX = 120;
 
+// ─── Types ──────────────────────────────────────────────────────────────
 interface BufferSegment { name: string; sizeMB: number; mtime: string; }
 interface VectorMetric { id: string; received?: number | null; sent?: number | null; }
-interface HistoryPoint { t: number; v: number; }
-
-/** 인라인 SVG 라인 차트 — 의존성 없이 추이 시각화 */
-function Sparkline({
-  data, width = 320, height = 80, color = '#3b82f6', max,
-  label, unit, threshold,
-}: {
-  data: HistoryPoint[]; width?: number; height?: number; color?: string;
-  max?: number; label?: string; unit?: string; threshold?: { warn?: number; critical?: number };
-}) {
-  if (data.length < 2) {
-    return (
-      <div style={{ width, height }} className="flex items-center justify-center text-xs text-muted-foreground border rounded">
-        데이터 수집 중...
-      </div>
-    );
-  }
-  const xs = data.map((_, i) => i);
-  const ys = data.map(p => p.v);
-  const minY = 0;
-  const maxY = max ?? Math.max(...ys, 1) * 1.1;
-  const W = width, H = height;
-  const PAD_L = 32, PAD_R = 8, PAD_T = 8, PAD_B = 18;
-  const plotW = W - PAD_L - PAD_R;
-  const plotH = H - PAD_T - PAD_B;
-  const xScale = (i: number) => PAD_L + (i / (xs.length - 1)) * plotW;
-  const yScale = (v: number) => PAD_T + plotH - ((v - minY) / (maxY - minY)) * plotH;
-  const pathD = xs.map((i, idx) => `${idx === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(ys[i])}`).join(' ');
-  const areaD = `${pathD} L ${xScale(xs[xs.length - 1])} ${PAD_T + plotH} L ${xScale(xs[0])} ${PAD_T + plotH} Z`;
-  const lastV = ys[ys.length - 1];
-  const firstT = new Date(data[0].t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-  const lastT = new Date(data[data.length - 1].t).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-
-  const warnY = threshold?.warn != null ? yScale(threshold.warn) : null;
-  const critY = threshold?.critical != null ? yScale(threshold.critical) : null;
-
-  return (
-    <div className="w-full">
-      {label && (
-        <div className="text-xs text-muted-foreground flex justify-between mb-1">
-          <span>{label}</span>
-          <span className="font-mono">현재 {lastV.toLocaleString()}{unit}</span>
-        </div>
-      )}
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="w-full">
-        {/* y축 격자 */}
-        {[0, 0.25, 0.5, 0.75, 1].map(p => {
-          const y = PAD_T + plotH * (1 - p);
-          const v = (minY + (maxY - minY) * p).toFixed(0);
-          return (
-            <g key={p}>
-              <line x1={PAD_L} x2={W - PAD_R} y1={y} y2={y} stroke="currentColor" strokeOpacity={0.08} />
-              <text x={PAD_L - 4} y={y + 3} textAnchor="end" fontSize="9" fill="currentColor" fillOpacity={0.5}>{v}</text>
-            </g>
-          );
-        })}
-        {/* 임계선 */}
-        {warnY != null && warnY > 0 && warnY < H && (
-          <line x1={PAD_L} x2={W - PAD_R} y1={warnY} y2={warnY} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.5} />
-        )}
-        {critY != null && critY > 0 && critY < H && (
-          <line x1={PAD_L} x2={W - PAD_R} y1={critY} y2={critY} stroke="#ef4444" strokeDasharray="3 3" strokeOpacity={0.5} />
-        )}
-        {/* 영역 + 라인 */}
-        <path d={areaD} fill={color} fillOpacity={0.12} />
-        <path d={pathD} fill="none" stroke={color} strokeWidth={1.5} />
-        {/* 마지막 점 */}
-        <circle cx={xScale(xs[xs.length - 1])} cy={yScale(lastV)} r={2.5} fill={color} />
-        {/* x축 시작/끝 라벨 */}
-        <text x={PAD_L} y={H - 4} fontSize="9" fill="currentColor" fillOpacity={0.5}>{firstT}</text>
-        <text x={W - PAD_R} y={H - 4} textAnchor="end" fontSize="9" fill="currentColor" fillOpacity={0.5}>{lastT}</text>
-      </svg>
-    </div>
-  );
-}
 interface EquipmentItem {
   equipment_id: string; equipment_type: string; ip: string | null;
   online: boolean; vector_running: boolean; last_seen: string;
@@ -123,21 +49,60 @@ interface DiagnoseResponse {
   };
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────
 function formatUptime(sec: number): string {
   if (sec < 60) return `${sec}s`;
-  if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m`;
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  return `${h}h ${m}m`;
+  return h > 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${h}h ${m}m`;
 }
 
-const healthColor: Record<string, string> = {
-  ok: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40',
-  warn: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40',
-  critical: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/40',
+const STATUS = {
+  ok: { label: 'NOMINAL', dot: 'bg-emerald-400', text: 'text-emerald-300', glow: '#34d399', panel: 'bg-emerald-950/30 border-emerald-400/30' },
+  warn: { label: 'CAUTION', dot: 'bg-amber-400', text: 'text-amber-300', glow: '#fbbf24', panel: 'bg-amber-950/30 border-amber-400/30' },
+  critical: { label: 'CRITICAL', dot: 'bg-rose-400', text: 'text-rose-300', glow: '#fb7185', panel: 'bg-rose-950/30 border-rose-400/40' },
 };
-const healthLabel: Record<string, string> = { ok: '정상', warn: '주의', critical: '위험' };
 
+// ─── Sub Components ─────────────────────────────────────────────────────
+function Section({ title, meta, children }: { title: string; meta?: string; children: React.ReactNode }) {
+  return (
+    <section className="border border-[rgba(127,153,178,0.15)] bg-[#11161f]/60 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-[rgba(127,153,178,0.1)]">
+        <div className="flex items-center gap-2">
+          <span className="text-emerald-400 text-[10px]">▼</span>
+          <h3 className="text-[10px] uppercase tracking-[0.3em] text-[#a0b0c0] font-medium">{title}</h3>
+          <span className="h-px flex-1 bg-gradient-to-r from-[rgba(127,153,178,0.25)] to-transparent w-12" />
+        </div>
+        {meta && <span className="text-[10px] text-[#5a6b7d] tracking-wider">{meta}</span>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Kpi({
+  label, value, unit, status, sub, accent,
+}: {
+  label: string; value: string | number; unit?: string;
+  status?: 'ok' | 'warn' | 'critical' | 'neutral'; sub?: string; accent?: string;
+}) {
+  const accentColor = accent ?? (status === 'critical' ? '#fb7185' : status === 'warn' ? '#fbbf24' : status === 'ok' ? '#34d399' : '#67e8f9');
+  return (
+    <div className="relative border border-[rgba(127,153,178,0.15)] bg-[#11161f]/60 backdrop-blur-sm p-3 overflow-hidden group hover:border-[rgba(127,153,178,0.3)] transition">
+      <div className="absolute left-0 top-0 bottom-0 w-[2px]" style={{ background: accentColor, boxShadow: `0 0 8px ${accentColor}` }} />
+      <div className="absolute right-2 top-2 w-1.5 h-1.5 rounded-full" style={{ background: accentColor, boxShadow: `0 0 6px ${accentColor}` }} />
+      <div className="text-[9px] uppercase tracking-[0.22em] text-[#6b7d8f] mb-1">{label}</div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl lg:text-3xl font-light tabular-nums" style={{ color: accentColor, textShadow: `0 0 12px ${accentColor}40` }}>{value}</span>
+        {unit && <span className="text-[10px] text-[#6b7d8f] uppercase tracking-wider">{unit}</span>}
+      </div>
+      {sub && <div className="text-[10px] text-[#5a6b7d] mt-0.5 tracking-wide">{sub}</div>}
+    </div>
+  );
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────
 export default function DiagnosePage() {
   const [data, setData] = useState<DiagnoseResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -171,254 +136,228 @@ export default function DiagnosePage() {
     return () => clearInterval(id);
   }, [fetchHealth]);
 
-  if (err && !data) {
-    return <div className="p-6 text-rose-600">진단 조회 실패: {err}</div>;
-  }
-  if (!data) {
-    return <div className="p-6 text-muted-foreground">진단 데이터 로딩 중...</div>;
-  }
+  if (err && !data) return <BootScreen status="ERROR" message={`TELEMETRY LINK FAILED — ${err}`} />;
+  if (!data) return <BootScreen status="BOOT" message="ESTABLISHING TELEMETRY LINK..." />;
 
+  const status = STATUS[data.health];
   const bufferPercent = data.config.vectorToApi.bufferMaxMB
     ? Math.round((data.aggregator.bufferActiveMB / data.config.vectorToApi.bufferMaxMB) * 100)
     : 0;
 
+  const kpis = [
+    { label: 'Vector Unsent', value: data.aggregator.unsentEvents.toLocaleString(), unit: 'evt', status: (data.aggregator.unsentEvents > 1000 ? 'critical' : data.aggregator.unsentEvents > 0 ? 'warn' : 'ok') as 'ok' | 'warn' | 'critical', sub: 'received − sent' },
+    { label: 'DB Insert / Min', value: data.throughput.insertPerMin ?? '—', unit: '/min', accent: '#67e8f9', sub: `recent err ${data.recentErrors}` },
+    { label: 'Active Buffer', value: data.aggregator.bufferActiveMB.toFixed(1), unit: 'MB', status: (data.aggregator.bufferActiveMB > 200 ? 'warn' : 'ok') as 'ok' | 'warn', sub: data.config.vectorToApi.bufferMaxMB ? `${bufferPercent}% of ${data.config.vectorToApi.bufferMaxMB}MB` : 'no max' },
+    { label: 'Backend Uptime', value: formatUptime(data.backend.uptimeSec), accent: '#a78bfa', sub: `heap ${data.backend.heapMB} / rss ${data.backend.rssMB}MB` },
+    { label: 'Equipments Online', value: `${data.equipments.online}/${data.equipments.total}`, status: (data.equipments.offline > 0 ? 'warn' : 'ok') as 'ok' | 'warn', sub: `offline ${data.equipments.offline}` },
+    { label: 'Vector Memory', value: data.aggregator.memoryMB?.toFixed(0) ?? '—', unit: 'MB', accent: '#f0abfc', sub: data.aggregator.running ? `pid ${data.aggregator.pid}` : '✗ stopped' },
+  ];
+
   return (
-    <div className="p-3 lg:p-4 space-y-3">
-      {/* 종합 헬스 */}
-      <div className={`rounded-lg border-2 px-4 py-3 ${healthColor[data.health]}`}>
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <div className="text-xl font-bold">
-              {data.health === 'ok' ? '✓' : data.health === 'warn' ? '⚠️' : '🔴'} {healthLabel[data.health]}
+    <div className={`font-mono min-h-screen bg-[#0a0e14] text-[#c5d0db] relative`}>
+      {/* CRT scanlines */}
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.035]" style={{
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(255,255,255,0.9) 2px, rgba(255,255,255,0.9) 3px)',
+      }} />
+      {/* grid pattern */}
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.04]" style={{
+        backgroundImage: 'linear-gradient(rgba(127,153,178,1) 1px, transparent 1px), linear-gradient(90deg, rgba(127,153,178,1) 1px, transparent 1px)',
+        backgroundSize: '32px 32px',
+      }} />
+      {/* corner glows */}
+      <div className="pointer-events-none fixed -top-40 -left-40 w-[28rem] h-[28rem] rounded-full blur-3xl" style={{ background: `${status.glow}20` }} />
+      <div className="pointer-events-none fixed -bottom-40 -right-40 w-[28rem] h-[28rem] bg-cyan-500/5 rounded-full blur-3xl" />
+
+      <div className="relative z-10 p-3 lg:p-5 space-y-3 max-w-[1800px] mx-auto">
+        {/* HEADER */}
+        <header className="border border-[rgba(127,153,178,0.15)] bg-[#11161f]/80 backdrop-blur-sm">
+          <div className="flex flex-wrap items-center justify-between px-4 py-2.5 gap-3 border-b border-[rgba(127,153,178,0.1)]">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 text-xs">◆</span>
+                <span className="text-base font-bold tracking-[0.25em] text-emerald-300" style={{ textShadow: '0 0 8px #34d39960' }}>VECTOR.OPS</span>
+              </div>
+              <span className="text-[10px] text-[#5a6b7d] uppercase tracking-wider hidden sm:inline">// pipeline diagnostics</span>
             </div>
-            <div className="text-xs mt-0.5 opacity-80">
-              {new Date(data.timestamp).toLocaleString('ko-KR')} · 진단 {data.diagnoseElapsedMs}ms
-              {loading && ' · 갱신 중...'}
+            <div className="flex items-center gap-3 text-[10px] text-[#6b7d8f]">
+              <span className="tabular-nums">RTT <span className="text-[#c5d0db]">{data.diagnoseElapsedMs}</span>ms</span>
+              <span className="hidden md:inline tabular-nums">{new Date(data.timestamp).toLocaleString('ko-KR')}</span>
+              <button
+                onClick={fetchHealth}
+                className={`px-2.5 py-1 border border-[rgba(127,153,178,0.3)] hover:border-emerald-400/60 hover:text-emerald-300 transition tracking-wider ${loading ? 'animate-pulse text-emerald-400 border-emerald-400/50' : ''}`}>
+                {loading ? '◌ SCAN' : '▶ REFRESH'}
+              </button>
             </div>
           </div>
-          <button onClick={fetchHealth} className="px-3 py-1 rounded bg-white/30 hover:bg-white/50 text-xs font-medium">
-            새로고침
-          </button>
+          <div className={`flex items-start gap-4 px-4 py-3 border-l-2 ${status.panel}`} style={{ borderLeftColor: status.glow }}>
+            <div className={`mt-1.5 w-3 h-3 rounded-full ${status.dot} ${data.health !== 'ok' ? 'animate-pulse' : ''}`} style={{ boxShadow: `0 0 12px ${status.glow}, 0 0 24px ${status.glow}80` }} />
+            <div className="flex-1">
+              <div className="flex items-baseline gap-3">
+                <span className={`text-xl font-light tracking-[0.2em] ${status.text}`} style={{ textShadow: `0 0 8px ${status.glow}60` }}>{status.label}</span>
+                <span className="text-[10px] text-[#5a6b7d] uppercase tracking-wider">{data.reasons.length} indicator{data.reasons.length !== 1 && 's'}</span>
+              </div>
+              <ul className="mt-1 space-y-0.5 text-[11px] text-[#a0b0c0]">
+                {data.reasons.map((r, i) => <li key={i} className="flex gap-2"><span className="text-[#5a6b7d]">›</span><span>{r}</span></li>)}
+              </ul>
+            </div>
+          </div>
+        </header>
+
+        {/* KPI GRID */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          {kpis.map((k, i) => <Kpi key={i} {...k} />)}
         </div>
-        <ul className="mt-2 space-y-0.5 text-xs">
-          {data.reasons.map((r, i) => <li key={i}>• {r}</li>)}
-        </ul>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* 상태 */}
-        <Card>
-          <div className="p-3">
-            <h3 className="font-semibold text-sm mb-2">📊 상태 (Status)</h3>
-            <dl className="text-xs space-y-1">
-              <div className="flex justify-between"><dt className="text-muted-foreground">Backend</dt>
-                <dd>PID {data.backend.pid} · uptime {formatUptime(data.backend.uptimeSec)} · heap {data.backend.heapMB}MB / rss {data.backend.rssMB}MB</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">시스템 메모리</dt>
-                <dd>{data.backend.systemMemoryPercent}% · CPU {data.backend.cpuCores}코어</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">Aggregator</dt>
-                <dd>{data.aggregator.running ? `✓ PID ${data.aggregator.pid}` : '✗ 중지'} · API {data.aggregator.apiReachable ? '✓' : '✗'}</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">Oracle</dt>
-                <dd>{data.oracle.connected ? '✓ 연결' : '✗ 끊김'} · pool {data.oracle.poolMin}/{data.oracle.poolMax}</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">설비</dt>
-                <dd>{data.equipments.online}/{data.equipments.total} 온라인 · offline {data.equipments.offline}</dd>
-              </div>
-            </dl>
+        {/* CHARTS */}
+        <Section title="History · 10 min @ 5s" meta={`${bufferHistory.length}/${HISTORY_MAX} samples`}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3">
+            <Sparkline
+              data={bufferHistory} color="#fbbf24" label="Active Buffer" unit="MB"
+              max={data.config.vectorToApi.bufferMaxMB ?? undefined}
+              threshold={{ warn: 200, critical: data.config.vectorToApi.bufferMaxMB ? data.config.vectorToApi.bufferMaxMB * 0.8 : undefined }}
+            />
+            <Sparkline data={memoryHistory} color="#67e8f9" label="Vector Memory" unit="MB" threshold={{ warn: 500, critical: 1500 }} />
+            <Sparkline data={insertHistory} color="#34d399" label="DB Insert" unit="/min" />
           </div>
-        </Card>
+        </Section>
 
-        {/* 현상 */}
-        <Card>
-          <div className="p-3">
-            <h3 className="font-semibold text-sm mb-2">🔍 현상 (Symptoms)</h3>
-            <dl className="text-xs space-y-1">
-              <div className="flex justify-between items-center"><dt className="text-muted-foreground">실질 적체 (unsent)</dt>
-                <dd className={data.aggregator.unsentEvents > 500 ? 'text-rose-600 font-medium' : data.aggregator.unsentEvents > 0 ? 'text-amber-600' : ''}>
-                  {data.aggregator.unsentEvents.toLocaleString()} 건
-                  <span className="text-muted-foreground"> (received − sent)</span>
-                </dd>
+        {/* BUFFER + DATAFLOW */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <Section title="Buffer Composition" meta={`${data.aggregator.bufferSegments.length} seg · ${data.aggregator.bufferTotalMB}MB`}>
+            <div className="p-3 space-y-2">
+              <div className="flex gap-3 text-[10px] uppercase tracking-wider">
+                <Legend color="#34d399" label="Active" />
+                <Legend color="#94a3b8" label="Rotation Wait" />
+                <Legend color="#fb7185" label="Orphan" />
               </div>
-              <div className="flex justify-between items-center"><dt className="text-muted-foreground">Buffer 파일</dt>
-                <dd>
-                  <span>{data.aggregator.bufferActiveMB} MB</span>
-                  <span className="text-muted-foreground"> · 전체 {data.aggregator.bufferTotalMB} MB</span>
-                  {data.config.vectorToApi.bufferMaxMB && <span className="text-muted-foreground"> / {data.config.vectorToApi.bufferMaxMB} MB ({bufferPercent}%)</span>}
-                </dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">분당 INSERT</dt>
-                <dd className={(data.throughput.insertPerMin ?? 0) < 5 && data.aggregator.unsentEvents > 500 ? 'text-rose-600 font-medium' : ''}>
-                  {data.throughput.insertPerMin ?? '-'} 건
-                </dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">데이터 lag</dt>
-                <dd className={(data.lag.hours ?? 0) > 1 ? 'text-amber-600 font-medium' : ''}>
-                  {data.lag.hours != null ? `${data.lag.hours}시간` : '-'}
-                </dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">최근 5분 ERROR</dt>
-                <dd className={data.recentErrors > 10 ? 'text-amber-600 font-medium' : ''}>{data.recentErrors} 건</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">port 6000 연결</dt>
-                <dd>{data.port6000Connections.length}개 ({data.port6000Connections.slice(0, 3).join(', ')}{data.port6000Connections.length > 3 ? '...' : ''})</dd>
-              </div>
-            </dl>
-
-            {data.aggregator.bufferSegments.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-muted">
-                <div className="text-[10px] text-muted-foreground mb-1">
-                  Buffer 분해 · <span className="text-emerald-600">활성</span> / <span className="text-slate-500">회전 대기</span> / <span className="text-rose-600">orphan(청소 권장)</span>
-                </div>
+              <div className="space-y-1">
                 {data.aggregator.bufferSegments.map(s => {
                   const ageMs = Date.now() - new Date(s.mtime).getTime();
-                  const isOrphan = ageMs > 7 * 24 * 60 * 60 * 1000;     // 7일 이상 = orphan
-                  const isWaiting = !isOrphan && ageMs > 60 * 60 * 1000; // 1시간~7일 = rotation 대기
-                  const cls = isOrphan ? 'text-rose-600' : isWaiting ? 'text-slate-500' : 'text-emerald-700';
+                  const isOrphan = ageMs > 7 * 24 * 60 * 60 * 1000;
+                  const isWaiting = !isOrphan && ageMs > 60 * 60 * 1000;
+                  const color = isOrphan ? '#fb7185' : isWaiting ? '#94a3b8' : '#34d399';
+                  const tag = isOrphan ? 'ORPHAN' : isWaiting ? 'WAIT' : 'ACTIVE';
                   return (
-                    <div key={s.name} className={`text-[10px] flex justify-between ${cls}`}>
-                      <span className="font-mono">{s.name}</span>
-                      <span>{s.sizeMB}MB · {new Date(s.mtime).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    <div key={s.name} className="flex items-center gap-2 text-[11px] border border-[rgba(127,153,178,0.1)] bg-[#0a0e14]/50 px-2 py-1.5">
+                      <div className="w-1 h-1 rounded-full" style={{ background: color, boxShadow: `0 0 4px ${color}` }} />
+                      <span className="text-[9px] uppercase tracking-wider w-12" style={{ color }}>{tag}</span>
+                      <span className="font-mono flex-1 truncate text-[#c5d0db]">{s.name}</span>
+                      <span className="tabular-nums text-[#a0b0c0]">{s.sizeMB.toFixed(2)}MB</span>
+                      <span className="text-[#5a6b7d] tabular-nums">{new Date(s.mtime).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   );
                 })}
-                <div className="text-[10px] text-muted-foreground mt-1">
-                  Vector disk_v2: ACK된 이벤트도 segment rotation 전까지 파일에 남음 — 적체 아님
-                </div>
               </div>
-            )}
-          </div>
-        </Card>
+              <div className="text-[10px] text-[#5a6b7d] pt-1 border-t border-[rgba(127,153,178,0.1)]">
+                ▸ Vector disk_v2: ACK된 이벤트도 segment rotation 전까지 파일에 남음 — 적체 아님
+              </div>
+            </div>
+          </Section>
 
-        {/* 설정 */}
-        <Card>
-          <div className="p-3">
-            <h3 className="font-semibold text-sm mb-2">⚙️ 설정 (Config)</h3>
-            <dl className="text-xs space-y-1">
-              <div className="flex justify-between"><dt className="text-muted-foreground">max_memory_restart</dt>
-                <dd className="font-mono">{data.config.maxMemoryRestart || '-'}</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">Oracle pool</dt>
-                <dd className="font-mono">min {data.config.oraclePool.min} / max {data.config.oraclePool.max}</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">Vector to_api batch</dt>
-                <dd className="font-mono">max_events {data.config.vectorToApi.batchMaxEvents ?? '-'} · concurrency {data.config.vectorToApi.concurrency ?? 'adaptive'}</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">Vector to_api buffer</dt>
-                <dd className="font-mono">disk · {data.config.vectorToApi.bufferMaxMB ?? '-'} MB max</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">raw-logs 경로</dt>
-                <dd className="font-mono text-xs">{data.config.rawLogBasePath}</dd>
-              </div>
-            </dl>
-          </div>
-        </Card>
-
-        {/* Vector 컴포넌트 메트릭 + 설비별 처리량 */}
-        <Card>
-          <div className="p-3">
-            <h3 className="font-semibold text-sm mb-2">📈 처리 흐름</h3>
-            <div className="text-xs space-y-2">
+          <Section title="Dataflow" meta="vector graphql api">
+            <div className="p-3 space-y-3">
               {data.aggregator.vectorMetrics.sources.length > 0 && (
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">Aggregator sources (받음):</div>
-                  {data.aggregator.vectorMetrics.sources.map(s => (
-                    <div key={s.id} className="font-mono text-xs flex justify-between">
-                      <span>{s.id}</span><span>{s.received?.toLocaleString() ?? 'null'} events</span>
-                    </div>
-                  ))}
-                </div>
+                <FlowGroup label="Sources · received" items={data.aggregator.vectorMetrics.sources.map(s => ({ id: s.id, n: s.received ?? null }))} color="#67e8f9" />
               )}
               {data.aggregator.vectorMetrics.sinks.length > 0 && (
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">Aggregator sinks (보냄):</div>
-                  {data.aggregator.vectorMetrics.sinks.map(s => (
-                    <div key={s.id} className="font-mono text-xs flex justify-between">
-                      <span>{s.id}</span><span>{s.sent?.toLocaleString() ?? 'null'} events</span>
-                    </div>
-                  ))}
-                </div>
+                <FlowGroup label="Sinks · sent" items={data.aggregator.vectorMetrics.sinks.map(s => ({ id: s.id, n: s.sent ?? null }))} color="#34d399" />
               )}
-              {data.throughput.perTable.length > 0 && (
-                <div>
-                  <div className="text-muted-foreground text-xs mb-1">최근 1분 테이블별 INSERT:</div>
-                  {data.throughput.perTable.map(t => (
-                    <div key={t.table} className="font-mono text-xs flex justify-between">
-                      <span>{t.table}</span><span>{t.cnt.toLocaleString()}건</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {data.lag.latestStartTime && data.lag.latestCreatedAt && (
-                <div className="pt-2 border-t border-muted">
-                  <div className="text-xs text-muted-foreground">최신 데이터 (LOG_EOL):</div>
-                  <div className="text-xs">START_TIME: <span className="font-mono">{data.lag.latestStartTime}</span></div>
-                  <div className="text-xs">CREATED_AT: <span className="font-mono">{new Date(data.lag.latestCreatedAt).toLocaleString('ko-KR')}</span></div>
-                </div>
-              )}
+              <div className="pt-2 border-t border-[rgba(127,153,178,0.1)] grid grid-cols-2 gap-2 text-[10px]">
+                <Stat label="Port 6000 conn" value={data.port6000Connections.length} sub={data.port6000Connections.slice(0, 3).join(', ')} />
+                <Stat label="Oracle pool" value={`${data.oracle.poolMin}/${data.oracle.poolMax}`} sub={data.oracle.connected ? '◉ linked' : '◯ down'} />
+                <Stat label="Top table" value={data.throughput.perTable[0]?.table ?? '—'} sub={data.throughput.perTable[0] ? `${data.throughput.perTable[0].cnt}/min` : ''} />
+                <Stat label="Lag" value={data.lag.hours != null ? `${data.lag.hours}h` : '—'} sub="start vs created" />
+              </div>
             </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* 추이 차트 (10분치) */}
-      <Card>
-        <div className="p-3">
-          <h3 className="font-semibold text-sm mb-2">📉 추이 (최근 10분 · 5초 간격)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <Sparkline
-                data={bufferHistory}
-                color="#f59e0b"
-                label="Aggregator buffer (MB)"
-                unit=" MB"
-                max={data.config.vectorToApi.bufferMaxMB ?? undefined}
-                threshold={{
-                  warn: 100,
-                  critical: data.config.vectorToApi.bufferMaxMB ? data.config.vectorToApi.bufferMaxMB * 0.8 : undefined,
-                }}
-              />
-            </div>
-            <div>
-              <Sparkline
-                data={memoryHistory}
-                color="#3b82f6"
-                label="Vector.exe 메모리 (MB)"
-                unit=" MB"
-                threshold={{ warn: 500, critical: 1500 }}
-              />
-            </div>
-            <div>
-              <Sparkline
-                data={insertHistory}
-                color="#10b981"
-                label="DB INSERT (건/분)"
-                unit=" /분"
-              />
-            </div>
-          </div>
-          <div className="text-[10px] text-muted-foreground mt-1">
-            활성 buffer {data.aggregator.bufferActiveMB} MB · vector 메모리 {data.aggregator.memoryMB ?? '-'} MB · 분당 INSERT {data.throughput.insertPerMin ?? '-'} 건
-          </div>
+          </Section>
         </div>
-      </Card>
 
-      {/* 설비 목록 */}
-      <Card>
-        <div className="p-3">
-          <h3 className="font-semibold text-sm mb-2">🔌 설비 ({data.equipments.online}/{data.equipments.total} 온라인)</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 text-[11px]">
+        {/* EQUIPMENT MATRIX */}
+        <Section title={`Equipment Matrix · ${data.equipments.online}/${data.equipments.total}`} meta={`${data.equipments.offline} offline`}>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-1.5 p-3">
             {data.equipments.list.map(eq => (
               <div key={eq.equipment_id}
-                className={`px-2 py-1 rounded border ${eq.online ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-muted bg-muted/30'}`}>
-                <div className="font-medium">{eq.online ? '✓' : '✗'} {eq.equipment_id}</div>
-                <div className="text-muted-foreground">{eq.equipment_type} · {eq.ip ?? '-'}</div>
+                className={`relative border px-2 py-1.5 text-[10px] ${eq.online ? 'border-emerald-400/30 bg-emerald-950/20' : 'border-[rgba(127,153,178,0.15)] bg-[#0a0e14]/40'}`}>
+                <div className="absolute right-1 top-1 w-1 h-1 rounded-full" style={{ background: eq.online ? '#34d399' : '#5a6b7d', boxShadow: eq.online ? '0 0 4px #34d399' : 'none' }} />
+                <div className={`font-medium tabular-nums ${eq.online ? 'text-emerald-300' : 'text-[#6b7d8f]'}`}>{eq.equipment_id}</div>
+                <div className="text-[9px] text-[#5a6b7d] tracking-wide truncate">{eq.equipment_type}{eq.ip ? ` · ${eq.ip}` : ''}</div>
               </div>
             ))}
           </div>
-        </div>
-      </Card>
+        </Section>
+
+        {/* CONFIG */}
+        <Section title="System Config">
+          <dl className="p-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-[11px]">
+            <ConfigItem label="max_memory_restart" value={data.config.maxMemoryRestart ?? '—'} />
+            <ConfigItem label="oracle_pool" value={`${data.config.oraclePool.min} / ${data.config.oraclePool.max}`} />
+            <ConfigItem label="to_api.batch" value={`${data.config.vectorToApi.batchMaxEvents ?? '—'} · c${data.config.vectorToApi.concurrency ?? 'auto'}`} />
+            <ConfigItem label="buffer.max" value={`${data.config.vectorToApi.bufferMaxMB ?? '—'} MB`} />
+            <ConfigItem label="raw_log_path" value={data.config.rawLogBasePath} mono />
+          </dl>
+        </Section>
+
+        <footer className="text-[9px] text-[#3a4a5c] text-center pt-1 tracking-[0.3em] uppercase">
+          ◆ VECTOR.OPS · auto-poll {POLL_INTERVAL}ms · {bufferHistory.length} samples buffered
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tiny Helpers ───────────────────────────────────────────────────────
+function BootScreen({ status, message }: { status: string; message: string }) {
+  return (
+    <div className={`font-mono min-h-screen bg-[#0a0e14] text-emerald-400 flex items-center justify-center p-8`}>
+      <div className="text-center space-y-2">
+        <div className="text-xs tracking-[0.3em] text-[#5a6b7d]">VECTOR.OPS</div>
+        <div className="text-lg tracking-wider animate-pulse" style={{ textShadow: '0 0 12px #34d39960' }}>◌ {status}</div>
+        <div className="text-[10px] text-[#a0b0c0] mt-4">{message}</div>
+      </div>
+    </div>
+  );
+}
+
+function Legend({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-[#a0b0c0]">
+      <div className="w-1.5 h-1.5 rounded-full" style={{ background: color, boxShadow: `0 0 4px ${color}` }} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function FlowGroup({ label, items, color }: { label: string; items: { id: string; n: number | null }[]; color: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.2em] text-[#6b7d8f] mb-1.5">{label}</div>
+      <div className="space-y-0.5">
+        {items.map(it => (
+          <div key={it.id} className="flex items-center justify-between text-[11px] border-l-2 pl-2 py-0.5" style={{ borderLeftColor: `${color}40` }}>
+            <span className="text-[#c5d0db] font-mono">{it.id}</span>
+            <span className="tabular-nums font-medium" style={{ color }}>{it.n != null ? it.n.toLocaleString() : '—'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className="border-l-2 border-[rgba(127,153,178,0.2)] pl-2">
+      <div className="text-[9px] uppercase tracking-[0.18em] text-[#6b7d8f]">{label}</div>
+      <div className="text-[#c5d0db] tabular-nums">{value}</div>
+      {sub && <div className="text-[9px] text-[#5a6b7d] truncate">{sub}</div>}
+    </div>
+  );
+}
+
+function ConfigItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <dt className="text-[9px] uppercase tracking-[0.18em] text-[#6b7d8f] mb-0.5">{label}</dt>
+      <dd className={`text-[#c5d0db] ${mono ? 'font-mono text-[10px] break-all' : ''}`}>{value}</dd>
     </div>
   );
 }
