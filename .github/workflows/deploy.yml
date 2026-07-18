@@ -9,7 +9,7 @@
 # 사전 준비:
 # - Windows 서버에 GitHub self-hosted runner 설치
 # - GitHub > Settings > Actions > Runners 에서 LogServer 라벨 추가
-# - Node.js, PM2, Redis, Oracle Instant Client 설치
+# - Node.js 24, PM2 설치 (Oracle은 Thin mode 사용)
 # - 서버에 DEPLOY_DIR 시스템 환경변수 설정 (관리자 PowerShell):
 #     [System.Environment]::SetEnvironmentVariable('DEPLOY_DIR', 'D:\Project\vector', 'Machine')
 # - runner 서비스 재시작 (환경변수 반영)

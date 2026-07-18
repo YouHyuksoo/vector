@@ -1,63 +1,10 @@
 # Dashboard
 
-## Overview
+The landing page summarizes central service connectivity and registered Oracle targets.
 
-The main monitoring screen that provides an at-a-glance view of the entire system status.
-Data auto-refreshes every 5 seconds for real-time infrastructure monitoring.
+- Backend, Vector Aggregator, Oracle, and runtime status
+- Agent → Aggregator → Backend → Oracle service flow and throughput
+- TABLE targets from `config/table-registry.json` with column counts
+- Last refresh time and request errors
 
-## Prerequisites
-
-- Fastify server (port 3100) must be running
-- Redis and Oracle DB must be connected for proper status display
-
-## Screen Layout
-
-### Infrastructure Status Card
-
-Displays the status of 4 core system components.
-
-| Item | Display | Normal State |
-|------|---------|-------------|
-| **Server** | Fastify server uptime | Green "up" |
-| **Redis** | Connection status | Green "connected" |
-| **Oracle** | Registered table count | Green "N tables" |
-| **Vector** | Collection engine status | Green "ok" |
-
-- The Vector item has **Start/Stop** buttons to directly control the collection engine
-
-### Server Resource Monitoring
-
-Hardware resource usage is displayed as progress bars below the infrastructure status card.
-
-| Item | Display | Warning |
-|------|---------|---------|
-| **CPU** | Usage %, core count | Red at 90%+ |
-| **Memory** | Used / Total (GB) | Warning message at 90%+ |
-| **Disk** | Used / Total (GB) | Warning message at 90%+ |
-
-- Below 70%: **Green** (Normal)
-- 70% ~ 90%: **Yellow** (Caution)
-- 90% and above: **Red** + blinking warning message
-- Auto-refreshes every 5 seconds
-
-### Queue Status
-
-Shows the BullMQ job queue processing status.
-
-- **Wait**: Unprocessed log count
-- **Active**: Currently being stored to Oracle DB
-- **Done**: Successfully processed count
-- **Fail**: Failed storage count (check Errors page for details)
-
-### Registered Tables
-
-Displays the list of log storage tables in Oracle DB with column counts for each.
-
-### Equipment Collectors
-
-Shows the online/offline status of Agents installed on each equipment PC.
-
-- **Green dot**: Online (receiving heartbeats)
-- **Gray dot**: Offline (no heartbeat)
-- Each card shows equipment type, line code, equipment ID, and last seen time
-- Top section shows total/online/offline equipment statistics
+Use Equipment Dashboard for per-machine status, Operations Diagnostics for bottlenecks, and System Logs for processing details.

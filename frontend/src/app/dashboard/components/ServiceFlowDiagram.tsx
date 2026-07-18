@@ -1,6 +1,6 @@
 /**
  * @file ServiceFlowDiagram.tsx — 서비스 연결 흐름 다이어그램
- * @description Agent → Aggregator → Backend → Oracle/Redis → Frontend 흐름을 시각화.
+ * @description Agent → Aggregator → Backend → Oracle → Frontend 흐름을 시각화.
  *   각 노드에 포트, 역할 설명, 온/오프라인 상태를 크게 표시하고 SVG 연결선+애니메이션으로 흐름을 나타냄.
  *   초보자 가이드: 이 컴포넌트는 서버 대시보드에서 서비스 간 데이터 흐름을 한눈에 보여줍니다.
  */

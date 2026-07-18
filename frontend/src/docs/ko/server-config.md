@@ -1,73 +1,32 @@
 # 서버 환경설정
 
-## Aggregator TOML 설정
+## 구성 파일
 
-Aggregator는 모든 설비에서 보내는 로그를 수신하는 서버 컴포넌트입니다.
+| 파일 | 용도 |
+|---|---|
+| `.env` | Fastify, Oracle, 저장소, 하트비트 설정 |
+| `vector-config/aggregator/vector-aggregator.toml` | 중앙 수신, VRL, HTTP sink와 disk buffer |
+| `config/table-registry.json` | Oracle TABLE/PROCEDURE 매핑 |
+| `config/parse-fields.json` | VRL에서 추출된 `data.*` 필드 |
 
-### 기본 구성
+## 주요 포트
 
-```toml
-data_dir = "/data/vector"
+| 포트 | 용도 |
+|---:|---|
+| 3100 | 웹 대시보드 |
+| 3110 | Fastify API |
+| 6000 | Vector Agent 수신 |
+| 24224 | Fluent Bit 수신 |
+| 8687 | Aggregator 관리 API |
+| 9090 | 설비 PC Agent Manager |
 
-[api]
-enabled = true
-address = "0.0.0.0:8686"
-```
+## `.env` 주요 항목
 
-| 항목 | 설명 | 기본값 |
-|------|------|--------|
-| `data_dir` | 데이터 저장 디렉토리 | `/data/vector` |
-| `api.address` | Vector API 바인드 주소 | `0.0.0.0:8686` |
+- `HOST`, `PORT`, `NODE_ENV`
+- `ORACLE_CONNECT_STRING`, `ORACLE_USER`, `ORACLE_PASSWORD`
+- `ORACLE_POOL_MIN`, `ORACLE_POOL_MAX`
+- `RAW_LOG_BASE_PATH`
+- `HEARTBEAT_TTL_SECONDS`
+- `AGENT_MONITOR_PORT`
 
-### 수신(Source) 설정
-
-```toml
-[sources.agent_log]
-type = "vector"
-address = "0.0.0.0:9000"
-```
-
-- `address`: Agent가 접속할 IP:포트
-- 방화벽에서 해당 포트가 열려 있어야 합니다
-
-### API 전송(Sink) 설정
-
-```toml
-[sinks.api_sink]
-type = "http"
-inputs = ["transform_*"]
-uri = "http://localhost:3100/api/logs/ingest"
-encoding.codec = "json"
-batch.max_events = 10
-batch.timeout_secs = 5
-```
-
-## Oracle DB 설정
-
-**설정** 페이지에서 아래 항목을 구성합니다:
-
-| 항목 | 설명 | 예시 |
-|------|------|------|
-| HOST | DB 서버 IP | `192.168.1.100` |
-| PORT | 리스너 포트 | `1521` |
-| SID | 데이터베이스 SID | `ORCL` |
-| USER | 접속 계정 | `log_user` |
-| PASSWORD | 비밀번호 | `****` |
-
-## Fastify 서버 설정
-
-| 항목 | 설명 | 기본값 |
-|------|------|--------|
-| HOST | 바인드 IP | `0.0.0.0` |
-| PORT | HTTP 포트 | `3100` |
-| LOG_LEVEL | 로그 레벨 | `info` |
-
-## Redis 설정
-
-큐 처리를 위한 Redis 연결 설정:
-
-| 항목 | 설명 | 기본값 |
-|------|------|--------|
-| HOST | Redis 서버 IP | `127.0.0.1` |
-| PORT | Redis 포트 | `6379` |
-| PASSWORD | 인증 비밀번호 | (없음) |
+Redis/큐 설정은 현재 런타임에서 사용하지 않습니다. 웹의 **시스템 설정** 화면은 서버, Oracle, 저장소, 하트비트 항목을 관리합니다.

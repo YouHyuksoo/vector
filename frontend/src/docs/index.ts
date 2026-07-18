@@ -23,22 +23,34 @@ import enRedis from './en/redis.md';
 
 /* ── 메뉴별 사용설명 ── */
 import koMenuDashboard from './ko/menu-dashboard.md';
+import koMenuEquipment from './ko/menu-equipment.md';
 import koMenuLogs from './ko/menu-logs.md';
 import koMenuErrors from './ko/menu-errors.md';
 import koMenuMapping from './ko/menu-mapping.md';
 import koMenuReceiver from './ko/menu-receiver.md';
 import koMenuSimulator from './ko/menu-simulator.md';
 import koMenuSender from './ko/menu-sender.md';
+import koMenuVrlMapping from './ko/menu-vrl-mapping.md';
+import koMenuLogFiles from './ko/menu-log-files.md';
+import koMenuSystemLogs from './ko/menu-system-logs.md';
+import koMenuDiagnose from './ko/menu-diagnose.md';
+import koMenuUpload from './ko/menu-upload.md';
 import koMenuDownload from './ko/menu-download.md';
 import koMenuSettings from './ko/menu-settings.md';
 
 import enMenuDashboard from './en/menu-dashboard.md';
+import enMenuEquipment from './en/menu-equipment.md';
 import enMenuLogs from './en/menu-logs.md';
 import enMenuErrors from './en/menu-errors.md';
 import enMenuMapping from './en/menu-mapping.md';
 import enMenuReceiver from './en/menu-receiver.md';
 import enMenuSimulator from './en/menu-simulator.md';
 import enMenuSender from './en/menu-sender.md';
+import enMenuVrlMapping from './en/menu-vrl-mapping.md';
+import enMenuLogFiles from './en/menu-log-files.md';
+import enMenuSystemLogs from './en/menu-system-logs.md';
+import enMenuDiagnose from './en/menu-diagnose.md';
+import enMenuUpload from './en/menu-upload.md';
 import enMenuDownload from './en/menu-download.md';
 import enMenuSettings from './en/menu-settings.md';
 
@@ -52,12 +64,18 @@ import esFastifyServer from './es/fastify-server.md';
 import esRedis from './es/redis.md';
 
 import esMenuDashboard from './es/menu-dashboard.md';
+import esMenuEquipment from './es/menu-equipment.md';
 import esMenuLogs from './es/menu-logs.md';
 import esMenuErrors from './es/menu-errors.md';
 import esMenuMapping from './es/menu-mapping.md';
 import esMenuReceiver from './es/menu-receiver.md';
 import esMenuSimulator from './es/menu-simulator.md';
 import esMenuSender from './es/menu-sender.md';
+import esMenuVrlMapping from './es/menu-vrl-mapping.md';
+import esMenuLogFiles from './es/menu-log-files.md';
+import esMenuSystemLogs from './es/menu-system-logs.md';
+import esMenuDiagnose from './es/menu-diagnose.md';
+import esMenuUpload from './es/menu-upload.md';
 import esMenuDownload from './es/menu-download.md';
 import esMenuSettings from './es/menu-settings.md';
 
@@ -79,15 +97,17 @@ export const TOPICS: DocTopic[] = [
   { id: 'agent-config', icon: 'settings_remote', labelKey: 'help.topics.agentConfig', group: 'guide' },
   { id: 'troubleshooting', icon: 'build', labelKey: 'help.topics.troubleshooting', group: 'guide' },
   { id: 'fastify-server', icon: 'memory', labelKey: 'help.topics.fastifyServer', group: 'guide' },
-  { id: 'redis', icon: 'bolt', labelKey: 'help.topics.redis', group: 'guide' },
+  { id: 'redis', icon: 'shield', labelKey: 'help.topics.redis', group: 'guide' },
   /* 메뉴별 사용설명 */
   { id: 'menu-dashboard', icon: 'dashboard', labelKey: 'help.topics.menuDashboard', group: 'menu' },
-  { id: 'menu-logs', icon: 'description', labelKey: 'help.topics.menuLogs', group: 'menu' },
-  { id: 'menu-errors', icon: 'error', labelKey: 'help.topics.menuErrors', group: 'menu' },
-  { id: 'menu-mapping', icon: 'swap_horiz', labelKey: 'help.topics.menuMapping', group: 'menu' },
-  { id: 'menu-receiver', icon: 'download', labelKey: 'help.topics.menuReceiver', group: 'menu' },
-  { id: 'menu-simulator', icon: 'science', labelKey: 'help.topics.menuSimulator', group: 'menu' },
+  { id: 'menu-equipment', icon: 'devices', labelKey: 'help.topics.menuEquipment', group: 'menu' },
   { id: 'menu-sender', icon: 'upload', labelKey: 'help.topics.menuSender', group: 'menu' },
+  { id: 'menu-receiver', icon: 'download', labelKey: 'help.topics.menuReceiver', group: 'menu' },
+  { id: 'menu-vrl-mapping', icon: 'swap_horiz', labelKey: 'help.topics.menuVrlMapping', group: 'menu' },
+  { id: 'menu-log-files', icon: 'folder_open', labelKey: 'help.topics.menuLogFiles', group: 'menu' },
+  { id: 'menu-system-logs', icon: 'terminal', labelKey: 'help.topics.menuSystemLogs', group: 'menu' },
+  { id: 'menu-diagnose', icon: 'monitor_heart', labelKey: 'help.topics.menuDiagnose', group: 'menu' },
+  { id: 'menu-upload', icon: 'cloud_upload', labelKey: 'help.topics.menuUpload', group: 'menu' },
   { id: 'menu-download', icon: 'file_download', labelKey: 'help.topics.menuDownload', group: 'menu' },
   { id: 'menu-settings', icon: 'settings', labelKey: 'help.topics.menuSettings', group: 'menu' },
 ];
@@ -103,14 +123,20 @@ const DOC_MAP: Record<Locale, Record<string, string>> = {
     'fastify-server': koFastifyServer,
     redis: koRedis,
     'menu-dashboard': koMenuDashboard,
+    'menu-equipment': koMenuEquipment,
+    'menu-sender': koMenuSender,
+    'menu-receiver': koMenuReceiver,
+    'menu-vrl-mapping': koMenuVrlMapping,
+    'menu-log-files': koMenuLogFiles,
+    'menu-system-logs': koMenuSystemLogs,
+    'menu-diagnose': koMenuDiagnose,
+    'menu-upload': koMenuUpload,
+    'menu-download': koMenuDownload,
+    'menu-settings': koMenuSettings,
     'menu-logs': koMenuLogs,
     'menu-errors': koMenuErrors,
     'menu-mapping': koMenuMapping,
-    'menu-receiver': koMenuReceiver,
     'menu-simulator': koMenuSimulator,
-    'menu-sender': koMenuSender,
-    'menu-download': koMenuDownload,
-    'menu-settings': koMenuSettings,
   },
   en: {
     installation: enInstallation,
@@ -121,14 +147,20 @@ const DOC_MAP: Record<Locale, Record<string, string>> = {
     'fastify-server': enFastifyServer,
     redis: enRedis,
     'menu-dashboard': enMenuDashboard,
+    'menu-equipment': enMenuEquipment,
+    'menu-sender': enMenuSender,
+    'menu-receiver': enMenuReceiver,
+    'menu-vrl-mapping': enMenuVrlMapping,
+    'menu-log-files': enMenuLogFiles,
+    'menu-system-logs': enMenuSystemLogs,
+    'menu-diagnose': enMenuDiagnose,
+    'menu-upload': enMenuUpload,
+    'menu-download': enMenuDownload,
+    'menu-settings': enMenuSettings,
     'menu-logs': enMenuLogs,
     'menu-errors': enMenuErrors,
     'menu-mapping': enMenuMapping,
-    'menu-receiver': enMenuReceiver,
     'menu-simulator': enMenuSimulator,
-    'menu-sender': enMenuSender,
-    'menu-download': enMenuDownload,
-    'menu-settings': enMenuSettings,
   },
   es: {
     installation: esInstallation,
@@ -139,14 +171,20 @@ const DOC_MAP: Record<Locale, Record<string, string>> = {
     'fastify-server': esFastifyServer,
     redis: esRedis,
     'menu-dashboard': esMenuDashboard,
+    'menu-equipment': esMenuEquipment,
+    'menu-sender': esMenuSender,
+    'menu-receiver': esMenuReceiver,
+    'menu-vrl-mapping': esMenuVrlMapping,
+    'menu-log-files': esMenuLogFiles,
+    'menu-system-logs': esMenuSystemLogs,
+    'menu-diagnose': esMenuDiagnose,
+    'menu-upload': esMenuUpload,
+    'menu-download': esMenuDownload,
+    'menu-settings': esMenuSettings,
     'menu-logs': esMenuLogs,
     'menu-errors': esMenuErrors,
     'menu-mapping': esMenuMapping,
-    'menu-receiver': esMenuReceiver,
     'menu-simulator': esMenuSimulator,
-    'menu-sender': esMenuSender,
-    'menu-download': esMenuDownload,
-    'menu-settings': esMenuSettings,
   },
 };
 

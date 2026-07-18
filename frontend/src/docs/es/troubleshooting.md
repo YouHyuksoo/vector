@@ -1,80 +1,21 @@
 # Solución de Problemas
 
-## Errores Comunes
+## Agent fuera de línea
 
-### Agent No Se Conecta al Servidor
+Confirme que Agent Manager y Vector están activos, revise dirección e ID y pruebe:
 
-**Síntoma**: El Agent no aparece en la lista de recolectores de equipos
-
-**Lista de verificación**:
-1. Verifique que el servidor Aggregator esté en ejecución
-2. Compruebe que el `address` del TOML del Agent tenga la IP:puerto correcta del servidor
-3. Asegúrese de que el firewall permita el puerto (por defecto 9000)
-4. Pruebe la conectividad de red: `ping {IP del servidor}`
-
-**Solución**:
-```bash
-# Probar conectividad de puerto
-telnet 192.168.1.10 9000
+```powershell
+Test-NetConnection 20.10.30.112 -Port 6000
 ```
 
-### Logs No Se Recolectan
+## En línea sin logs
 
-**Síntoma**: El Agent está en línea pero no llegan datos
+Revise include/exclude, `read_from`, antigüedad, fingerprint y multiline. Use Diagnóstico para conteos de source y conexiones 6000; luego confirme llegada en Archivos de Log Raw.
 
-**Lista de verificación**:
-1. Verifique que la ruta `include` del TOML coincida con la ubicación real del archivo de log
-2. Compruebe que el archivo de log fue modificado dentro del período `ignore_older_secs`
-3. Asegúrese de que el proceso Vector tenga permisos de lectura para el archivo
+## Crece el buffer
 
-### Fallo de Conexión a Oracle DB
+Compare source y sink. Revise Backend, pool/conexión Oracle, espacio de `vector-data` y Logs del Sistema.
 
-**Síntoma**: El estado de Oracle muestra "down" en el dashboard
+## Falla Oracle
 
-**Lista de verificación**:
-1. Verifique la configuración de conexión Oracle en la página de **Configuración**
-2. Compruebe el estado del listener Oracle: `lsnrctl status`
-3. Verifique que el SID/nombre de servicio sea correcto
-4. Compruebe si la contraseña de la cuenta ha expirado
-
-### Trabajos Fallidos Acumulándose en la Cola
-
-**Síntoma**: El conteo "Fallido" aumenta en el estado de la cola
-
-**Lista de verificación**:
-1. Compruebe mensajes de error detallados en la página de **Errores**
-2. Verifique que la estructura de la tabla Oracle coincida con el mapeo
-3. Asegúrese de que los campos requeridos no estén ausentes
-
-## Métodos de Depuración
-
-### Verificar Logs de Vector
-
-```bash
-# Ejecutar en modo detallado
-vector.exe --config config.toml --verbose
-
-# Ver logs solo de componentes específicos
-VECTOR_LOG=debug vector.exe --config config.toml
-```
-
-### Verificar Logs del Servidor API
-
-Monitoree logs en tiempo real en la consola del servidor Fastify.
-
-### Verificar Estado de Cola Redis
-
-```bash
-redis-cli
-> KEYS bull:*
-> LLEN bull:log-queue:wait
-```
-
-## Ajuste de Rendimiento
-
-| Elemento | Recomendado | Descripción |
-|----------|-------------|-------------|
-| `batch.max_events` | 10–50 | Tamaño de lote API |
-| `batch.timeout_secs` | 5–10 | Intervalo de lote |
-| `buffer.max_events` | 500 | Tamaño del buffer en memoria |
-| Concurrencia BullMQ | 5 | Concurrencia de cola |
+Revise etapa y destino, compare VRL con `config/table-registry.json`, pruebe la conexión Oracle y reintente los datos raw guardados.

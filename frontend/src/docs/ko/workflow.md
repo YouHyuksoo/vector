@@ -2,56 +2,35 @@
 
 ## 전체 데이터 흐름
 
+```text
+설비 로그 파일
+  → Vector Agent 또는 Fluent Bit
+  → Vector Aggregator (VRL 파싱)
+  → POST /api/logs
+  → Fastify 검증·원본 저장·Oracle 직접 적재
 ```
-설비 로그 파일 → Agent(Vector) → Aggregator(Vector) → Fastify API → Oracle DB
-```
 
-## 단계별 프로세스
+## 단계별 처리
 
-### 1단계: 로그 수집 (Agent)
+### 1. 설비 PC
 
-각 설비 PC에 설치된 Vector Agent가 로그 파일을 감시합니다.
+Agent가 지정 경로를 감시하고 설비 ID, 설비 유형, 라인, 로그 유형을 붙입니다. Vector Agent는 `:6000`, Fluent Bit은 `:24224`로 중앙 수신기에 전송합니다.
 
-- **file source**: 지정된 경로의 로그 파일을 tail 방식으로 읽음
-- 새로운 줄이 추가되면 실시간으로 감지
-- 메타데이터(설비 유형, 라인 코드, 설비 ID) 자동 첨부
+### 2. Vector Aggregator
 
-### 2단계: 로그 전송 (Agent → Aggregator)
+`equipment_type`에 맞는 VRL로 원문을 구조화하고 TABLE 또는 PROCEDURE 타겟을 지정합니다. API가 느리거나 중단되면 HTTP sink의 disk buffer가 이벤트를 보관합니다.
 
-Agent가 수집한 로그를 Aggregator 서버로 전송합니다.
+### 3. Fastify API
 
-- **vector sink**: TCP 기반의 Vector 네이티브 프로토콜 사용
-- 네트워크 장애 시 자동 재시도 및 버퍼링
-- 배치 전송으로 네트워크 효율 최적화
+`POST /api/logs`가 Zod 스키마로 요청을 검증합니다. 원문은 `C:\data\raw-logs`에 저장하고 처리 단계는 `data/process-logs/*.jsonl`에 기록합니다.
 
-### 3단계: 로그 파싱 (Aggregator)
+### 4. Oracle 적재
 
-Aggregator에서 VRL(Vector Remap Language)을 이용해 로그를 파싱합니다.
+현재 Redis나 별도 큐 worker를 사용하지 않습니다. API 요청 안에서 `config/table-registry.json` 매핑을 기준으로 TABLE INSERT 또는 PROCEDURE CALL을 실행합니다.
 
-- 설비 유형별 VRL 파싱 코드 적용
-- CSV, 고정 길이, 키-값 등 다양한 포맷 지원
-- 파싱 결과를 구조화된 JSON 필드로 변환
+## 운영 확인 순서
 
-### 4단계: API 전달 (Aggregator → Fastify)
-
-파싱된 데이터를 HTTP API로 Fastify 서버에 전달합니다.
-
-- JSON 인코딩된 배치 전송
-- 실패 시 지수 백오프(exponential backoff) 재시도
-
-### 5단계: DB 적재 (Fastify → Oracle)
-
-Fastify 서버가 데이터를 Oracle DB에 저장합니다.
-
-- **TABLE 모드**: 테이블에 직접 INSERT
-- **PROCEDURE 모드**: 프로시져 호출로 비즈니스 로직 실행
-- BullMQ 큐를 통한 비동기 처리로 안정성 보장
-
-## 모니터링 포인트
-
-| 위치 | 확인 사항 |
-|------|-----------|
-| 대시보드 | 인프라 상태 (서버, Redis, Oracle, Vector) |
-| 큐 현황 | 대기/처리중/완료/실패 건수 |
-| 장비 수집기 | Agent 하트비트 및 온라인 상태 |
-| 오류 현황 | 적재 실패 로그 |
+1. **운영 진단**에서 Backend, Vector, Oracle 연결과 buffer 증가 여부를 확인합니다.
+2. **장비 대시보드**에서 Agent 하트비트와 수집 제외 상태를 확인합니다.
+3. **시스템 로그**에서 실패 stage와 오류 메시지를 찾습니다.
+4. 필요하면 **원본 로그 파일**에서 원문을 확인하고 수동 투입합니다.

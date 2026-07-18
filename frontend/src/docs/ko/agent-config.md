@@ -1,87 +1,27 @@
 # Agent 설정
 
-## 개요
+## 역할
 
-Agent는 각 설비 PC에 설치되어 로그 파일을 수집하고 Aggregator 서버로 전송하는 컴포넌트입니다.
+Vector Agent 또는 Fluent Bit이 설비 로그 파일을 감시하고 중앙 Aggregator로 전송합니다.
 
-## TOML 설정 구조
-
-```toml
-data_dir = "./data"
-
-[sources.file_log]
-type = "file"
-include = ["C:/logs/*.csv"]
-read_from = "end"
-ignore_older_secs = 86400
-
-[transforms.add_meta]
-type = "remap"
-inputs = ["file_log"]
-source = '''
-  .equip_type = "AOI"
-  .line_code = "LINE-01"
-  .equip_id = "AOI-001"
-'''
-
-[sinks.to_aggregator]
-type = "vector"
-inputs = ["add_meta"]
-address = "192.168.1.10:9000"
-```
-
-## 주요 설정 항목
-
-### Source (로그 수집)
-
-| 항목 | 설명 | 예시 |
-|------|------|------|
-| `include` | 감시할 로그 파일 경로 | `["C:/logs/*.csv"]` |
-| `read_from` | 읽기 시작 위치 | `end` (새 줄만) / `beginning` (전체) |
-| `ignore_older_secs` | 오래된 파일 무시 (초) | `86400` (24시간) |
-
-### Transform (메타데이터)
+## 필수 정보
 
 | 항목 | 설명 |
-|------|------|
-| `equip_type` | 설비 유형 (SP, SPI, AOI 등) |
-| `line_code` | 라인 코드 |
-| `equip_id` | 설비 고유 ID |
+|---|---|
+| 설비 유형 | Aggregator의 VRL 분기 키 |
+| 로그 유형 | 처리 로그 분류 |
+| 라인 코드 | 생산 라인 식별자 |
+| 설비 ID | 하트비트와 원본 저장 경로의 고유 키 |
+| include / exclude | 포함·제외할 파일 glob |
+| read_from | 기존 파일을 처음부터 읽을지, 새 내용부터 읽을지 |
+| address | 중앙 서버 `IP:6000` |
 
-### Sink (서버 전송)
+## 송신기 설정 화면
 
-| 항목 | 설명 |
-|------|------|
-| `address` | Aggregator 서버 IP:포트 |
+1. 왼쪽에서 Vector 또는 Fluent Bit 구성을 선택합니다.
+2. 설비 정보와 서버 연결을 입력합니다.
+3. 감시 경로, 제외 경로, 재귀 검색, 전체 파일 묶기 옵션을 확인합니다.
+4. fingerprint·multiline·재전송 폴더와 disk buffer 정책을 필요에 맞게 설정합니다.
+5. 저장 전 TOML 검증 결과를 확인하고 설정 파일을 다운로드합니다.
 
-## 설비 유형별 설정
-
-**송신기 설정** 페이지에서 GUI로 편집하거나, TOML 직접 편집 모드를 사용할 수 있습니다.
-
-### 로그 경로 예시
-
-| 설비 유형 | 경로 패턴 |
-|-----------|-----------|
-| SP | `C:/SP_DATA/results/*.csv` |
-| SPI | `D:/SPI/inspection/*.log` |
-| AOI | `C:/AOI/output/*.dat` |
-| REFLOW | `C:/REFLOW/temp/*.csv` |
-
-## 설정 방법
-
-### 방법 1: Agent Manager (설비 PC에서 직접 설정)
-
-설비 PC에서 `agent-manager.exe`를 실행하면 로컬 웹 UI(`http://localhost:9090`)에서 설정할 수 있습니다.
-
-1. **설정 탭 → 폼 모드**: 설비 ID, 설비 타입, IP, 라인 코드, 로그 타입, 로그 경로, Aggregator 주소/포트를 입력
-2. **설정 탭 → TOML 편집 모드**: TOML 원본을 직접 수정
-3. 저장 후 **관리 탭**에서 Vector 재시작
-
-폼 모드로 저장하면 TOML의 `add_metadata` VRL source와 `heartbeat.metrics.tags`가 자동으로 동기화됩니다.
-
-### 방법 2: 관리 화면에서 설정 (마스터 서버)
-
-1. **송신기 설정** 페이지에서 설비를 선택합니다
-2. 설비 정보(유형, 라인 코드, ID)를 입력합니다
-3. 로그 경로와 서버 연결 정보를 설정합니다
-4. 저장 후 **송신기 다운로드** 페이지에서 설정 파일을 다운로드합니다
+> 같은 파일을 다시 읽지 않도록 `data_dir`와 fingerprint 설정을 임의로 초기화하지 마세요.

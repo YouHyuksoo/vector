@@ -304,9 +304,9 @@ echo --------------------------------------------------------
 echo Port Usage:
 echo   Backend  (Fastify)  : 3110
 echo   Frontend (Next.js)  : 3100
-echo   Redis               : 6379
-echo   Vector Aggregator   : 6000, 8687
+echo   Vector Aggregator   : 6000, 24224, 8687
 echo   Vector Agent API    : 8686
+echo   Agent Manager       : 9090
 echo --------------------------------------------------------
 pause
 goto MENU
@@ -470,8 +470,9 @@ if exist .env (
     echo.
     echo Then edit .env with your actual values:
     echo   - ORACLE_USER / ORACLE_PASSWORD / ORACLE_CONNECT_STRING
-    echo   - REDIS_HOST / REDIS_PORT
+    echo   - ORACLE_POOL_MIN / ORACLE_POOL_MAX
     echo   - RAW_LOG_BASE_PATH
+    echo   - HEARTBEAT_TTL_SECONDS / AGENT_MONITOR_PORT
 )
 echo.
 pause

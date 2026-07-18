@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+---
+sources:
+  - package.json
+  - src/app/dashboard/
+  - src/components/layout/Sidebar.tsx
+  - src/docs/
+verifiedCommit: e736824
+---
 
-## Getting Started
+# Vector Log Collector Frontend
 
-First, run the development server:
+Next.js 16 + React 19 기반 운영 대시보드다. Backend API는 기본 `http://localhost:3110`, Frontend는 `http://localhost:3100`에서 실행한다.
 
-```bash
+## 실행
+
+저장소 루트에서 Backend와 함께 실행:
+
+```powershell
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Frontend만 실행:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+npm run dev --prefix frontend
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+프로덕션 빌드:
 
-## Learn More
+```powershell
+npm run build --prefix frontend
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 주요 화면
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| 경로 | 역할 |
+|---|---|
+| `/dashboard` | 중앙 서비스 흐름과 등록 타겟 |
+| `/dashboard/equipment` | 장비 heartbeat, 수집 제외, 원격 관리 |
+| `/dashboard/sender` | Vector/Fluent Agent 설정 |
+| `/dashboard/receiver` | Aggregator TOML과 백업 |
+| `/dashboard/vrl-mapping` | VRL 생성·시뮬레이션·적용과 Oracle 매핑 |
+| `/dashboard/log-files` | raw 파일 조회·검색·다운로드·수동 투입 |
+| `/dashboard/system-logs` | 오류, 재전송, 처리, 실시간, PM2 로그 |
+| `/dashboard/diagnose` | buffer, 처리량, Oracle, 장비 종합 진단 |
+| `/dashboard/upload` | 운영 파일 업로드 관리 |
+| `/dashboard/download` | Vector, Agent Manager, Fluent Bit과 설정 다운로드 |
+| `/dashboard/settings` | 서버, Oracle, 저장소, heartbeat와 AI 설정 |
+| `/dashboard/help` | 한국어·영어·스페인어 내장 도움말 |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 문서 구조
 
-## Deploy on Vercel
+내장 도움말은 `src/docs/{ko,en,es}`에 있고 `src/docs/index.ts`가 토픽과 locale 매핑을 관리한다.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+도움말 구조 검사:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```powershell
+node --test src/docs/help-docs.check.mjs
+```
+
+## 검증
+
+```powershell
+npm run lint
+npm run build
+```

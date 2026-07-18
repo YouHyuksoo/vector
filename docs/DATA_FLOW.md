@@ -1,325 +1,207 @@
-/**
- * @file docs/DATA_FLOW.md
- * @description Vector 로그 수집 시스템 전체 데이터 흐름 문서
- *
- * 초보자 가이드:
- * 1. 이 문서는 설비 로그가 수집→파싱→저장되기까지의 전체 파이프라인을 설명
- * 2. 각 단계별 관련 파일 경로와 핵심 로직을 함께 기술
- * 3. 신규 설비 추가 시 필요한 작업 체크리스트 포함
- */
-
-# Vector 로그 수집 시스템 — 전체 데이터 흐름
-
-## 파이프라인 개요
-
-```
-설비 PC 로그 파일
-    ↓  Vector Agent (TCP:6000)
-Vector Aggregator (VRL 파싱)
-    ├─→ [분기 1] Raw 파일 저장  →  C:\data\raw-logs\{설비}\{ID}\{날짜}\{파일명}
-    └─→ [분기 2] HTTP POST      →  http://127.0.0.1:3100/api/logs
-                                        ↓
-                                   Fastify API (Zod 검증)
-                                        ↓
-                                   BullMQ 큐 (Redis)
-                                        ↓
-                                   Worker → DynamicInsert
-                                        ↓
-                                   Oracle DB (LOG_xxx 테이블)
-```
-
+---
+sources:
+  - src/server/routes/log-ingest.route.ts
+  - src/services/log-ingest.service.ts
+  - src/database/dynamic-insert.ts
+  - src/database/repositories/error-log.repository.ts
+  - src/services/heartbeat.service.ts
+  - vector-config/aggregator/vector-aggregator.toml
+  - config/table-registry.json
+verifiedCommit: e736824
 ---
 
-## 1단계: Vector Agent (송신기)
+# Vector 로그 수집 시스템 데이터 흐름
 
-**파일:** `vector-config/agent/{설비유형}.toml` (13개)
+최종 검증: 2026-07-18
 
-| 설비 | 파일 |
-|---|---|
-| SP, SPI, AOI, MAOI, REFLOW, ICT, FCT | 각 `{설비}.toml` |
-| BURNIN, HIPOT, EOL, METALMASK, MOUNTER, VISCOSITY | 각 `{설비}.toml` |
+## 1. 전체 파이프라인
 
-**동작 방식:**
-1. `file` 소스로 설비 로그 디렉토리 감시 (tail)
-2. `multiline` 설정으로 파일 전체를 단일 이벤트로 묶음 (1초 타임아웃)
-3. `remap` transform에서 메타데이터 태깅:
-   - `.equipment_type` = 설비 유형 (예: `"SPI"`)
-   - `.log_type` = 로그 유형 (예: `"INSPECTION"`)
-   - `.equipment_id` = 설비 ID (예: `"SPI-001"`)
-   - `.line_code` = 라인 코드
-4. `vector` sink로 Aggregator TCP:6000에 전송 (256MB 디스크 버퍼)
+```text
+설비 로그 파일
+  ├─ Vector Agent :6000
+  └─ Fluent Bit :24224
+        ↓
+Vector Aggregator
+  ├─ equipment_type별 VRL 파싱
+  ├─ TABLE/PROCEDURE 타겟 지정
+  └─ HTTP sink disk buffer
+        ↓ POST http://127.0.0.1:3110/api/logs
+Fastify API
+  ├─ Zod 검증
+  ├─ raw 원문 파일 저장
+  ├─ 처리 로그 JSONL 기록
+  ├─ 수집 제외 설비 필터
+  └─ Oracle 직접 INSERT/PROCEDURE CALL
+        ↓
+Oracle LOG_* 테이블 또는 등록 프로시저
+```
+
+Redis/BullMQ 큐와 별도 worker는 현재 런타임에 없다. API 요청 경로에서 raw 저장과 Oracle 처리를 완료한 뒤 `202 Accepted`를 반환한다.
+
+## 2. 설비 PC 송신
+
+Vector Agent 설정은 `vector-config/agent/*.toml`, Fluent Bit 설정은 `vector-config/agent-fluent/*.conf`에 있다.
+
+현재 Vector Agent 유형:
+
+```text
+AOI, COATING1, COATING2, COATINGREVIEW, COATINGVISION,
+DOWNLOAD, EOL, FCT, ICT, ISCM_BURNIN, ISCM_ICT, LCR,
+LOWCURRENT, MARKING, MOUNTER, PRESSFIT, REFLOW, SELECTIVE,
+SPI, SPI_VD, VISION_LEGACY, VISION_NATIVE
+```
+
+Agent는 다음 메타데이터를 붙여 중앙 수신기로 보낸다.
+
+- `equipment_id`: 설비 고유 ID
+- `equipment_type`: Aggregator VRL 분기 키
+- `line_code`: 생산 라인
+- `log_type`: 로그 분류
+- `file`: 원본 파일 경로
+- `message`: 원문
+
+Agent의 disk buffer는 네트워크 장애 때 미전송 이벤트를 보존한다. fingerprint와 `data_dir`은 재기동 후 읽기 위치를 복원하므로 운영 중 임의 초기화하면 중복 전송될 수 있다.
+
+하트비트는 Agent Manager가 30초마다 `POST /api/heartbeat`로 직접 보낸다. Vector 로그 파이프라인을 경유하지 않는다.
+
+## 3. Aggregator 수신과 VRL
+
+`vector-config/aggregator/vector-aggregator.toml`의 주요 source:
 
 ```toml
-[sources.work_logs]
-type = "file"
-include = ["C:\\logs\\spi\\*.txt", "C:\\logs\\spi\\*.csv"]
-fingerprint.strategy = "checksum"
-
-[transforms.add_metadata]
-type = "remap"
-source = '''
-.equipment_type = "SPI"
-.log_type = "INSPECTION"
-.equipment_id = "SPI-001"
-'''
-
-[sinks.to_aggregator]
+[sources.from_agents]
 type = "vector"
-address = "127.0.0.1:6000"
-buffer.type = "disk"
-buffer.max_size = 268435488
+address = "0.0.0.0:6000"
+
+[sources.from_fluent_agents]
+type = "fluent"
+address = "0.0.0.0:24224"
 ```
 
----
-
-## 2단계: Vector Aggregator (수신기)
-
-**파일:** `vector-config/aggregator/vector-aggregator.toml`
-
-### 수신 → 파싱 → 분기
-
-```
-[sources.from_agents]       TCP:6000 수신
-        ↓
-[transforms.parse_logs]     VRL 파싱 (equipment_type 기준 분기)
-        ↓                        ↓
-[transforms.format_for_api]    [sinks.raw_file]
-        ↓                      raw 원본 저장
-[sinks.to_api]
-  POST /api/logs
-```
-
-### VRL 파싱 핵심 로직 (`parse_logs`)
-
-```vrl
-.raw_message = .message
-.filename = replace!(.file, r'.*\\', "")
-.target_table = "LOG_" + to_string!(.log_type)
-
-if .equipment_type == "SPI" {
-  values = split!(.message, "\n")
-  header = split!(to_string!(get!(values, [0])), ",")
-  data_line = split!(to_string!(get!(values, [1])), ",")
-  .data.MASTER_BARCODE = strip_whitespace!(to_string!(get!(data_line, [0])))
-  .data.PCB_ID         = strip_whitespace!(to_string!(get!(data_line, [1])))
-  # ...
-} else if .equipment_type == "AOI" {
-  # ...
-}
-```
-
-### API 전송 포맷 (`format_for_api`)
-
-```vrl
-. = {
-  "equipment_id":  .equipment_id,
-  "log_type":      .log_type,
-  "target_table":  .target_table,
-  "timestamp":     to_string!(.timestamp),
-  "data":          .data
-}
-```
-
-### Raw 파일 저장 (`sinks.raw_file`)
-
-- 경로: `C:\data\raw-logs\{equipment_type}\{equipment_id}\%Y-%m-%d\{filename}`
-- 인코딩: text (원본 그대로)
-- 버퍼: 512MB 디스크, block 모드
-
-### API 전송 (`sinks.to_api`)
-
-- URL: `http://127.0.0.1:3100/api/logs`
-- 배치: 100개 이벤트 또는 5초마다
-- 재시도: 초기 1초 → 최대 30초 (지수 백오프)
-- 버퍼: 512MB 디스크
-
----
-
-## 3단계: Fastify API 수신
-
-**파일:** `src/schemas/log-ingest.schema.ts`, `src/server/routes/log-ingest.route.ts`
-
-### POST /api/logs
-
-```
-요청 → Zod 검증 → BullMQ 큐 적재 → 202 Accepted
-```
-
-**Zod 스키마:**
-```typescript
-logRecordSchema = {
-  equipment_id:  string,
-  log_type:      string,
-  target_table:  string,   // "LOG_SPI" 등
-  timestamp:     string,
-  data:          Record<string, unknown>
-}
-```
-
-Vector HTTP sink는 JSON 배열, 수동 호출은 `{ logs: [...] }` 형태 모두 허용.
-
----
-
-## 4단계: BullMQ 큐 처리
-
-**파일:** `src/queue/producers/log.producer.ts`, `src/queue/workers/log-insert.worker.ts`
-
-### Producer
-
-- 큐명: `log-insert`
-- ALARM 우선순위: 1 (일반: 5)
-- 재시도: 3회, 지수 백오프
-- 완료 후 보관: 1,000개 / 실패 보관: 5,000개
-
-### Worker
-
-```typescript
-processLogInsert(job) {
-  dynamicInsert.insert(target_table, {
-    ...data,
-    EQUIPMENT_ID:  equipment_id,
-    LOG_TIMESTAMP: timestamp,
-    CREATED_AT:    new Date().toISOString(),
-  });
-}
-```
-
-- 동시성: `QUEUE_CONCURRENCY` 환경변수 (기본 5)
-- 실패 시: LOG_ERROR에 기록 후 throw (BullMQ가 재시도)
-
----
-
-## 5단계: Dynamic INSERT
-
-**파일:** `src/database/dynamic-insert.ts`, `src/database/table-registry.ts`
-
-### 스키마 해석 흐름
-
-```
-config/table-registry.json
-    ↓  local-registry.ts → getTableColumns()
-table-registry.ts → loadSchema()
-    ↓  5분 TTL 메모리 캐시
-INSERT INTO LOG_SPI (COL1, COL2, ...) VALUES (:b0, :b1, ...)
-```
-
-### DynamicInsert
-
-- `insert()`: 단건 삽입 (autoCommit)
-- `insertMany()`: 벌크 삽입 (batchErrors: true, 부분 실패 허용)
-- OracleDB 타입 매핑: NUMBER → DB_TYPE_NUMBER, DATE → DB_TYPE_TIMESTAMP, CLOB → DB_TYPE_CLOB, 기타 → DB_TYPE_VARCHAR
-
----
-
-## 설정 파일 관리 (DB 독립)
-
-### config/table-registry.json
-
-**역할:** Oracle 테이블별 컬럼 매핑 정의 (구 TABLE_COLUMN_REGISTRY 대체)
+`parse_logs` transform은 `equipment_type`별로 원문을 파싱하고 `data`, `target_type`, `target_table`을 만든다. `format_for_api`는 다음 형태로 정규화한다.
 
 ```json
 {
-  "LOG_SPI": [
-    { "COLUMN_NAME": "MASTER_BARCODE", "DATA_TYPE": "VARCHAR2", "SOURCE_FIELD": "data.MASTER_BARCODE", "IS_REQUIRED": "Y", "COLUMN_ORDER": 1 },
-    { "COLUMN_NAME": "PCB_ID", "DATA_TYPE": "VARCHAR2", "SOURCE_FIELD": "data.PCB_ID", "IS_REQUIRED": "N", "COLUMN_ORDER": 2 }
-  ]
+  "equipment_id": "EQUIP-01",
+  "equipment_type": "SPI",
+  "line_code": "SMT-1",
+  "log_type": "INSPECTION",
+  "target_type": "TABLE",
+  "target_table": "LOG_SPI",
+  "timestamp": "2026-07-18T10:20:30.000Z",
+  "filename": "result.csv",
+  "raw_message": "원문",
+  "data": {}
 }
 ```
 
-**관련 모듈:** `src/config/local-registry.ts`
+현재 주요 타겟은 다음과 같다.
 
-### config/parse-fields.json
-
-**역할:** VRL에서 자동 추출된 `data.*` 필드 목록 (구 VRL_PARSE_FIELDS 대체)
-
-```json
-{
-  "SPI": [
-    { "fieldName": "data.MASTER_BARCODE", "fieldLabel": "data.MASTER_BARCODE", "fieldOrder": 1 },
-    { "fieldName": "data.PCB_ID", "fieldLabel": "data.PCB_ID", "fieldOrder": 2 }
-  ]
-}
+```text
+LOG_AOI, LOG_COATING1, LOG_COATING2, LOG_COATINGREVIEW,
+LOG_COATINGVISION, LOG_DOWNLOAD, LOG_EOL, LOG_FCT, LOG_ICT,
+LOG_ISCM_BURNIN, LOG_ISCM_ICT, LOG_LCR, LOG_LOWCURRENT,
+LOG_MARKING, LOG_MOUNTER, LOG_PRESSFIT, LOG_REFLOW_01,
+LOG_REFLOW_02, LOG_SELECTIVE, LOG_SPI, LOG_SPI_VD,
+LOG_VISION_LEGACY, LOG_VISION_NATIVE
 ```
 
-**관련 모듈:** `src/config/local-parse-fields.ts`
+ISCM_ICT는 과거 3개 테이블 분리 방식이 아니라 `LOG_ISCM_ICT` 단일 테이블에 Header 5종과 상세 `ROWS`를 적재한다.
 
-**갱신 시점:**
-- VRL 코드 적용(`POST /api/monitor/vrl/apply`) 시 자동 동기화
-- 프론트엔드 매핑 페이지에서 수동 편집
+## 4. HTTP sink와 backpressure
 
----
+Aggregator의 최종 sink는 `POST http://127.0.0.1:3110/api/logs`다.
 
-## 하트비트 / 모니터링
-
-**파일:** `src/redis/heartbeat.service.ts`
-
-```
-설비 PC → POST /api/heartbeat { equipment_id }
-    ↓
-Redis SETEX heartbeat:{id} TTL=60초
-    ↓ (TTL 만료 시 자동 삭제 = 오프라인)
-GET /api/status → 전체 장비 온/오프라인 상태
+```text
+batch: 최대 25 events / 2 MiB / 5초
+request timeout: 300초
+request concurrency: 8
+disk buffer: 8 GiB
+when_full: block
 ```
 
-**Vector Aggregator 모니터링:** `src/services/vector-process.service.ts`
-- Health: `http://127.0.0.1:8687/health`
-- GraphQL: uptime, version 조회
-- 프로세스 시작/중지: `vector.exe --config aggregator.toml`
+Backend 또는 Oracle이 느리면 disk buffer가 이벤트를 보존한다. buffer가 가득 차면 `block` 정책 때문에 backpressure가 Agent 방향으로 전파된다. 운영 진단에서는 source/sink 이벤트 수와 Active, Rotation Wait, Orphan buffer를 함께 확인한다.
 
----
+## 5. Fastify 수신
 
-## 에러 처리
+`POST /api/logs`는 단건, 배열, `{ "logs": [...] }`를 지원하며 최대 1,000건을 검증한다.
 
-**파일:** `src/database/repositories/error-log.repository.ts`
-
-```
-Worker INSERT 실패
-    ↓
-errorLogRepository.record() → LOG_ERROR 테이블
-    ↓
-throw → BullMQ 재시도 (최대 3회)
-    ↓ 3회 실패
-Job 'failed' 상태로 Redis 보관 (최대 5,000개)
+```text
+요청
+  → logBatchSchema 검증
+  → raw 원문 병렬 저장
+  → FILE_RECEIVE / HTTP_RECEIVE 기록
+  → equipmentRegistry.excluded 필터
+  → logIngestService.processLogBatch
+  → TABLE_INSERT / PROCEDURE_CALL 기록
+  → 202 응답
 ```
 
-LOG_ERROR 컬럼: `ERROR_ID`, `SOURCE_TABLE`, `EQUIPMENT_ID`, `ERROR_MESSAGE`, `RAW_DATA`, `CREATED_AT`
+raw 파일 기본 경로:
 
----
-
-## 시스템 초기화 순서
-
-**파일:** `src/index.ts`
-
-```
-1. initOraclePool()          Oracle 커넥션 풀
-2. buildApp()                Fastify 서버 (routes/plugins)
-3. startLogInsertWorker()    BullMQ Worker (concurrency:5)
-4. setupGracefulShutdown()   SIGTERM/SIGINT 핸들러
-5. app.listen(3100)          HTTP 리스닝
+```text
+C:\data\raw-logs\{equipment_type}\{equipment_id}\{yyyy-MM-dd}\{filename}
 ```
 
----
+동일 파일 write는 per-file promise chain으로 직렬화하고, 서로 다른 파일은 병렬 저장한다. `SELECTIVE`는 append, 그 외 유형은 같은 경로에 overwrite한다.
 
-## 프론트엔드 페이지 구성
+`excluded = true`인 설비는 raw와 수신 이력을 남기지만 Oracle 적재만 건너뛴다.
 
-| 경로 | 페이지 | 주요 기능 |
-|---|---|---|
-| `/dashboard` | 대시보드 | 인프라 상태, 큐 통계, 설비 그리드 |
-| `/dashboard/logs` | 로그 뷰어 | Oracle 테이블 데이터 조회 |
-| `/dashboard/errors` | 에러 로그 | LOG_ERROR 조회/삭제 |
-| `/dashboard/mapping` | 테이블 매핑 | Oracle 컬럼 ↔ VRL 소스 필드 매핑 |
-| `/dashboard/receiver` | 수신기 설정 | Aggregator TOML 폼 편집 |
-| `/dashboard/simulator` | VRL 시뮬레이터 | 샘플 로그로 파싱 테스트/적용 |
-| `/dashboard/sender` | 송신기 설정 | Agent TOML 설비별 관리 |
-| `/dashboard/download` | 다운로드 | vector.zip + Agent TOML 배포 |
-| `/dashboard/settings` | 설정 | .env 변수 + AI 모델 설정 |
+## 6. Oracle 처리
 
----
+`logIngestService`는 요청별 최대 30개 worker를 사용한다. 전체 요청이 공유하는 semaphore는 `ORACLE_POOL_MAX - 5`로 동시 Oracle 작업을 제한한다.
 
-## 신규 설비 추가 체크리스트
+### 단건 데이터
 
-1. **Agent TOML 생성** — Sender 페이지에서 UI로 생성 가능
-2. **VRL 파싱 블록 추가** — Simulator 페이지에서 AI 생성 → 테스트 → Apply
-3. **Oracle 테이블 결정** — 기존 테이블 사용 또는 신규 `LOG_{설비}` 생성
-4. **컬럼 매핑 등록** — Mapping 페이지에서 `config/table-registry.json`에 저장
-5. **파싱 필드 동기화** — VRL Apply 시 `config/parse-fields.json`에 자동 반영
+`target_type = TABLE`이면 `config/table-registry.json` 매핑으로 동적 INSERT를 실행한다. `PROCEDURE`이면 등록된 NAMED 또는 ARRAY 호출 규약으로 프로시저를 호출한다.
+
+### `data.ROWS` 데이터
+
+| 대상 | 처리 방식 |
+|---|---|
+| `LOG_ICT`, `LOG_ISCM_ICT`, `LOG_PRESSFIT` | BARCODE별 기존 행 DELETE 후 `executeMany` bulk INSERT |
+| 그 외 다중행 테이블 | trigger mutating 오류 방지를 위해 행별 INSERT |
+| `SELECTIVE`의 빈 `ROWS` | INSERT 생략 |
+
+중복키 `ORA-00001`은 재전송 중복으로 보고 skip 처리한다.
+
+## 7. 처리 로그와 재처리
+
+정상과 오류는 Oracle 테이블이 아니라 다음 JSONL 파일에 함께 기록한다.
+
+```text
+data/process-logs/process-YYYY-MM-DD.jsonl
+```
+
+주요 stage:
+
+```text
+FILE_RECEIVE, HTTP_RECEIVE, VRL_PARSE, TABLE_INSERT,
+PROCEDURE_CALL, PIPELINE_SKIP, LOG_DOWNLOAD
+```
+
+write는 50건 또는 250ms 단위로 비동기 flush하며 기본 보존 기간은 30일이다. 오류 레코드에 `RAW_DATA`가 있으면 `/api/monitor/retry` 또는 `/api/monitor/retry/all`로 같은 직접 적재 흐름을 다시 실행한다.
+
+## 8. 하트비트와 설비 상태
+
+```text
+Agent Manager
+  → POST /api/heartbeat
+  → 인메모리 Map 갱신
+  → data/heartbeat-snapshot.json 저장
+  → data/equipment-registry.json upsert
+```
+
+`HEARTBEAT_TTL_SECONDS` 기본값은 60초다. TTL을 넘긴 설비는 삭제하지 않고 offline으로 표시한다. 서버 재시작 시 snapshot을 복원하지만 새 하트비트가 오기 전까지 offline 상태다.
+
+## 9. 신규 설비 추가 체크리스트
+
+1. `vector-config/agent` 또는 `agent-fluent` 설정 생성
+2. Aggregator `parse_logs`에 VRL 분기 추가
+3. 시뮬레이터로 대표/경계/오류 로그 검증
+4. Oracle DDL 또는 프로시저 준비
+5. `config/table-registry.json` 타겟·컬럼 매핑 등록
+6. `config/parse-fields.json` 동기화
+7. 다운로드/설치 후 장비 하트비트 확인
+8. 원본 파일, 처리 로그, Oracle 결과를 종단 검증
+9. 다중행 BARCODE 교체가 필요하면 trigger 조건을 검토한 뒤 `BARCODE_REPLACE_TABLES` 등록

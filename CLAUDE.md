@@ -1,298 +1,204 @@
 # Vector Log Collection System
-<!-- 최종 갱신: 2026-04-02 -->
+<!-- 최종 갱신: 2026-07-18 / verifiedCommit: e736824 -->
 
-## 데이터 흐름
+## 프로젝트 개요
+
+제조 설비의 파일 로그를 Vector Agent 또는 Fluent Bit으로 수집하고, 중앙 Vector Aggregator의 VRL로 파싱하여 Fastify API가 Oracle에 직접 적재하는 시스템이다.
+
+```text
+설비 파일
+  → Vector Agent :6000 또는 Fluent Bit :24224
+  → Vector Aggregator VRL
+  → HTTP sink disk buffer
+  → POST :3110/api/logs
+  → raw 저장 + JSONL 처리 로그 + Oracle 직접 적재
 ```
-설비 Agent(.toml/.conf) → port 6000 → Aggregator VRL 파싱 → HTTP sink
-→ POST /api/logs (port 3110) → log-ingest.service → Oracle DB INSERT
-```
+
+현재 런타임에는 Redis/BullMQ와 별도 DB worker가 없다.
 
 ## 서버 정보
-- 운영 서버: 20.10.30.112 (SSH: administrator / 1234)
-- 서버 프로젝트 경로: C:\Project\vector
-- Backend: Fastify + TypeScript (port 3100, 내부 3110)
-- Frontend: Next.js (frontend/ 디렉토리)
-- 배포: GitHub Actions → git push 시 서버 자동 배포
 
----
+- 운영 서버: `20.10.30.112` (SSH: `administrator / 1234`)
+- 서버 프로젝트 경로: `C:\Project\vector`
+- Backend: Fastify + TypeScript, port `3110`
+- Frontend: Next.js, port `3100`
+- 배포: `main` push 또는 수동 GitHub Actions → Windows self-hosted runner → PM2
 
-## 대용량 파일 (200줄+)
+## 소스 오브 트루스
 
-| 파일 | 줄수 | 비고 |
-|------|------|------|
-| src/server/routes/monitor.route.ts | 3409 | 엔드포인트 72개 (아래 인덱스) |
-| frontend/src/app/dashboard/log-files/page.tsx | 660 | 파일탐색+수동투입 |
-| frontend/src/app/dashboard/receiver/components/VrlSimulator.tsx | 648 | |
-| frontend/src/app/dashboard/vrl-mapping/page.tsx | 495 | |
-| frontend/src/app/dashboard/mapping/components/AutoCreateModal.tsx | 374 | |
-| frontend/src/app/dashboard/retry/page.tsx | 361 | |
-| src/database/oracle-ddl.ts | 342 | DDL 빌더 |
-| frontend/src/app/dashboard/vrl-mapping/components/AiVrlGenerator.tsx | 338 | |
-| src/database/repositories/error-log.repository.ts | 291 | |
-| frontend/src/app/dashboard/upload/page.tsx | 285 | |
-| frontend/src/app/dashboard/sender/page.tsx | 283 | |
-| frontend/src/app/dashboard/settings/components/AiModelConfig.tsx | 279 | |
-| frontend/src/app/dashboard/sender/components/FluentConfigPanel.tsx | 278 | |
-| frontend/src/app/dashboard/errors/page.tsx | 278 | |
-| src/database/dynamic-insert.ts | 275 | |
-| frontend/src/app/dashboard/mapping/page.tsx | 270 | |
-| frontend/src/app/dashboard/receiver/components/AdvancedOptions.tsx | 269 | |
-| frontend/src/app/dashboard/receiver/components/AggregatorConfigForm.tsx | 267 | |
-| frontend/src/app/dashboard/components/RetryLogPanel.tsx | 262 | |
-| frontend/src/app/dashboard/settings/page.tsx | 255 | |
-| frontend/src/app/dashboard/system-logs/page.tsx | 240 | |
-| frontend/src/app/dashboard/components/CollectorGrid.tsx | 233 | |
-| frontend/src/components/pipeline/EquipmentSidePanel.tsx | 224 | |
-| frontend/src/app/dashboard/sender/components/agent-toml-helpers.ts | 221 | |
-| frontend/src/app/dashboard/receiver/components/BackupHistory.tsx | 219 | |
-| frontend/src/app/dashboard/components/Pm2LogPanel.tsx | 216 | |
+| 영역 | 파일 |
+|---|---|
+| 앱 시작/종료 | `src/index.ts`, `src/utils/graceful-shutdown.ts` |
+| 로그 수신 | `src/server/routes/log-ingest.route.ts` |
+| Oracle 처리 | `src/services/log-ingest.service.ts`, `src/database/dynamic-insert.ts` |
+| Oracle pool | `src/database/oracle.pool.ts` |
+| 운영 API | `src/server/routes/monitor.route.ts`, `src/server/routes/diagnose.route.ts` |
+| 처리 로그 | `src/database/repositories/error-log.repository.ts` |
+| 하트비트 | `src/services/heartbeat.service.ts`, `src/server/routes/heartbeat.route.ts` |
+| 설비 레지스트리 | `src/services/equipment-registry.service.ts` |
+| Aggregator | `vector-config/aggregator/vector-aggregator.toml` |
+| Agent | `vector-config/agent/*.toml`, `vector-config/agent-fluent/*.conf` |
+| 타겟 매핑 | `config/table-registry.json` |
+| 파싱 필드 | `config/parse-fields.json` |
+| Frontend 메뉴 | `frontend/src/components/layout/Sidebar.tsx` |
+| 내장 도움말 | `frontend/src/docs/index.ts`, `frontend/src/docs/{ko,en,es}` |
+| 배포 | `.github/workflows/deploy.yml`, `ecosystem.config.cjs` |
 
----
+라인 번호나 파일 크기는 변경되기 쉬우므로 고정 인덱스 대신 `rg`로 현재 정의를 찾는다.
 
-## monitor.route.ts 엔드포인트 인덱스 (72개)
+## 주요 포트
 
-### Vector 프로세스
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 93 | GET | /api/monitor/overview | 통합 상태 |
-| 130 | GET | /api/monitor/vector | Vector 상태 |
-| 136 | POST | /api/monitor/vector/start | Vector 시작 |
-| 151 | POST | /api/monitor/vector/stop | Vector 중지 |
-| 166 | POST | /api/monitor/vector/reload | Vector 리로드 |
+| 포트 | 용도 |
+|---:|---|
+| 3100 | Next.js Frontend |
+| 3110 | Fastify Backend/API |
+| 6000 | Vector Agent → Aggregator |
+| 24224 | Fluent Bit → Aggregator |
+| 8687 | Aggregator API |
+| 8686 | 설비 PC Vector API |
+| 9090 | 설비 PC Agent Manager |
 
-### Aggregator 설정
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 187 | GET | /api/monitor/aggregator/config | TOML 조회 |
-| 198 | PUT | /api/monitor/aggregator/config | TOML 저장 |
-| 265 | GET | /api/monitor/aggregator/backups | 백업 목록 |
-| 292 | GET | /api/monitor/aggregator/backups/:name | 백업 내용 |
-| 311 | POST | /api/monitor/aggregator/backups/:name/restore | 백업 복원 |
+## 실행과 검증
 
-### Agent 설정 (Vector)
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 563 | GET | /api/monitor/agent/configs | Agent 목록 |
-| 588 | GET | /api/monitor/agent/config/:name | Agent 조회 |
-| 602 | PUT | /api/monitor/agent/config/:name | Agent 저장 |
-| 654 | POST | /api/monitor/agent/configs | Agent 생성 |
-| 676 | PUT | /api/monitor/agent/description/:name | 설명 수정 |
-| 694 | DELETE | /api/monitor/agent/config/:name | Agent 삭제 |
-| 715 | POST | /api/monitor/agent/config/:name/validate | Agent 검증 |
-| 740 | GET | /api/monitor/agent/config/:name/download | Agent 다운로드 |
+```powershell
+# Backend + Frontend 개발
+npm run dev
 
-### Agent 설정 (Fluent Bit)
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 418 | GET | /api/monitor/agent-fluent/configs | Fluent 목록 |
-| 431 | GET | /api/monitor/download/agent-fluent/:name | Fluent 다운로드 |
-| 456 | GET | /api/monitor/agent-fluent/config/:name | Fluent 조회 |
-| 470 | PUT | /api/monitor/agent-fluent/config/:name | Fluent 저장 |
-| 491 | POST | /api/monitor/agent-fluent/configs | Fluent 생성 |
-| 507 | DELETE | /api/monitor/agent-fluent/config/:name | Fluent 삭제 |
+# 개별 실행
+npm run dev:backend
+npm run dev:frontend
 
-### 다운로드
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 334 | GET | /api/monitor/download/vector-zip | Vector ZIP |
-| 356 | GET | /api/monitor/download/agent-manager | Agent Manager |
-| 377 | GET | /api/monitor/download/agent/:name | Agent TOML |
-| 399 | GET | /api/monitor/download/fluent-bit | Fluent Bit ZIP |
+# Backend 빌드
+npm run build
 
-### Oracle 테이블/프로시져
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 757 | GET | /api/monitor/tables/oracle | 등록 테이블 목록 |
-| 775 | GET | /api/monitor/tables/oracle/all | 전체 Oracle 테이블 |
-| 790 | POST | /api/monitor/tables/oracle/create | 테이블 자동생성 (L851: 트리거 복구) |
-| 908 | GET | /api/monitor/tables/oracle/:name/columns | 컬럼 조회 |
-| 929 | GET | /api/monitor/registry | 매핑 레지스트리 |
-| 962 | GET | /api/monitor/registry-keys | 레지스트리 키 목록 |
-| 970 | POST | /api/monitor/registry | 매핑 저장 |
-| 1025 | GET | /api/monitor/procedures/oracle/all | 전체 프로시져 |
-| 1052 | POST | /api/monitor/procedures/oracle/create | 프로시져 자동생성 |
-| 1122 | GET | /api/monitor/procedures/oracle/:name/arguments | 프로시져 파라미터 |
-| 1149 | GET | /api/monitor/procedures | 매핑된 프로시져 |
-| 1163 | GET | /api/monitor/procedures/:key | 프로시져 상세 |
-| 1175 | POST | /api/monitor/procedures | 프로시져 매핑 저장 |
-| 1226 | DELETE | /api/monitor/procedures/:key | 프로시져 매핑 삭제 |
+# Frontend 빌드
+npm run build:frontend
 
-### 로그/에러/재시도
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 1237 | GET | /api/monitor/logs | 처리 로그 조회 |
-| 1288 | GET | /api/monitor/errors | 에러 로그 조회 |
-| 1308 | DELETE | /api/monitor/errors | 에러 삭제 |
-| 1321 | POST | /api/monitor/retry | 에러 재처리 |
-| 1359 | POST | /api/monitor/retry/all | 전체 재처리 |
-
-### 원본 로그 파일
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 1393 | GET | /api/monitor/log-files | 디렉토리 탐색 |
-| 1422 | GET | /api/monitor/log-files/read | 파일 내용 읽기 |
-| 1466 | GET | /api/monitor/log-files/download | 파일 다운로드 |
-| 1494 | DELETE | /api/monitor/log-files | 파일 삭제 |
-
-### 파싱 룰
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 1534 | GET | /api/monitor/parse-rules | 파싱 룰 조회 |
-| 1544 | POST | /api/monitor/parse-rules | 파싱 룰 저장 |
-| 1569 | DELETE | /api/monitor/parse-rules/:type | 파싱 룰 삭제 |
-| 1584 | POST | /api/monitor/parse-rules/sync | VRL→파싱룰 동기화 |
-
-### AI
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 1653 | GET | /api/monitor/ai/config | AI 설정 조회 |
-| 1663 | PUT | /api/monitor/ai/config | AI 설정 저장 |
-| 1684 | POST | /api/monitor/ai/test | AI 연결 테스트 |
-| 1769 | GET | /api/monitor/ai/models | 모델 목록 |
-| 1778 | GET | /api/monitor/ai/system-prompt | 시스템 프롬프트 |
-| 1786 | PUT | /api/monitor/ai/system-prompt | 프롬프트 저장 |
-| 1793 | DELETE | /api/monitor/ai/system-prompt | 프롬프트 삭제 |
-| 1799 | POST | /api/monitor/ai/generate-vrl | VRL 자동 생성 |
-
-### VRL
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 1920 | GET | /api/monitor/vrl/target-map | 설비→테이블 매핑 |
-| 1948 | GET | /api/monitor/vrl/code/:type | 설비별 VRL 코드 |
-| 1972 | POST | /api/monitor/vrl/simulate | VRL 시뮬레이션 |
-| 2080 | POST | /api/monitor/vrl/manual-ingest | 수동 로그 투입 |
-| 2211 | POST | /api/monitor/vrl/validate | VRL 문법 검증 |
-| 2257 | POST | /api/monitor/vrl/apply | VRL TOML 반영 |
-
-### 시스템 설정/상태
-| 줄 | 메서드 | 경로 | 설명 |
-|-----|--------|------|------|
-| 2318 | PUT | /api/monitor/config | 설정 저장 |
-| 2368 | POST | /api/monitor/test-connection | DB 연결 테스트 |
-| 2394 | GET | /api/monitor/config | 설정 조회 |
-| 2434 | GET | /api/monitor/pipeline-status | 파이프라인 상태 |
-| 2555 | GET | /api/monitor/system-logs | 시스템 로그 |
-| 2582 | GET | /api/monitor/pm2-logs | PM2 로그 |
-| 2616 | GET | /api/monitor/pm2-logs/files | PM2 로그 파일 목록 |
-
----
-
-## VRL 설비 블록 인덱스 (vector-aggregator.toml)
-
-| 설비 | 시작줄 | target_table |
-|------|--------|-------------|
-| SP | L204 | LOG_{log_type} |
-| SPI | L216 | LOG_SPI |
-| AOI | L273 | LOG_AOI |
-| ICT | L325 | LOG_ICT |
-| FCT | L360 | LOG_FCT |
-| EOL | L408 | LOG_EOL |
-| MOUNTER | L458 | LOG_MOUNTER |
-| VISION_LEGACY | L543 | LOG_VISION_LEGACY |
-| VISION_NATIVE | L606 | LOG_VISION_NATIVE |
-| DOWNLOAD | L657 | LOG_DOWNLOAD |
-| LOWCURRENT | L717 | LOG_LOWCURRENT |
-| COATING1 | L746 | LOG_COATING1 |
-| COATING2 | L782 | LOG_COATING2 |
-| COATINGVISION | L804 | LOG_COATINGVISION |
-| COATINGREVIEW | L829 | LOG_COATINGREVIEW |
-| MARKING | L867 | LOG_MARKING |
-| SELECTIVE | L893 | LOG_SELECTIVE |
-| REFLOW | L922 | LOG_REFLOW_01 |
-| REFLOW2 | L1013 | LOG_REFLOW_02 |
-
----
-
-## table-registry 등록 테이블
-
-LOG_AOI, LOG_COATINGREVIEW, LOG_COATINGVISION, LOG_DOWNLOAD, LOG_EOL, LOG_FCT, LOG_ICT, LOG_LOWCURRENT, LOG_MARKING, LOG_MOUNTER, LOG_SELECTIVE, LOG_SPI, LOG_VISION_LEGACY, LOG_VISION_NATIVE
-
----
-
-## 프론트엔드 페이지별 코드량
-
-| 페이지 | 총 줄수 | 컴포넌트 수 |
-|--------|---------|------------|
-| receiver | 2202 | 7+ |
-| mapping | 1951 | 6+ |
-| sender | 1830 | 5+ |
-| dashboard/components (공통) | 1506 | 5+ |
-| vrl-mapping | 1159 | 4+ |
-| log-files | 660 | 1 (단일 파일) |
-| equipment | 603 | 3+ |
-| settings | 534 | 2+ |
-| retry | 361 | 1 |
-| upload | 285 | 1 |
-| errors | 278 | 1 |
-| download | 241 | 1 |
-| system-logs | 240 | 1 |
-| help | 205 | 1 |
-| logs | 140 | 1 |
-| simulator | 74 | 1 |
-
----
-
-## i18n 섹션 인덱스 (ko.json)
-
-| 줄 | 섹션 키 | 줄 | 섹션 키 |
-|-----|---------|-----|---------|
-| 2 | nav | 202 | settings |
-| 23 | header | 229 | receiver |
-| 27 | dashboard | 339 | sender |
-| 36 | equipmentDashboard | 468 | download |
-| 40 | serviceFlow | 536 | aggregator |
-| 61 | infra | 555 | backup |
-| 82 | queue | 569 | logs |
-| 89 | collector | 582 | vrlMapping |
-| 104 | remote | 588 | mapping |
-| 163 | errors | 709 | parseRule |
-| 194 | error | 721 | ai |
-| 775 | logFiles | 805 | vrlSim |
-| 841 | systemLogs | 868 | upload |
-
----
-
-## 최근 변경 핫스팟 (2주간)
-
-| 변경횟수 | 파일 |
-|----------|------|
-| 41 | src/server/routes/monitor.route.ts |
-| 39 | agent-manager-go/main.go |
-| 29 | vector-config/aggregator/vector-aggregator.toml |
-| 22 | vector-config/agent/REFLOW.toml |
-| 22 | vector-config/agent/COATINGVISION.toml |
-| 22 | vector-config/agent/COATING{1,2,REVIEW}.toml |
-| 21 | vector-config/agent/MOUNTER.toml |
-
----
-
-## Backend Services (src/services/)
-| 파일 | 역할 |
-|------|------|
-| log-ingest.service.ts | processLogBatch() — ROWS 행별 INSERT |
-| vector-process.service.ts | Vector 바이너리 제어 (VECTOR_BIN = vector-bin/bin/vector.exe) |
-| heartbeat.service.ts | 설비 하트비트 관리 |
-
-## Backend Core (src/)
-| 파일 | 역할 |
-|------|------|
-| database/oracle.pool.ts | Oracle 커넥션 풀 |
-| database/oracle-ddl.ts (342줄) | DDL 빌더 (CREATE TABLE/PROCEDURE) |
-| database/dynamic-insert.ts (275줄) | 동적 INSERT 실행기 |
-| config/env.ts | 환경변수 (RAW_LOG_BASE_PATH 등) |
-| config/vrl-target-updater.ts | TOML VRL 타겟 업데이트 + 백업 |
-| types/index.ts | LogRecord, TargetType 등 공유 타입 |
-| schemas/log-ingest.schema.ts | zod 스키마 (수신 데이터 검증) |
-
-## 자주 쓰는 API
+# 도움말 구조 검사
+node --test frontend/src/docs/help-docs.check.mjs
 ```
-# 운영 서버: http://20.10.30.112:3100  (배포 서버 — 테스트/검증용)
-# 로컬 개발: http://localhost:3100
 
-VRL 시뮬레이션:  POST /api/monitor/vrl/simulate
-수동 로그 투입:  POST /api/monitor/vrl/manual-ingest
-에러 로그 조회:  GET  /api/monitor/errors
-테이블 컬럼:    GET  /api/monitor/tables/oracle/{TABLE}/columns
-VRL 타겟 맵:   GET  /api/monitor/vrl/target-map
-테이블 생성:    POST /api/monitor/tables/oracle/create
+현재 Vitest 형식의 `*.test.*`/`*.spec.*` suite는 등록되어 있지 않다. `tests/pipeline-test.ts`는 실행 중인 Backend/Oracle을 전제로 한 수동 종단 검사이므로 환경을 확인한 뒤 별도로 실행한다.
+
+운영 상태:
+
+```powershell
+pm2 status
+Invoke-WebRequest http://localhost:3110/api/monitor/pipeline-status -UseBasicParsing
+Invoke-WebRequest http://localhost:3100 -UseBasicParsing
+Invoke-WebRequest http://localhost:8687/health -UseBasicParsing
 ```
+
+## 로그 수신 계약
+
+`POST /api/logs`는 단건, 배열, `{ "logs": [...] }`를 지원하고 최대 1,000건을 검증한다.
+
+```text
+Zod 검증
+  → raw 파일 저장
+  → FILE_RECEIVE / HTTP_RECEIVE 처리 로그
+  → excluded 설비 필터
+  → processLogBatch
+  → TABLE_INSERT / PROCEDURE_CALL
+  → 202 Accepted
+```
+
+- raw 기본 경로: `C:\data\raw-logs\{equipment_type}\{equipment_id}\{date}\{filename}`
+- 처리 로그: `data/process-logs/process-YYYY-MM-DD.jsonl`
+- 동일 raw 파일 write는 직렬화하고 다른 파일은 병렬 처리한다.
+- `excluded = true`는 Oracle 적재만 건너뛰며 raw와 수신 이력은 유지한다.
+
+## Oracle 적재 규칙
+
+- 매핑의 단일 소스는 `config/table-registry.json`이다.
+- 요청별 worker limit은 30이고, 전역 DB semaphore는 `ORACLE_POOL_MAX - 5`다.
+- `target_type = TABLE`은 동적 INSERT, `PROCEDURE`는 NAMED/ARRAY 호출을 사용한다.
+- `LOG_ICT`, `LOG_ISCM_ICT`, `LOG_PRESSFIT`의 `data.ROWS`는 BARCODE별 기존 행 삭제 후 bulk INSERT한다.
+- 다른 `ROWS` 테이블은 자기 테이블 trigger의 ORA-04091을 피하기 위해 행별 INSERT한다.
+- `SELECTIVE` 빈 `ROWS`는 INSERT하지 않는다.
+- `ORA-00001`은 재전송 중복으로 보고 skip 처리한다.
+
+현재 TABLE 타겟:
+
+```text
+LOG_AOI, LOG_COATING1, LOG_COATING2, LOG_COATINGREVIEW,
+LOG_COATINGVISION, LOG_DOWNLOAD, LOG_EOL, LOG_FCT, LOG_ICT,
+LOG_ISCM_BURNIN, LOG_ISCM_ICT, LOG_LCR, LOG_LOWCURRENT,
+LOG_MARKING, LOG_MOUNTER, LOG_PRESSFIT, LOG_REFLOW_01,
+LOG_REFLOW_02, LOG_SELECTIVE, LOG_SPI, LOG_SPI_VD,
+LOG_VISION_LEGACY, LOG_VISION_NATIVE
+```
+
+등록 프로시저 키에는 `PKG_BATCH.P_PBA_FT_SUMMARY`, `SP_LOG_INS_SPI`가 있다. 실제 활성 호출 여부는 registry와 VRL `target_type`을 함께 확인한다.
+
+## 현재 설비 유형
+
+```text
+AOI, COATING1, COATING2, COATINGREVIEW, COATINGVISION,
+DOWNLOAD, EOL, FCT, ICT, ISCM_BURNIN, ISCM_ICT, LCR,
+LOWCURRENT, MARKING, MOUNTER, PRESSFIT, REFLOW, SELECTIVE,
+SPI, SPI_VD, VISION_LEGACY, VISION_NATIVE
+```
+
+- ISCM_ICT는 `LOG_ISCM_ICT` 단일 테이블에 Header 5종과 상세 `ROWS`를 적재한다.
+- Agent Manager가 30초마다 Backend에 heartbeat를 직접 보낸다.
+- heartbeat TTL 기본값은 60초이며 snapshot과 equipment registry를 디스크에 보존한다.
+
+## Frontend 주요 경로
+
+| 경로 | 역할 |
+|---|---|
+| `/dashboard` | 중앙 서비스 흐름과 등록 타겟 |
+| `/dashboard/equipment` | heartbeat, 수집 제외, 원격 Agent Manager |
+| `/dashboard/sender` | Vector/Fluent Agent 설정 |
+| `/dashboard/receiver` | Aggregator 설정과 백업 |
+| `/dashboard/vrl-mapping` | VRL 생성·시뮬레이션·적용과 Oracle 매핑 |
+| `/dashboard/log-files` | raw 조회·다운로드·삭제·수동 투입 |
+| `/dashboard/system-logs` | 오류·재전송·처리·실시간·PM2 로그 |
+| `/dashboard/diagnose` | buffer, 처리량, Oracle, 장비 진단 |
+| `/dashboard/upload` | 파일 업로드 이력 |
+| `/dashboard/download` | Vector/Agent Manager/Fluent Bit/설정 다운로드 |
+| `/dashboard/settings` | 서버·Oracle·저장소·heartbeat·AI 설정 |
+| `/dashboard/help` | 3개 언어 내장 도움말 |
+
+## 운영 API 찾기
+
+운영 API는 `monitor.route.ts`에 77개 route가 있다. 고정 line index를 유지하지 말고 다음으로 현재 정의를 확인한다.
+
+```powershell
+rg -n "app\.(get|post|put|delete)\(" src/server/routes/monitor.route.ts
+```
+
+자주 쓰는 경로:
+
+```text
+GET  /api/monitor/overview
+GET  /api/monitor/pipeline-status
+POST /api/monitor/vector/reload
+GET  /api/monitor/vrl/code/:equipmentType
+POST /api/monitor/vrl/simulate
+POST /api/monitor/vrl/manual-ingest
+POST /api/monitor/vrl/apply
+GET  /api/monitor/logs
+GET  /api/monitor/errors
+POST /api/monitor/retry
+GET  /api/monitor/log-files
+GET  /api/diagnose/health
+```
+
+## 배포 주의사항
+
+- workflow의 `robocopy /MIR`는 `.env`, registry, Aggregator 운영 설정, data/logs/vector-data를 보호한다.
+- 최초 배포는 보호 파일을 서버에 직접 시드해야 한다.
+- Backend가 Vector Aggregator의 단일 소유자다. 별도 PM2/Start-Process로 중복 시작하지 않는다.
+- TOML만 바뀐 경우 `POST /api/monitor/vector/reload`로 반영한다.
+- PM2 Backend port orphan 검사는 workflow에 포함되어 있다.
+
+## 문서
+
+- 현재 아키텍처: `docs/ARCHITECTURE.md`
+- 종단 데이터 흐름: `docs/DATA_FLOW.md`
+- 현재 요구사항: `docs/PRD.md`
+- 배포: `DEPLOYMENT_GUIDE.md`
+- SPI 복구: `docs/spi-recovery/README.md`
+- 날짜가 붙은 `docs/plans`, `docs/specs`, `docs/superpowers`는 작성 시점 기록이므로 현재 상태 문서로 사용하지 않는다.

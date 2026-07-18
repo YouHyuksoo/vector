@@ -1,6 +1,6 @@
 /**
  * @file src/app/dashboard/settings/page.tsx
- * @description 시스템 설정 페이지 — 서버/DB/큐/AI 설정 관리
+ * @description 시스템 설정 페이지 — 서버/Oracle/저장소/하트비트/AI 설정 관리
  *
  * 초보자 가이드:
  * 1. **역할**: 환경변수 기반 시스템 설정을 웹 UI에서 조회/편집

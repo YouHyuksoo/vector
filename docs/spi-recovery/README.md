@@ -1,3 +1,13 @@
+---
+sources:
+  - vector-config/aggregator/vector-aggregator.toml
+  - src/server/routes/log-ingest.route.ts
+  - src/services/log-ingest.service.ts
+  - src/database/dynamic-insert.ts
+  - config/table-registry.json
+verifiedCommit: e736824
+---
+
 # SPI 로그 복구 플레이북
 
 LOG_SPI에 데이터가 안 들어가거나, 컬럼이 시프트되어 들어가는 사고 대응 가이드. 일반적인 "VRL 변경 → 메모리 미반영 → 잘못 파싱 → 트리거 폭발" 패턴의 복구에도 활용.
@@ -146,9 +156,9 @@ python C:/Users/hsyou/.claude/skills/oracle-db/scripts/oracle_connector.py --sit
 ### 핵심 코드 파일
 | 파일 | 역할 |
 |------|------|
-| `vector-config/aggregator/vector-aggregator.toml` | Aggregator VRL (SPI block: L216~) |
+| `vector-config/aggregator/vector-aggregator.toml` | Aggregator VRL의 SPI 분기 |
 | `src/server/routes/log-ingest.route.ts` | `POST /api/logs` (Vector HTTP sink + 수동 호출) |
-| `src/services/log-ingest.service.ts` | `processLogBatch()` — 청크 병렬 + 행별 INSERT |
+| `src/services/log-ingest.service.ts` | `processLogBatch()` — 요청별 worker pool + 전역 DB semaphore |
 | `src/database/dynamic-insert.ts` | registry SOURCE_FIELD 기반 동적 INSERT (`data.` prefix 자동 제거) |
 | `src/schemas/log-ingest.schema.ts` | logRecord zod 스키마 |
 

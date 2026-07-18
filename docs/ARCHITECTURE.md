@@ -1,6 +1,16 @@
+---
+sources:
+  - src/
+  - frontend/src/app/dashboard/
+  - vector-config/
+  - config/table-registry.json
+  - ecosystem.config.cjs
+verifiedCommit: e736824
+---
+
 # Vector Log Collection System Architecture
 
-Last updated: 2026-05-21
+Last updated: 2026-07-18
 
 이 문서는 현재 `C:\Project\vector` 코드 기준의 아키텍처 문서다. 예전 문서에 있던 Redis/BullMQ 큐 구조는 현재 코드에 없다. 현재 백엔드는 Vector HTTP sink에서 받은 배치를 검증하고, raw 파일을 저장한 뒤, Oracle에 직접 INSERT 또는 PROCEDURE CALL을 수행한다.
 
@@ -57,7 +67,7 @@ Next.js Dashboard
 | 포트 | 구성요소 | 설명 |
 |---:|---|---|
 | 3110 | Backend API | 기본 `PORT`, `/api/logs`, `/api/monitor/*`, `/health` |
-| 3000 | Frontend dev server | `npm run dev --prefix frontend` 기본 Next.js 포트 |
+| 3100 | Frontend | 개발과 PM2 운영 모두 사용하는 Next.js 포트 |
 | 6000 | Vector Aggregator source | Vector Agent 수신 |
 | 24224 | Vector Aggregator fluent source | Fluent Bit forward 수신 |
 | 8687 | Vector Aggregator API | `/health`, `/graphql` 상태 조회 |
@@ -112,10 +122,13 @@ vector-config/agent/
   EOL.toml
   FCT.toml
   ICT.toml
+  ISCM_BURNIN.toml
+  ISCM_ICT.toml
   LCR.toml
   LOWCURRENT.toml
   MARKING.toml
   MOUNTER.toml
+  PRESSFIT.toml
   REFLOW.toml
   SELECTIVE.toml
   SP.toml
@@ -265,7 +278,7 @@ GLOBAL_DB_CONCURRENCY = ORACLE_POOL_MAX - 5
 
 `target_type = "TABLE"`이면 `target_table`을 키로 `config/table-registry.json`에서 컬럼 매핑을 읽는다. `TableRegistry`는 이 매핑으로 INSERT SQL을 생성하고 5분 TTL 캐시를 사용한다.
 
-현재 등록된 주요 테이블:
+현재 등록된 TABLE 타겟:
 
 ```text
 LOG_AOI
@@ -277,10 +290,13 @@ LOG_DOWNLOAD
 LOG_EOL
 LOG_FCT
 LOG_ICT
+LOG_ISCM_BURNIN
+LOG_ISCM_ICT
 LOG_LCR
 LOG_LOWCURRENT
 LOG_MARKING
 LOG_MOUNTER
+LOG_PRESSFIT
 LOG_REFLOW_01
 LOG_REFLOW_02
 LOG_SELECTIVE
@@ -290,7 +306,9 @@ LOG_VISION_LEGACY
 LOG_VISION_NATIVE
 ```
 
-`data.ROWS`가 있으면 기본적으로 row별 INSERT를 수행한다. 단, `LOG_ICT`는 같은 BARCODE의 이전 row를 삭제한 뒤 `executeMany()`로 replace+insert 한다.
+`data.ROWS`가 있으면 기본적으로 row별 INSERT를 수행한다. 단, `LOG_ICT`, `LOG_ISCM_ICT`, `LOG_PRESSFIT`은 같은 BARCODE의 이전 row를 삭제한 뒤 `executeMany()`로 replace+insert 한다. 이 목록은 자기 테이블을 갱신하는 trigger가 없는 대상만 등록할 수 있다.
+
+ISCM_ICT는 과거 Header/COMP/HDATA 3개 테이블 분리 방식이 아니라 `LOG_ISCM_ICT` 단일 테이블에 Header 5종과 상세 `ROWS`를 적재한다.
 
 중복키 `ORA-00001`은 재전송 상황으로 보고 skip 처리한다.
 
@@ -516,7 +534,7 @@ Windows에서 Vector 중지는 즉시 kill을 기본으로 쓰지 않는다. 먼
 3. 처리 로그는 Oracle이 아니라 JSONL 파일이다. DB 장애 상황에서도 수신/실패 흔적은 남지만, 로그 파일 경로와 30일 보존 정책을 알고 있어야 한다.
 4. `config/table-registry.json`이 실제 INSERT/PROCEDURE mapping의 source of truth다. Oracle DDL만 바꿔서는 백엔드 적재 필드가 바뀌지 않는다.
 5. `equipmentRegistry.excluded`는 DB INSERT만 막는다. raw 파일 저장과 HTTP 수신 로그는 계속 남는다.
-6. `LOG_ICT`는 replaceMany 특례가 있다. 다른 다중 row 테이블과 동일하게 보면 안 된다.
+6. `LOG_ICT`, `LOG_ISCM_ICT`, `LOG_PRESSFIT`은 BARCODE 기준 replaceMany 특례가 있다. 다른 다중 row 테이블과 동일하게 보면 안 된다.
 7. 하트비트는 Agent Manager가 직접 HTTP로 전송한다. Vector internal metrics는 Aggregator에서 로그 파이프라인으로 흘려보내지 않는다.
 
 ## 19. 구버전 문서와 달라진 점
@@ -530,4 +548,3 @@ Windows에서 Vector 중지는 즉시 kill을 기본으로 쓰지 않는다. 먼
 | API 기본 포트 3100 | 코드 기본값은 3110 |
 | 단순 INSPECTION/ALARM/PROCESS 3종 예시 | 실제로는 설비유형별 VRL + LOG_* 테이블/프로시져 매핑 |
 | Agent만 존재 | Agent Manager Go 바이너리와 원격 프록시/서비스 관리 포함 |
-

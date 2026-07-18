@@ -1,6 +1,6 @@
 /**
  * @file src/app/dashboard/retry/page.tsx
- * @description 재전송 페이지 — ERROR 상태 로그를 선택하여 BullMQ 큐에 재투입
+ * @description 재전송 페이지 — ERROR 상태 로그의 RAW_DATA를 직접 적재 흐름으로 재처리
  *
  * 초보자 가이드:
  * 1. **주요 개념**: 실패한 로그(ERROR)에 원본 데이터(RAW_DATA)가 있으면 재전송 가능
