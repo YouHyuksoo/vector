@@ -432,7 +432,7 @@ if .equipment_type == "SPI" {
     } else if starts_with(t, "// Component_Data") {
       section = "COMP"
     } else if starts_with(t, "//") || t == "" || starts_with(t, "*") {
-      null  # 주석/빈줄/구분선 무시 (HDATA 섹션 본문도 여기서 흘려보냄)
+      null  # 주석/빈줄/구분선 무시 (HDATA 섹션 본문은 어느 조건에도 매치되지 않아 자동 폐기됨)
     } else if section == "HEADER" {
       # BARCODE : [ 6711001861B ]
       bm = parse_regex(t, r'^BARCODE\s*:\s*\[\s*(?P<b>.*?)\s*\]\s*$') ?? {}
@@ -1558,66 +1558,6 @@ if .equipment_type == "SPI" {
           "H122": strip_whitespace(to_string!(get(cols, [130]) ?? "")),
           "H123": strip_whitespace(to_string!(get(cols, [131]) ?? "")),
           "H124": strip_whitespace(to_string!(get(cols, [132]) ?? "")),
-        }
-        .data.ROWS = push(.data.ROWS, item)
-      }
-    }
-  }
-} else if .equipment_type == "ISCM_BURNIN" {
-  # ── ISCM_BURNIN 번인 설비 (iSCM 모델) ──
-  .target_table = "LOG_ISCM_BURNIN"
-  # 로그 구조 (UTF-8 CSV, 파일 1개 = Test Report 1건):
-  #   Station No.,<value>,,
-  #   Cart ID,<value>,,
-  #   Start Date,<value>,,
-  #   Test Time,<value>,,
-  #   (빈 줄 ,,,)
-  #   Slot No.,Serial Number,Result,No. Dtc Info=[...]   ← 헤더
-  #   <SlotNo>,<Serial>,<Result>,<DtcInfo>               ← 슬롯 최대 160행
-  # DTC Info 필드는 내부에 콤마 없음(세미콜론/슬래시 사용) → CSV 콤마 분할 안전.
-  # 각 슬롯 행에 마스터(STATION_NO/CART_ID/START_DATE/TEST_TIME)를 복제해 ROWS에 push.
-  # Serial 이 빈 슬롯(트레이 미장착)은 skip.
-
-  lines = split!(.message, "\n")
-
-  # ── 마스터 정보 추출 + 슬롯 헤더(데이터 시작) 위치 탐색 ──
-  m_station = ""
-  m_cart_id = ""
-  m_start_date = ""
-  m_test_time = ""
-  data_start_idx = 0
-  for_each(array!(lines)) -> |idx, line| {
-    mcols = split(to_string!(line), ",")
-    label = strip_whitespace(to_string!(get(mcols, [0]) ?? ""))
-    mval = strip_whitespace(to_string!(get(mcols, [1]) ?? ""))
-    if label == "Station No." { m_station = mval }
-    if label == "Cart ID" { m_cart_id = mval }
-    if label == "Start Date" { m_start_date = mval }
-    if label == "Test Time" { m_test_time = mval }
-    if label == "Slot No." { data_start_idx = idx + 1 }
-  }
-
-  # ── 슬롯 데이터 파싱 ──
-  .data.STATION_NO = m_station
-  .data.CART_ID = m_cart_id
-  .data.START_DATE = m_start_date
-  .data.TEST_TIME = m_test_time
-  .data.ROWS = []
-  if data_start_idx > 0 {
-    data_lines = slice!(lines, data_start_idx)
-    for_each(array!(data_lines)) -> |_idx, row| {
-      cols = split(to_string!(row), ",")
-      serial = strip_whitespace(to_string!(get(cols, [1]) ?? ""))
-      if serial != "" {
-        item = {
-          "STATION_NO": m_station,
-          "CART_ID": m_cart_id,
-          "START_DATE": m_start_date,
-          "TEST_TIME": m_test_time,
-          "SLOT_NO": strip_whitespace(to_string!(get(cols, [0]) ?? "")),
-          "SERIAL_NUMBER": serial,
-          "RESULT": strip_whitespace(to_string!(get(cols, [2]) ?? "")),
-          "DTC_INFO": strip_whitespace(to_string!(get(cols, [3]) ?? ""))
         }
         .data.ROWS = push(.data.ROWS, item)
       }
