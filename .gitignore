@@ -37,3 +37,17 @@ agent-monitor/dist-exe/*.exe
 # PM2 logs
 logs/
 .gstack/
+
+# 세션 부산물 / 툴 캐시
+.serena/
+.claude/scheduled_tasks.lock
+ONBOARDING.md
+agent-manager-go/*-debug.exe
+
+# 임시 분석 스크립트 (로컬 보관, 커밋 안 함)
+/tmp_*.py
+
+# 경로 깨짐으로 생성되는 에러 덤프 (C:\Project\vector\tmp-errors.json → C:Projectvector...)
+/C:Project*
+/CProjectvector*
+*tmp-errors.json
