@@ -101,6 +101,40 @@ export const setInclude = (c: string, paths: string) => {
   return c.replace(/include\s*=\s*\[[\s\S]*?\]/, `include = [\n${lines}\n]`);
 };
 
+/* ── exclude(제외 경로) 헬퍼 ──────────────────── */
+
+/** work_logs 소스의 exclude 배열 추출 (TOML → 단일 \) */
+export const getExclude = (c: string) => {
+  const m = c.match(/exclude\s*=\s*\[([\s\S]*?)\]/);
+  if (!m) return '';
+  return m[1].split('\n').map(l => l.replace(/["',]/g, '').trim())
+    .filter(Boolean).map(p => p.replace(/\\\\/g, '\\')).join('\n');
+};
+
+/**
+ * work_logs 소스의 exclude 배열 교체.
+ * - 값이 비면 exclude 라인 제거
+ * - 이미 있으면 교체
+ * - 없으면 work_logs의 include 배열 바로 뒤에 삽입
+ */
+export const setExclude = (c: string, paths: string) => {
+  const list = paths.split('\n').map(p => p.trim()).filter(Boolean);
+  // 1) 비었으면 exclude 배열 제거 (앞 개행 포함)
+  if (list.length === 0) {
+    return c.replace(/\n[ \t]*exclude\s*=\s*\[[\s\S]*?\]/, '');
+  }
+  const block = `exclude = [\n${list.map(p => `  '${p}',`).join('\n')}\n]`;
+  // 2) 이미 있으면 교체
+  if (/exclude\s*=\s*\[[\s\S]*?\]/.test(c)) {
+    return c.replace(/exclude\s*=\s*\[[\s\S]*?\]/, block);
+  }
+  // 3) 없으면 work_logs의 include 배열 바로 뒤에 삽입
+  return c.replace(
+    /(\[sources\.work_logs\][\s\S]*?include\s*=\s*\[[\s\S]*?\])/,
+    `$1\n${block}`,
+  );
+};
+
 /* ── resend 폴더 헬퍼 ─────────────────────────── */
 
 /** [sources.resend_logs] 섹션의 include 경로 추출 */

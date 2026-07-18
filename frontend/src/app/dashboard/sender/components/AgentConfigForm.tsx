@@ -18,6 +18,7 @@ import {
   getMeta, setMeta, getVal, setVal,
   getSinkAddr, setSinkAddr,
   getInclude, setInclude,
+  getExclude, setExclude,
   getResendInclude, setResendInclude,
   getResendDeleteSecs, setResendDeleteSecs,
   hasMultiline, addMultiline, removeMultiline,
@@ -50,6 +51,7 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
       equipId: getMeta(content, 'equipment_id'),
   sinkIp, sinkPort,
       logPaths: getInclude(content),
+      excludePaths: getExclude(content),
       resendPath: getResendInclude(content),
       resendDeleteSecs: getResendDeleteSecs(content),
       readFrom: getVal(content, 'read_from'),
@@ -160,6 +162,20 @@ export function AgentConfigForm({ content, onChange, description = '', onDescrip
               <div className="absolute right-2 top-2">
                 <Tip text={t('sender.form.tooltip.logPaths')} />
               </div>
+            </div>
+            <div className="relative">
+              <label className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground mb-0.5">
+                {t('sender.form.excludePaths')}
+                <Tip text={t('sender.form.tooltip.excludePaths')} />
+              </label>
+              <textarea value={f.excludePaths} rows={2}
+                onChange={e => u(c => setExclude(c, e.target.value))}
+                placeholder={'C:\\logs\\설비명\\*_temp.txt\nC:\\logs\\설비명\\backup_*'}
+                className="w-full px-2.5 py-1.5 text-xs font-mono border rounded-lg resize-y
+                  bg-white dark:bg-slate-800 border-border" />
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {t('sender.form.excludeHint')}
+              </p>
             </div>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer select-none">
