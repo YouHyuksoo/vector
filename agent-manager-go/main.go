@@ -350,6 +350,84 @@ func tomlSetInclude(content, paths string) string {
 	return content[:idx] + newBlock + content[idx+end+1:]
 }
 
+// tomlGetExclude 는 work_logs 소스의 exclude 배열을 줄바꿈 문자열로 추출한다.
+func tomlGetExclude(content string) string {
+	idx := strings.Index(content, "exclude = [")
+	if idx < 0 {
+		return ""
+	}
+	end := strings.Index(content[idx:], "]")
+	if end < 0 {
+		return ""
+	}
+	block := content[idx : idx+end+1]
+	var paths []string
+	for _, line := range strings.Split(block, "\n") {
+		line = strings.TrimSpace(line)
+		line = strings.Trim(line, `"',`)
+		line = strings.TrimSpace(line)
+		if line != "" && line != "exclude = [" && line != "]" {
+			paths = append(paths, strings.ReplaceAll(line, `\\`, `\`))
+		}
+	}
+	return strings.Join(paths, "\n")
+}
+
+// tomlSetExclude 는 exclude 배열을 교체/삽입/제거한다.
+//   - 값이 비면 기존 exclude 라인 제거
+//   - 이미 있으면 교체
+//   - 없으면 include 배열 바로 뒤에 삽입
+func tomlSetExclude(content, paths string) string {
+	var lines []string
+	for _, p := range strings.Split(paths, "\n") {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			lines = append(lines, fmt.Sprintf("  '%s',", p))
+		}
+	}
+
+	exIdx := strings.Index(content, "exclude = [")
+
+	// 1) 비었으면 기존 exclude 블록 제거 (직전 개행 포함)
+	if len(lines) == 0 {
+		if exIdx < 0 {
+			return content
+		}
+		end := strings.Index(content[exIdx:], "]")
+		if end < 0 {
+			return content
+		}
+		start := exIdx
+		if start > 0 && content[start-1] == '\n' {
+			start--
+		}
+		return content[:start] + content[exIdx+end+1:]
+	}
+
+	newBlock := "exclude = [\n" + strings.Join(lines, "\n") + "\n]"
+
+	// 2) 이미 있으면 교체
+	if exIdx >= 0 {
+		end := strings.Index(content[exIdx:], "]")
+		if end < 0 {
+			return content
+		}
+		return content[:exIdx] + newBlock + content[exIdx+end+1:]
+	}
+
+	// 3) 없으면 work_logs 의 include 배열 바로 뒤에 삽입
+	incIdx := strings.Index(content, "include = [")
+	if incIdx < 0 {
+		return content
+	}
+	end := strings.Index(content[incIdx:], "]")
+	if end < 0 {
+		return content
+	}
+	insertPos := incIdx + end + 1
+	return content[:insertPos] + "\n" + newBlock + content[insertPos:]
+}
+
 func tomlGetResendInclude(content string) string {
 	idx := strings.Index(content, "[sources.resend_logs]")
 	if idx < 0 {
@@ -884,6 +962,7 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 			"line_code":      tomlGetMeta(s, "line_code"),
 			"log_type":       tomlGetMeta(s, "log_type"),
 			"include_paths":  tomlGetInclude(s),
+			"exclude_paths":  tomlGetExclude(s),
 			"resend_path":         tomlGetResendInclude(s),
 			"resend_delete_secs":  tomlGetResendDeleteSecs(s),
 			"sink_address":        sinkIP,
@@ -913,6 +992,9 @@ func handleSetup(w http.ResponseWriter, r *http.Request) {
 		}
 		if v, ok := body["include_paths"]; ok {
 			s = tomlSetInclude(s, v)
+		}
+		if v, ok := body["exclude_paths"]; ok {
+			s = tomlSetExclude(s, v)
 		}
 		if v, ok := body["resend_path"]; ok {
 			s = tomlSetResendInclude(s, v)
