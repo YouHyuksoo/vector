@@ -30,9 +30,5 @@
   "ISCM_ICT": {
     "description": "ICT 검사설비 (ISCM 모델)",
     "encoding": "euc-kr"
-  },
-  "ISCM_BURNIN": {
-    "description": "BURNIN 번인 설비 (ISCM 모델)",
-    "encoding": "utf-8"
   }
 }
