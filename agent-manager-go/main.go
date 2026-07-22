@@ -1638,6 +1638,90 @@ func handleVectorLog(w http.ResponseWriter, r *http.Request) {
 	jsonResp(w, map[string]any{"log": strings.Join(lines, "\n")})
 }
 
+// ─── Vector checkpoint (전송 완료 판정) ───
+
+// tomlGetDataDir 는 TOML 최상단의 data_dir 값을 돌려준다.
+func tomlGetDataDir(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "data_dir") {
+			val := trimmed[strings.Index(trimmed, "=")+1:]
+			val = strings.TrimSpace(val)
+			val = strings.Trim(val, `"'`)
+			return strings.ReplaceAll(val, `\\`, `\`)
+		}
+	}
+	return ""
+}
+
+// tomlFirstSourceName 은 첫 include 배열을 소유한 [sources.XXX] 의 XXX 를 돌려준다.
+// checkpoint 가 <data_dir>/<source name>/checkpoints.json 에 저장되기 때문이다.
+func tomlFirstSourceName(content string) string {
+	incIdx := strings.Index(content, "include = [")
+	if incIdx < 0 {
+		return ""
+	}
+	head := content[:incIdx]
+	secIdx := strings.LastIndex(head, "[sources.")
+	if secIdx < 0 {
+		return ""
+	}
+	rest := head[secIdx+len("[sources."):]
+	end := strings.Index(rest, "]")
+	if end < 0 {
+		return ""
+	}
+	return strings.TrimSpace(rest[:end])
+}
+
+// loadCheckpoints 는 Vector가 남긴 checkpoints.json 을 dev_inode → 읽은 offset 으로 만든다.
+// fingerprint.strategy 가 checksum 인 설비는 dev_inode 가 없어 빈 맵이 된다.
+func loadCheckpoints(dataDir, sourceName string) map[[2]uint64]int64 {
+	if dataDir == "" || sourceName == "" {
+		return nil
+	}
+	data, err := os.ReadFile(filepath.Join(dataDir, sourceName, "checkpoints.json"))
+	if err != nil {
+		return nil
+	}
+	var parsed struct {
+		Checkpoints []struct {
+			Fingerprint struct {
+				DevInode []uint64 `json:"dev_inode"`
+			} `json:"fingerprint"`
+			Position int64 `json:"position"`
+		} `json:"checkpoints"`
+	}
+	if json.Unmarshal(data, &parsed) != nil {
+		return nil
+	}
+	result := make(map[[2]uint64]int64, len(parsed.Checkpoints))
+	for _, cp := range parsed.Checkpoints {
+		if len(cp.Fingerprint.DevInode) != 2 {
+			continue
+		}
+		key := [2]uint64{cp.Fingerprint.DevInode[0], cp.Fingerprint.DevInode[1]}
+		if prev, ok := result[key]; !ok || cp.Position > prev {
+			result[key] = cp.Position
+		}
+	}
+	return result
+}
+
+// isFullySent 는 Vector가 파일 끝까지 읽었는지 판정한다.
+// 판단할 수 없으면 false — 확실한 것만 목록에서 감춘다.
+func isFullySent(path string, size int64, checkpoints map[[2]uint64]int64) bool {
+	if len(checkpoints) == 0 {
+		return false
+	}
+	key, ok := fileDevInode(path)
+	if !ok {
+		return false
+	}
+	pos, ok := checkpoints[key]
+	return ok && pos >= size
+}
+
 func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
 	// TOML에서 include 경로 추출 + 폴더 존재 여부 체크
 	type watchInfo struct {
@@ -1693,11 +1777,29 @@ func handleLogsRecent(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if len(files) > 10 {
-		files = files[:10]
+	// 전송이 끝난 파일은 목록에서 제외한다.
+	// 정렬된 뒤 앞에서부터 10건만 채우므로 파일이 많은 폴더에서도 검사 횟수가 늘지 않는다.
+	var checkpoints map[[2]uint64]int64
+	if err == nil {
+		s := string(content)
+		checkpoints = loadCheckpoints(tomlGetDataDir(s), tomlFirstSourceName(s))
 	}
+	pending := make([]map[string]any, 0, 10)
+	sentCount := 0
+	for _, f := range files {
+		if len(pending) >= 10 {
+			break
+		}
+		full := filepath.Join(f["dir"].(string), f["name"].(string))
+		if isFullySent(full, f["size"].(int64), checkpoints) {
+			sentCount++
+			continue
+		}
+		pending = append(pending, f)
+	}
+	files = pending
 
-	jsonResp(w, map[string]any{"files": files, "watchPaths": watchPaths})
+	jsonResp(w, map[string]any{"files": files, "watchPaths": watchPaths, "sentCount": sentCount})
 }
 
 func handleLogsResend(w http.ResponseWriter, r *http.Request) {
