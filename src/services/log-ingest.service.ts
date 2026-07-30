@@ -147,12 +147,15 @@ class LogIngestService {
       } else {
         // 기타 LOG_* 테이블: 행별 INSERT 유지 — executeMany 사용 시 같은 transaction 내에서
         // BEFORE INSERT trigger가 같은 테이블 UPDATE 시 ORA-04091 (mutating table) 발생
+        // insert()는 ORA-00001(재전송 중복) 이면 0을 반환하므로 합계가 실제 적재 행수다.
+        let inserted = 0;
         for (const row of data.ROWS) {
-          await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
+          inserted += await dynamicInsert.insert(target_table, row as Record<string, unknown>, extraFields);
         }
+        insertedRows = inserted;
       }
     } else {
-      await dynamicInsert.insert(target_table, data, extraFields);
+      insertedRows = await dynamicInsert.insert(target_table, data, extraFields);
     }
 
     const stage = target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT';
