@@ -23,8 +23,13 @@ import type { LogRecord } from '../types/index.js';
 const BARCODE_REPLACE_TABLES = new Set([
   'LOG_ICT',
   'LOG_ISCM_ICT',
-  'LOG_PRESSFIT',
 ]);
+
+// LOG_PRESSFIT 은 여기 넣지 말 것 (2026-07-30 제거).
+// TRG_LOG_PRESSFIT_IS_LAST 가 IS_LAST 관리를 위해 자기 테이블을 UPDATE 한다 →
+// executeMany(배열 바인딩) 다중행 INSERT 에서 ORA-04091 이 나고 그 배치가 통째로
+// 사라진다 (07-18~07-29 손실 원인). 다른 LOG_* 테이블과 동일하게 행별 INSERT 를 쓴다.
+// 단행 INSERT ... VALUES 는 mutating table 제약 예외라 트리거 UPDATE 가 정상 동작한다.
 
 /**
  * 단순 Semaphore — 외부 의존성 없이 동시 acquire 수를 max로 제한.
