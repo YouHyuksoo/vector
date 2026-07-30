@@ -1,22 +1,19 @@
 -- =============================================================================
 --  TRG_LOG_PRESSFIT_IS_LAST — LOG_PRESSFIT BEFORE INSERT 트리거
 -- =============================================================================
---  2026-07-30: 운영 DB 소스를 기준으로 동기화하고, 행 손실 원인을 제거했다.
+--  2026-07-30: 운영 DB 소스를 기준으로 동기화했다.
 --
---  ※ 자기 테이블(LOG_PRESSFIT) 을 SELECT/UPDATE/DELETE 하면 절대 안 된다.
+--  ※ IS_LAST 유지용 자기 테이블 UPDATE 는 이 트리거의 정상 로직이다.
+--    대신 backend 가 이 테이블에 **행별 INSERT** 를 해야 한다.
 --    row trigger 가 자기 테이블에 DML 을 하면 다중행 INSERT(executeMany 배열 바인딩)에서
 --    ORA-04091 (mutating table) 이 발생하고, backend 는 batchErrors 로 그 배치를
---    통째로 잃는다. 실제로 2026-07-18 ~ 07-29 사이 아래 UPDATE 때문에
---    2행 이상 배치가 100% 실패했다 (LOG_ERROR STAGE='TRIGGER' 22건,
---    07-29 20260726.csv 전체 재전송 → 적재 0행).
+--    통째로 잃는다. 2026-07-18 ~ 07-29 손실이 이 조합 때문이었다
+--    (LOG_ERROR STAGE='TRIGGER' 22건, 07-29 20260726.csv 전체 재전송 → 적재 0행).
 --
---      -- 넣지 말 것:
---      -- UPDATE LOG_PRESSFIT SET IS_LAST = 'N'
---      --  WHERE BARCODE = :NEW.BARCODE AND IS_LAST = 'Y';
---
---    IS_LAST 는 UPDATE 없이도 정합성이 유지된다. backend 의
---    log-ingest.service.ts BARCODE_REPLACE_TABLES 가 동일 BARCODE 의 이전 행을
---    DELETE 한 뒤 INSERT 하므로, 테이블에 남는 행은 항상 최신 1건이다.
+--    → 해결: log-ingest.service.ts 의 BARCODE_REPLACE_TABLES 에서 LOG_PRESSFIT 을
+--      제거해 다른 LOG_* 테이블과 동일한 행별 INSERT 규약으로 되돌렸다.
+--      단행 INSERT ... VALUES 는 mutating table 제약 예외라 아래 UPDATE 가 정상 동작한다.
+--      LOG_PRESSFIT 을 다시 BARCODE_REPLACE_TABLES 에 넣으면 손실이 재발한다.
 -- =============================================================================
 
 CREATE OR REPLACE TRIGGER TRG_LOG_PRESSFIT_IS_LAST
@@ -43,10 +40,16 @@ BEGIN
   :NEW.ZONE_CODE   := f_get_worktime_zone_hour(lvd_inspect_date);
 
   --------------------------------------
-  -- IS_LAST 고정
-  --  • 자기 테이블 UPDATE 는 ORA-04091 mutating 유발 → 다중행 INSERT 전량 실패
-  --  • backend 가 동일 BARCODE 이전 행을 DELETE 후 INSERT 하므로 항상 최신이다
+  -- IS_LAST 관리
+  --  동일 BARCODE 이전 행을 'N' 으로 내리고 새 행만 'Y' 로 둔다 (이력 보존).
+  --  ※ 자기 테이블 UPDATE 이므로 backend 는 반드시 행별 INSERT 를 써야 한다.
+  --    executeMany 다중행 INSERT 면 ORA-04091 로 배치가 통째로 사라진다.
   --------------------------------------
+
+  UPDATE LOG_PRESSFIT
+     SET IS_LAST = 'N'
+   WHERE BARCODE = :NEW.BARCODE
+     AND IS_LAST = 'Y';
 
   :NEW.IS_LAST := 'Y';
 
