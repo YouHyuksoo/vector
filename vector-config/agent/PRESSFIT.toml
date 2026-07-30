@@ -9,7 +9,10 @@
 #     헤더 1줄 + 데이터 N행, 134칸 = 고정 9 + 높이 124포인트 + 후행 빈칸
 #     Aggregator 의 PRESSFIT VRL 블록이 파싱해 LOG_PRESSFIT 에 저장합니다.
 #
-#  ※ 누적형이지만 송신기는 파일을 통째로 보냅니다 (프로젝트 규약).
+#  ※ 누적형이라 파일 전체는 "최초 1회"만 전송됩니다. Vector file source 는 checkpoint
+#     이후 append 된 줄만 보내므로, 두 번째 이후 이벤트에는 CSV 헤더가 없습니다.
+#     → Aggregator VRL 은 첫 줄을 무조건 버리면 안 되고(2026-07-30 행 손실 원인),
+#       행 단위로 헤더/빈 줄을 skip 해야 합니다.
 #     중복 제거는 수신측 책임 — backend 가 BARCODE 단위 DELETE 후 INSERT 합니다.
 #
 #  설치 방법:

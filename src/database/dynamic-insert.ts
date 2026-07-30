@@ -16,6 +16,43 @@ import { tableRegistry } from './table-registry.js';
 import { getProcedure } from '../config/local-registry.js';
 import { logger } from '../utils/logger.js';
 
+/**
+ * executeMany(batchErrors:true) 결과 요약.
+ * batchErrors는 예외를 던지지 않으므로 호출자가 실패 건수를 직접 확인해야 한다.
+ * 이 값을 무시하면 행이 조용히 사라진다 (2026-07-30 LOG_PRESSFIT 사례).
+ */
+export interface BulkInsertResult {
+  /** 시도한 행 수 */
+  attempted: number;
+  /** 실제 적재된 행 수 */
+  inserted: number;
+  /** ORA-00001 — 재전송 중복이므로 정상 skip */
+  duplicates: number;
+  /** 중복 외 실패 행 — 데이터 손실이다 */
+  failed: Array<{ row: number; errorNum: number; message: string }>;
+}
+
+/** batchErrors 배열을 중복(ORA-00001) / 실제 실패로 분류한다. */
+function summarizeBatchErrors(
+  attempted: number,
+  inserted: number,
+  batchErrors: Array<{ offset?: number; errorNum?: number; message?: string }> | undefined,
+): BulkInsertResult {
+  const result: BulkInsertResult = { attempted, inserted, duplicates: 0, failed: [] };
+  for (const err of batchErrors ?? []) {
+    if (err.errorNum === 1) {
+      result.duplicates++;
+      continue;
+    }
+    result.failed.push({
+      row: err.offset ?? -1,
+      errorNum: err.errorNum ?? 0,
+      message: err.message ?? 'unknown batch error',
+    });
+  }
+  return result;
+}
+
 class DynamicInsert {
   async insert(
     tableName: string,
@@ -66,8 +103,10 @@ class DynamicInsert {
     tableName: string,
     dataArray: Record<string, unknown>[],
     extraFields: Record<string, unknown> = {},
-  ): Promise<number> {
-    if (dataArray.length === 0) return 0;
+  ): Promise<BulkInsertResult> {
+    if (dataArray.length === 0) {
+      return { attempted: 0, inserted: 0, duplicates: 0, failed: [] };
+    }
 
     const schema = await tableRegistry.getSchema(tableName);
 
@@ -101,22 +140,24 @@ class DynamicInsert {
       };
 
       const result = await conn.executeMany(schema.insertSql, bindRows, options);
+      const summary = summarizeBatchErrors(
+        dataArray.length,
+        result.rowsAffected ?? 0,
+        result.batchErrors,
+      );
 
-      if (result.batchErrors && result.batchErrors.length > 0) {
-        logger.warn(
-          {
-            tableName,
-            totalRows: dataArray.length,
-            errorCount: result.batchErrors.length,
-          },
-          'Partial batch insert failure',
+      if (summary.failed.length > 0) {
+        logger.error(
+          { tableName, ...summary, failed: summary.failed.slice(0, 5) },
+          'Batch insert lost rows',
         );
       }
+      logger.info(
+        { tableName, rowsInserted: summary.inserted, duplicates: summary.duplicates, failedRows: summary.failed.length },
+        'Batch insert completed',
+      );
 
-      const rowsInserted = result.rowsAffected ?? 0;
-      logger.info({ tableName, rowsInserted }, 'Batch insert completed');
-
-      return rowsInserted;
+      return summary;
     } finally {
       await conn.close();
     }
@@ -132,8 +173,10 @@ class DynamicInsert {
     deleteKey: { column: string; values: (string | number)[] },
     dataArray: Record<string, unknown>[],
     extraFields: Record<string, unknown> = {},
-  ): Promise<number> {
-    if (dataArray.length === 0) return 0;
+  ): Promise<BulkInsertResult> {
+    if (dataArray.length === 0) {
+      return { attempted: 0, inserted: 0, duplicates: 0, failed: [] };
+    }
 
     const schema = await tableRegistry.getSchema(tableName);
     if (!schema.insertSql) {
@@ -178,23 +221,31 @@ class DynamicInsert {
       // oracledb 6.x Connection은 commit/rollback 있음 — 타입 정의 누락 회피
       await (conn as unknown as { commit(): Promise<void> }).commit();
 
-      if (result.batchErrors && result.batchErrors.length > 0) {
-        logger.warn(
-          {
-            tableName,
-            totalRows: dataArray.length,
-            errorCount: result.batchErrors.length,
-          },
-          'Partial batch insert failure (replaceMany)',
+      const summary = summarizeBatchErrors(
+        dataArray.length,
+        result.rowsAffected ?? 0,
+        result.batchErrors,
+      );
+
+      if (summary.failed.length > 0) {
+        // DELETE는 커밋됐고 INSERT는 일부/전부 실패한 상태 — 조용히 넘기면 행이 사라진다.
+        logger.error(
+          { tableName, ...summary, failed: summary.failed.slice(0, 5) },
+          'Replace+Insert lost rows',
         );
       }
-
-      const rowsInserted = result.rowsAffected ?? 0;
       logger.info(
-        { tableName, deleteColumn: deleteKey.column, deletedKeys: deleteKey.values.length, rowsInserted },
+        {
+          tableName,
+          deleteColumn: deleteKey.column,
+          deletedKeys: deleteKey.values.length,
+          rowsInserted: summary.inserted,
+          duplicates: summary.duplicates,
+          failedRows: summary.failed.length,
+        },
         'Replace+Insert completed',
       );
-      return rowsInserted;
+      return summary;
     } catch (err) {
       try {
         await (conn as unknown as { rollback(): Promise<void> }).rollback();

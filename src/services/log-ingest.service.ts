@@ -97,14 +97,25 @@ class LogIngestService {
       filename: filename || '',
     };
 
-    // SELECTIVE: 헤더/빈 줄만 있는 이벤트는 .data.ROWS=[] 로 들어옴 — 빈 row INSERT 방지
+    // 헤더/빈 줄만 있는 이벤트는 .data.ROWS=[] 로 들어온다.
+    // 이때 아래 else 분기로 내려가면 전 컬럼 NULL 인 쓰레기 행이 INSERT 된다
+    // (2026-07-30 LOG_PRESSFIT 에서 46건 확인).
+    // 단 ISCM_BURNIN 처럼 header 필드 + ROWS 를 함께 쓰는 설비는 header-only 행이
+    // 정상 적재 대상이므로, ROWS 외 data 필드가 하나도 없을 때만 skip 한다.
     if (
-      equipment_type === 'SELECTIVE' &&
       Array.isArray(data.ROWS) &&
-      data.ROWS.length === 0
+      data.ROWS.length === 0 &&
+      Object.keys(data).filter((k) => k !== 'ROWS').length === 0
     ) {
+      logger.debug(
+        { table: target_table, equipment_id, equipment_type, filename },
+        'Empty ROWS event skipped (no data fields)',
+      );
       return;
     }
+
+    // 처리 로그에 남길 "실제 적재 행수" — 시도 행수와 다르면 손실이 있다는 뜻
+    let insertedRows = Array.isArray(data.ROWS) ? data.ROWS.length : 1;
 
     if (target_type === TARGET_TYPES.PROCEDURE) {
       await dynamicInsert.callProcedure(target_table, data, extraFields);
@@ -116,12 +127,23 @@ class LogIngestService {
       if (BARCODE_REPLACE_TABLES.has(target_table)) {
         const rows = data.ROWS as Record<string, unknown>[];
         const barcodes = [...new Set(rows.map((r) => r.BARCODE).filter((v): v is string => typeof v === 'string' && v.length > 0))];
-        await dynamicInsert.replaceMany(
+        const result = await dynamicInsert.replaceMany(
           target_table,
           { column: 'BARCODE', values: barcodes },
           rows,
           extraFields,
         );
+        // executeMany(batchErrors:true)는 행별 실패를 예외로 던지지 않는다.
+        // 여기서 던져야 error-log에 남고 /api/monitor/retry로 재투입할 수 있다.
+        // (replaceMany는 BARCODE DELETE 후 INSERT라 재시도해도 중복되지 않는다)
+        if (result.failed.length > 0) {
+          const first = result.failed[0];
+          throw new Error(
+            `${target_table} 배치 INSERT 부분 실패: ${result.failed.length}/${result.attempted}행 손실 ` +
+              `(적재 ${result.inserted}행, 중복 skip ${result.duplicates}행) — 첫 실패: ORA-${String(first.errorNum).padStart(5, '0')} ${first.message}`,
+          );
+        }
+        insertedRows = result.inserted;
       } else {
         // 기타 LOG_* 테이블: 행별 INSERT 유지 — executeMany 사용 시 같은 transaction 내에서
         // BEFORE INSERT trigger가 같은 테이블 UPDATE 시 ORA-04091 (mutating table) 발생
@@ -133,9 +155,8 @@ class LogIngestService {
       await dynamicInsert.insert(target_table, data, extraFields);
     }
 
-    const rowCount = Array.isArray(data.ROWS) ? data.ROWS.length : 1;
     const stage = target_type === TARGET_TYPES.PROCEDURE ? 'PROCEDURE_CALL' : 'TABLE_INSERT';
-    errorLogRepository.success(stage, target_table, equipment_id, `${stage} 성공 (${rowCount}건)`);
+    errorLogRepository.success(stage, target_table, equipment_id, `${stage} 성공 (${insertedRows}건)`);
   }
 
   async processLogBatch(logs: LogRecord[]): Promise<{ accepted: number; failed: number }> {

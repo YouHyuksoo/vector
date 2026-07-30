@@ -1410,14 +1410,19 @@ if .equipment_type == "SPI" {
   #
   # 날짜: CSV 에 날짜/시각 컬럼이 없다. ACTUAL_DATE 는 트리거가 SYSDATE 로 채운다
   #   (LOG_ICT 와 동일 규약).
+  #
+  # ※ 헤더 처리: slice!(lines, 1) 로 첫 줄을 버리면 안 된다.
+  #   누적 파일이라 Agent 는 최초 1회만 파일 전체(헤더 포함)를 보내고, 이후에는
+  #   append 된 delta 만 보낸다 (헤더 없음). 무조건 첫 줄을 버리면 delta 이벤트마다
+  #   데이터 1행이 사라진다 (2026-07-30 확인: 20260727.csv 358행 중 141행만 적재).
+  #   → SELECTIVE 와 동일하게 행 단위로 헤더/빈 줄을 skip 한다.
 
   lines = split!(.message, "\n")
-  data_lines = slice!(lines, 1)   # 헤더 1줄 건너뛰기
 
   .target_table = "LOG_PRESSFIT"
   .data.ROWS = []
 
-  for_each(array!(data_lines)) -> |_idx, row| {
+  for_each(array!(lines)) -> |_idx, row| {
     line = strip_whitespace(to_string!(row))
     if line != "" {
       cols = split(to_string!(row), ",")
