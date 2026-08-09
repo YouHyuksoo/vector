@@ -43,23 +43,36 @@ function loadSnapshot(): Record<string, SnapshotEntry> {
   }
 }
 
+function writeSnapshot(): void {
+  const snapshot: Record<string, SnapshotEntry> = {};
+  for (const [id, entry] of store) {
+    snapshot[id] = { last_seen: entry.last_seen, metadata: entry.metadata };
+  }
+  try {
+    const dir = dirname(SNAPSHOT_PATH);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(SNAPSHOT_PATH, JSON.stringify(snapshot, null, 2), 'utf-8');
+  } catch (err) {
+    logger.warn({ err: String(err) }, 'heartbeat snapshot save failed');
+  }
+}
+
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleSave(): void {
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    const snapshot: Record<string, SnapshotEntry> = {};
-    for (const [id, entry] of store) {
-      snapshot[id] = { last_seen: entry.last_seen, metadata: entry.metadata };
-    }
-    try {
-      const dir = dirname(SNAPSHOT_PATH);
-      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-      writeFileSync(SNAPSHOT_PATH, JSON.stringify(snapshot, null, 2), 'utf-8');
-    } catch (err) {
-      logger.warn({ err: String(err) }, 'heartbeat snapshot save failed');
-    }
+    writeSnapshot();
   }, 1000);
+}
+
+/** 지연 없이 즉시 저장 — 삭제처럼 유실되면 안 되는 변경에 사용 */
+function saveNow(): void {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  writeSnapshot();
 }
 
 class HeartbeatService {
@@ -117,6 +130,20 @@ class HeartbeatService {
       last_seen: entry.last_seen,
       metadata: (entry.metadata ?? {}) as Record<string, string>,
     };
+  }
+
+  /**
+   * 설비 삭제 — 인메모리 store와 디스크 스냅샷 양쪽에서 제거.
+   * 스냅샷은 즉시 저장한다. debounce(1초) 중 서버가 재시작되면 삭제가 유실되어
+   * 다음 기동 때 스냅샷에서 다시 복원되기 때문이다.
+   */
+  remove(equipmentId: string): boolean {
+    const entry = store.get(equipmentId);
+    if (!entry) return false;
+    if (entry.timer) clearTimeout(entry.timer);
+    store.delete(equipmentId);
+    saveNow();
+    return true;
   }
 
   getAllStatuses(): EquipmentStatus[] {

@@ -73,9 +73,14 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
     return backupName;
   }
 
-  /** 하트비트 설비 목록에 서버 측 description 병합 (equipment_type ↔ agent name 매칭) */
+  /**
+   * 하트비트 설비 목록에 서버 측 description 병합 (equipment_type ↔ agent name 매칭).
+   * 레지스트리의 excluded 값도 함께 실어 준다 — 하트비트 metadata에는 없는 값이라
+   * 병합하지 않으면 화면에서 배제(SKIP) 상태가 표시되지 않는다.
+   */
   function mergeEquipmentDescriptions(equips: import('../../types/index.js').EquipmentStatus[]) {
     const descs = loadDescriptions();
+    const registry = equipmentRegistry.getAll();
     return equips.map(eq => {
       const eqType = (eq.metadata as Record<string, string>)?.equipment_type;
       const entry = eqType ? descs[eqType] : undefined;
@@ -85,6 +90,7 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         metadata: {
           ...(eq.metadata ?? {}),
           ...(desc ? { description: desc } : {}),
+          ...(registry[eq.equipment_id]?.excluded ? { excluded: 'true' } : {}),
         },
       };
     });
@@ -2295,12 +2301,44 @@ Generate VRL parsing code for this log.`;
     return reply.send({ success: true });
   });
 
-  /** 설비 삭제 */
+  /**
+   * 설비 삭제 — 레지스트리와 하트비트 스냅샷 양쪽에서 제거한다.
+   * 장비 대시보드 목록은 하트비트 store 기준이므로 레지스트리만 지우면 재조회 시 다시 나타난다.
+   * 한쪽에만 남아 있는 유령 항목도 지울 수 있도록, 둘 중 하나라도 지워지면 성공으로 본다.
+   */
   app.delete('/api/monitor/equipment-registry/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const ok = equipmentRegistry.remove(id);
-    if (!ok) return reply.status(404).send({ error: 'Equipment not found' });
-    return reply.send({ success: true });
+    const removedRegistry = equipmentRegistry.remove(id);
+    const removedHeartbeat = heartbeatService.remove(id);
+    if (!removedRegistry && !removedHeartbeat) {
+      return reply.status(404).send({ error: 'Equipment not found' });
+    }
+    logger.info({ equipmentId: id, removedRegistry, removedHeartbeat }, 'Equipment deleted');
+    return reply.send({ success: true, removedRegistry, removedHeartbeat });
+  });
+
+  /**
+   * 설비 일괄 삭제 — 삭제 대상 ids를 반드시 명시한다.
+   * "오프라인 전체"를 서버가 판정하지 않는 이유: 서버 재시작 직후에는 복원된 모든 설비가
+   * 다음 하트비트 전까지 online=false 이므로, 정상 가동 중인 설비까지 지워질 수 있다.
+   * 삭제 후에도 하트비트가 다시 들어오면 자동 재등록된다(정상 동작).
+   */
+  app.post('/api/monitor/equipment-registry/cleanup', async (request, reply) => {
+    const body = (request.body ?? {}) as { ids?: string[] };
+    const targets = Array.isArray(body.ids) ? body.ids.filter(id => typeof id === 'string' && id) : [];
+    if (targets.length === 0) {
+      return reply.status(400).send({ error: 'ids is required' });
+    }
+
+    const deleted: string[] = [];
+    for (const id of targets) {
+      const removedRegistry = equipmentRegistry.remove(id);
+      const removedHeartbeat = heartbeatService.remove(id);
+      if (removedRegistry || removedHeartbeat) deleted.push(id);
+    }
+
+    logger.info({ requested: targets.length, deleted: deleted.length }, 'Equipment registry cleanup');
+    return reply.send({ success: true, count: deleted.length, deleted });
   });
 
   /** .env 설정 저장 (허용된 키만 업데이트) */

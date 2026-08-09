@@ -5,7 +5,7 @@
  *   초보자 가이드: 장비 대시보드에서 각 설비의 온/오프라인 상태와 로그 처리 현황을 보여줍니다.
  */
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Icon, Modal } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
 import { RemoteTabPanel } from '../equipment/components/RemoteTabPanel';
@@ -32,7 +32,7 @@ const ICONS: Record<string, string> = {
 
 interface Equipment { equipment_id: string; online: boolean; last_seen: string; metadata: Record<string, string> }
 interface LogEntry { LOG_ID?: number; SOURCE_TABLE?: string; EQUIPMENT_ID: string; MESSAGE?: string; STAGE?: string; STATUS: string; CREATED_AT?: string }
-interface Props { equipments: Equipment[]; logs?: LogEntry[]; serverTimestamp?: string }
+interface Props { equipments: Equipment[]; logs?: LogEntry[]; serverTimestamp?: string; onRefresh?: () => void }
 
 const SKIP = new Set([
   'equipment_id', 'equipment_type', 'line_code', 'log_type',
@@ -81,8 +81,8 @@ function ActivityPanel({ logs, t }: { logs: LogEntry[]; t: (k: string) => string
   );
 }
 
-/** 섹션 헤더 — 그룹 라벨 + 카운트 뱃지 */
-function SectionLabel({ label, count, dot }: { label: string; count: number; dot: string }) {
+/** 섹션 헤더 — 그룹 라벨 + 카운트 뱃지 (+ 우측 액션) */
+function SectionLabel({ label, count, dot, action }: { label: string; count: number; dot: string; action?: ReactNode }) {
   return (
     <div className="flex items-center gap-2 mb-2.5">
       <span className={`size-2 rounded-full shrink-0 ${dot}`} />
@@ -95,15 +95,18 @@ function SectionLabel({ label, count, dot }: { label: string; count: number; dot
         {count}
       </span>
       <div className="flex-1 h-px bg-border/40 dark:bg-[oklch(0.36_0.070_281)]" />
+      {action}
     </div>
   );
 }
 
-export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props) {
+export function CollectorGrid({ equipments, logs = [], serverTimestamp, onRefresh }: Props) {
   const { t } = useI18n();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [cleanupMode, setCleanupMode] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const serverNow = serverTimestamp ? new Date(serverTimestamp).getTime() : undefined;
 
   const handleToggleExclude = async (equipmentId: string, currentExcluded: boolean) => {
@@ -113,6 +116,7 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ excluded: !currentExcluded }),
       });
+      onRefresh?.();
     } catch { /* 무시 */ }
   };
 
@@ -122,9 +126,30 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
       if (res.ok) {
         setDeletedIds(prev => new Set([...prev, equipmentId]));
         setSelectedId(null);
+        onRefresh?.();
       }
     } catch { /* 무시 */ } finally {
       setDeletingId(null);
+    }
+  };
+
+  /** 오프라인 설비 일괄 삭제 — 화면에 보이는 목록만 명시적으로 전달 */
+  const handleCleanupOffline = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    setCleaning(true);
+    try {
+      const res = await fetch('/api/monitor/equipment-registry/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (res.ok) {
+        setDeletedIds(prev => new Set([...prev, ...ids]));
+        onRefresh?.();
+      }
+    } catch { /* 무시 */ } finally {
+      setCleaning(false);
+      setCleanupMode(false);
     }
   };
 
@@ -321,7 +346,48 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp }: Props)
           {/* 오프라인 */}
           {dn > 0 && (
             <div>
-              <SectionLabel label={t('collector.offline')} count={dn} dot="bg-muted-foreground/50" />
+              <SectionLabel
+                label={t('collector.offline')}
+                count={dn}
+                dot="bg-muted-foreground/50"
+                action={
+                  cleanupMode ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-error">오프라인 {dn}대를 목록에서 삭제할까요?</span>
+                      <button
+                        disabled={cleaning}
+                        onClick={() => handleCleanupOffline(groups.offline.map(e => e.equipment_id))}
+                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg
+                          bg-error/20 text-error border border-error/40 hover:bg-error/30
+                          transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <Icon name={cleaning ? 'progress_activity' : 'check'} size="xs"
+                          className={cleaning ? 'animate-spin' : ''} />
+                        삭제
+                      </button>
+                      <button
+                        disabled={cleaning}
+                        onClick={() => setCleanupMode(false)}
+                        className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg
+                          bg-secondary text-muted-foreground border border-border dark:border-[oklch(0.42_0.080_281)]
+                          hover:bg-surface transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <Icon name="close" size="xs" /> 취소
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setCleanupMode(true)}
+                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg border
+                        bg-white dark:bg-[oklch(0.32_0.065_281)] text-error border-error/30
+                        hover:bg-error/10 transition-all active:scale-95"
+                    >
+                      <Icon name="delete_sweep" size="xs" />
+                      오프라인 전체 삭제
+                    </button>
+                  )
+                }
+              />
               {renderGrid(groups.offline)}
             </div>
           )}

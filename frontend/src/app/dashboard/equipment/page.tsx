@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui';
 import { useI18n } from '@/contexts/I18nContext';
 
 export default function EquipmentDashboardPage() {
-  const { data, error, lastUpdate } = useMonitor();
+  const { data, error, lastUpdate, refresh } = useMonitor();
   const { t } = useI18n();
 
   if (!data) {
@@ -34,7 +34,12 @@ export default function EquipmentDashboardPage() {
         </h1>
       </div>
 
-      <CollectorGrid equipments={data.equipments} logs={data.recentLogs} serverTimestamp={data.server.timestamp} />
+      <CollectorGrid
+        equipments={data.equipments}
+        logs={data.recentLogs}
+        serverTimestamp={data.server.timestamp}
+        onRefresh={refresh}
+      />
 
       <div className="flex items-center justify-between text-sm text-muted-foreground pt-4 border-t border-border dark:border-border-dark">
         <span>{t('dashboard.copyright')} &copy; 2026</span>
