@@ -111,11 +111,12 @@ export function CollectorGrid({ equipments, logs = [], serverTimestamp, onRefres
 
   const handleToggleExclude = async (equipmentId: string, currentExcluded: boolean) => {
     try {
-      await fetch(`/api/monitor/equipment-registry/${equipmentId}`, {
+      const res = await fetch(`/api/monitor/equipment-registry/${equipmentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ excluded: !currentExcluded }),
       });
+      if (!res.ok) console.warn('배제 상태 변경 실패', equipmentId, res.status);
       onRefresh?.();
     } catch { /* 무시 */ }
   };

@@ -101,6 +101,29 @@ class EquipmentRegistryService {
     return true;
   }
 
+  /**
+   * 레지스트리에 없으면 최소 엔트리를 만든다 (있으면 아무것도 하지 않음).
+   * 하트비트 스냅샷에만 남아 있는 설비도 배제/수정할 수 있게 하기 위한 것이라
+   * upsert()와 달리 last_seen을 현재 시각으로 덮어쓰지 않는다.
+   */
+  ensure(
+    equipmentId: string,
+    meta?: { equipment_type?: string; line_code?: string; description?: string; last_seen?: string },
+  ): void {
+    if (this.cache[equipmentId]) return;
+    const now = localISOString();
+    this.cache[equipmentId] = {
+      equipment_type: meta?.equipment_type || '',
+      line_code: meta?.line_code || '',
+      description: meta?.description || '',
+      registered_at: now,
+      last_seen: meta?.last_seen || now,
+      excluded: false,
+    };
+    logger.info({ equipmentId }, 'Equipment registry entry created from heartbeat');
+    this.scheduleSave();
+  }
+
   /** 설비 삭제 */
   remove(equipmentId: string): boolean {
     if (!this.cache[equipmentId]) return false;

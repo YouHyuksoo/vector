@@ -2292,10 +2292,27 @@ Generate VRL parsing code for this log.`;
     return reply.send(equipmentRegistry.getAll());
   });
 
-  /** 설비 정보 수정 (description, excluded 등) */
+  /**
+   * 설비 정보 수정 (description, excluded 등).
+   * 레지스트리에는 없고 하트비트 스냅샷에만 있는 설비는 엔트리를 만든 뒤 적용한다.
+   * 그렇게 하지 않으면 배제 토글이 조용히 무시된다.
+   */
   app.put('/api/monitor/equipment-registry/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as { description?: string; excluded?: boolean };
+
+    if (!equipmentRegistry.get(id)) {
+      const hb = heartbeatService.getStatus(id);
+      if (!hb) return reply.status(404).send({ error: 'Equipment not found' });
+      const meta = (hb.metadata ?? {}) as Record<string, string>;
+      equipmentRegistry.ensure(id, {
+        equipment_type: meta.equipment_type,
+        line_code: meta.line_code,
+        description: meta.description,
+        last_seen: hb.last_seen,
+      });
+    }
+
     const ok = equipmentRegistry.update(id, body);
     if (!ok) return reply.status(404).send({ error: 'Equipment not found' });
     return reply.send({ success: true });
