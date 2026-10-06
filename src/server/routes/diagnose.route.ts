@@ -137,14 +137,14 @@ type DbStats = {
   latestCreatedAt: string | null;
 };
 
-/** 진단 페이지가 5초마다 폴링하므로 Oracle 집계는 캐시·단일 실행으로 보호한다 (대형 LOG_* 풀 스캔 중첩 방지) */
+/**
+ * 진단 페이지가 5초마다 폴링하므로 Oracle 확인은 캐시·단일 실행으로 보호한다.
+ * LOG_* 데이터 테이블은 조회하지 않는다 — CREATED_AT 인덱스가 없는 대형 테이블(LOG_ICT 54GB 등)은
+ * COUNT/MAX 한 번이 풀 스캔이라 적재(POST /api/logs)를 막는다. 처리량·lag·테이블별 건수는 null/빈 값이다.
+ */
 const DB_STATS_TTL_MS = 60_000;
-const DB_COUNT_TIMEOUT_MS = 8_000;
-const SLOW_TABLE_SKIP_MS = 30 * 60_000;
 let dbStatsCache: { at: number; value: DbStats } | null = null;
 let dbStatsInflight: Promise<DbStats> | null = null;
-/** CREATED_AT 인덱스가 없어 타임아웃 난 대형 테이블 — 일정 시간 집계에서 제외 */
-const slowTableUntil = new Map<string, number>();
 
 async function getDbStats(): Promise<DbStats> {
   if (dbStatsCache && Date.now() - dbStatsCache.at < DB_STATS_TTL_MS) return dbStatsCache.value;
@@ -160,76 +160,14 @@ async function getDbStats(): Promise<DbStats> {
   return dbStatsInflight;
 }
 
-/** Oracle 연결 + 최근 처리량(LOG_* 테이블 전체 분당 INSERT) + lag */
+/** Oracle 연결 여부만 확인 (SELECT 1 FROM DUAL) */
 async function loadDbStats(): Promise<DbStats> {
   try {
     const conn = await getConnection();
     try {
-      (conn as unknown as { callTimeout: number }).callTimeout = DB_COUNT_TIMEOUT_MS;
-      // 등록 테이블 목록 (LOG_*만 — 동적 INSERT 대상)
-      const regRes = await conn.execute<{ TABLE_NAME: string }>(
-        `SELECT TABLE_NAME FROM USER_TABLES WHERE TABLE_NAME LIKE 'LOG\\_%' ESCAPE '\\'`,
-      );
-      const tables = (regRes.rows || []).map(r => r.TABLE_NAME);
-
-      // 각 테이블 최근 1분 INSERT 수 합산
-      const perTable: { table: string; cnt: number }[] = [];
-      let total = 0;
-      let skippedSlow = false;
-      for (const t of tables) {
-        if ((slowTableUntil.get(t) ?? 0) > Date.now()) {
-          skippedSlow = true;
-          continue;
-        }
-        try {
-          const r = await conn.execute<{ CNT: number }>(
-            `SELECT COUNT(*) AS CNT FROM ${t} WHERE CREATED_AT >= SYSDATE - 1/24/60`,
-          );
-          const cnt = r.rows?.[0]?.CNT ?? 0;
-          if (cnt > 0) perTable.push({ table: t, cnt });
-          total += cnt;
-        } catch (err) {
-          // DPY-4024(thin)/DPI-1067(thick)/ORA-03156 = callTimeout 초과 → 풀 스캔 테이블로 보고 한동안 제외
-          if (/DPY-4024|DPI-1067|ORA-03156|call timeout/i.test(String((err as Error)?.message))) {
-            slowTableUntil.set(t, Date.now() + SLOW_TABLE_SKIP_MS);
-            skippedSlow = true;
-            logger.warn({ table: t }, 'diagnose: 최근 1분 집계 타임아웃 — 30분간 제외');
-          }
-          /* CREATED_AT 컬럼 없는 테이블 등 무시 */
-        }
-      }
-
-      // lag — LOG_EOL 기준 (대표 테이블) MAX START_TIME vs MAX CREATED_AT
-      let lagHours: number | null = null;
-      let latestStartTime: string | null = null;
-      let latestCreatedAt: string | null = null;
-      try {
-        const lagRes = await conn.execute<{ LATEST_START: string; LATEST_CREATED: Date }>(
-          `SELECT MAX(START_TIME) AS LATEST_START, MAX(CREATED_AT) AS LATEST_CREATED FROM LOG_EOL`,
-        );
-        const row = lagRes.rows?.[0];
-        if (row?.LATEST_START && row.LATEST_CREATED) {
-          latestStartTime = String(row.LATEST_START);
-          latestCreatedAt = row.LATEST_CREATED instanceof Date ? row.LATEST_CREATED.toISOString() : String(row.LATEST_CREATED);
-          const startMs = Date.parse(String(row.LATEST_START).replace(' ', 'T'));
-          const createdMs = row.LATEST_CREATED instanceof Date ? row.LATEST_CREATED.getTime() : Date.parse(String(row.LATEST_CREATED));
-          if (!isNaN(startMs) && !isNaN(createdMs)) {
-            lagHours = +((createdMs - startMs) / 1000 / 60 / 60).toFixed(2);
-          }
-        }
-      } catch { /* LOG_EOL 없거나 컬럼 다름 */ }
-
-      return {
-        connected: true,
-        // 제외된 대형 테이블이 있으면 합계가 과소집계라 stuck 오판 방지를 위해 0건일 때만 null 처리
-        insertPerMin: skippedSlow && total === 0 ? null : total,
-        perTable: perTable.sort((a, b) => b.cnt - a.cnt).slice(0, 10),
-        lagHours,
-        latestStartTime,
-        latestCreatedAt,
-      };
+      await conn.execute('SELECT 1 FROM DUAL');
+      return { connected: true, insertPerMin: null, perTable: [], lagHours: null, latestStartTime: null, latestCreatedAt: null };
     } finally {
-      (conn as unknown as { callTimeout: number }).callTimeout = 0; // 풀 재사용 시 다른 작업에 타임아웃이 남지 않게 복원
       await conn.close();
     }
   } catch (err) {
