@@ -88,10 +88,24 @@ function parseTimestamp(ts: string): Date | string {
  */
 const SPI_STD_DATE = /^\d{4}-\d{2}-\d{2}$/;
 let nonStandardSpiRowsSkipped = 0;
+let noBarcodeSpiRowsSkipped = 0;
 
 function isStandardSpiRow(row: unknown): boolean {
   const d = (row as Record<string, unknown> | null)?.INSPECTION_DATE;
   return typeof d === 'string' && SPI_STD_DATE.test(d);
+}
+
+/**
+ * 바코드가 없는 SPI 행 판별 — ARRAY_BARCODE 가 비었거나 문자열 'NULL'.
+ * SPI-11/SPI-13 은 바코드를 못 읽은 검사 결과를 ARRAY_BARCODE='NULL' 로 내보내는데(최근 정상 날짜 행의 약 75%),
+ * 전부 같은 키라서 IS_LAST 트리거의 UPDATE(WHERE ARRAY_BARCODE=:NEW.ARRAY_BARCODE AND IS_LAST='Y')가
+ * 한 행에 몰려 락 경합 + 호출당 약 220만 블록 읽기(평균 18.7초)를 일으켜 정상 SPI 적재까지 막는다.
+ * MES 는 pid(=실제 바코드)로만 이력을 조회하므로 이 행들은 조회에 쓰이지 않는다.
+ * 원본 CSV 는 수신 시 raw 폴더에 먼저 저장되므로(saveRawLogFile) 건너뛰어도 데이터는 보존된다.
+ */
+function hasSpiBarcode(row: unknown): boolean {
+  const b = (row as Record<string, unknown> | null)?.ARRAY_BARCODE;
+  return typeof b === 'string' && b.trim() !== '' && b.trim().toUpperCase() !== 'NULL';
 }
 
 class LogIngestService {
@@ -113,9 +127,11 @@ class LogIngestService {
     // SPI 비표준 행(패드 측정값 파일 등) 제외 — 이미 Aggregator 버퍼에 쌓인 이벤트도 여기서 즉시 걸러 적체를 푼다
     if (log.target_table === 'LOG_SPI' && Array.isArray(log.data?.ROWS)) {
       const rows = log.data.ROWS as unknown[];
-      const valid = rows.filter(isStandardSpiRow);
+      const standard = rows.filter(isStandardSpiRow);
+      const valid = standard.filter(hasSpiBarcode);
       if (valid.length !== rows.length) {
-        nonStandardSpiRowsSkipped += rows.length - valid.length;
+        nonStandardSpiRowsSkipped += rows.length - standard.length;
+        noBarcodeSpiRowsSkipped += standard.length - valid.length;
         if (valid.length === 0) return;
         log = { ...log, data: { ...log.data, ROWS: valid } };
       }
@@ -278,6 +294,7 @@ class LogIngestService {
         topTables,
         slowest: slowestLog,
         nonStandardSpiRowsSkippedTotal: nonStandardSpiRowsSkipped,
+        noBarcodeSpiRowsSkippedTotal: noBarcodeSpiRowsSkipped,
       },
       'Log batch processed',
     );
