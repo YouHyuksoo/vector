@@ -78,6 +78,22 @@ function parseTimestamp(ts: string): Date | string {
   return d;
 }
 
+/**
+ * SPI 표준(KohYoung) 행 판별 — INSPECTION_DATE 가 YYYY-MM-DD 형식인 행만 표준.
+ * SPI 설비 PC가 같은 폴더(C:\logs\spi\*.csv)에 내는 패드 측정값 파일(고정폭 헤더 + Component ID,PAD ID,Volume...)은
+ * VRL 위치 파싱 시 헤더 줄이 MASTER_BARCODE 로, 부품 ID 가 ARRAY_BARCODE 로 밀려 들어가고
+ * INSPECTION_DATE 가 비거나 측정 숫자가 된다. 이 데이터는 MES 에서 쓰지 않고, 파일당 수백 행이
+ * IS_LAST 트리거(행마다 같은 키 UPDATE)와 락 경합을 일으켜 적재 전체를 막으므로 적재하지 않는다.
+ * (2026-10-06 조사: 정상 행의 INSPECTION_DATE 는 항상 날짜 형식이었고 이상 형식은 0건)
+ */
+const SPI_STD_DATE = /^\d{4}-\d{2}-\d{2}$/;
+let nonStandardSpiRowsSkipped = 0;
+
+function isStandardSpiRow(row: unknown): boolean {
+  const d = (row as Record<string, unknown> | null)?.INSPECTION_DATE;
+  return typeof d === 'string' && SPI_STD_DATE.test(d);
+}
+
 class LogIngestService {
   /** processLog 1건의 단계별 latency 계측 — batch summary에서 누적 */
   private async processLogTimed(log: LogRecord): Promise<{ poolWaitMs: number; insertMs: number }> {
@@ -94,6 +110,17 @@ class LogIngestService {
   }
 
   async processLog(log: LogRecord): Promise<void> {
+    // SPI 비표준 행(패드 측정값 파일 등) 제외 — 이미 Aggregator 버퍼에 쌓인 이벤트도 여기서 즉시 걸러 적체를 푼다
+    if (log.target_table === 'LOG_SPI' && Array.isArray(log.data?.ROWS)) {
+      const rows = log.data.ROWS as unknown[];
+      const valid = rows.filter(isStandardSpiRow);
+      if (valid.length !== rows.length) {
+        nonStandardSpiRowsSkipped += rows.length - valid.length;
+        if (valid.length === 0) return;
+        log = { ...log, data: { ...log.data, ROWS: valid } };
+      }
+    }
+
     const { equipment_id, equipment_type, target_type, target_table, data, timestamp, line_code, filename } = log;
     const extraFields: Record<string, unknown> = {
       equipment_id,
@@ -250,6 +277,7 @@ class LogIngestService {
         semWaiting: dbSemaphore.stats.waiting,
         topTables,
         slowest: slowestLog,
+        nonStandardSpiRowsSkippedTotal: nonStandardSpiRowsSkipped,
       },
       'Log batch processed',
     );
