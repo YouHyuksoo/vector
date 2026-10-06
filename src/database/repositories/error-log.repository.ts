@@ -6,7 +6,7 @@
  * 1. **주요 개념**: DB 대신 JSONL 파일에 기록 → DB 장애 시에도 추적 가능
  * 2. **STATUS**: SUCCESS(정상) / ERROR(오류) 구분
  * 3. **일별 분리**: process-2026-02-26.jsonl 형식으로 날짜별 파일 생성
- * 4. **자동 정리**: 30일 지난 파일 자동 삭제
+ * 4. **자동 정리**: 7일 지난 파일 자동 삭제
  * 5. **안전 설계**: record() 내부에서 에러를 삼킴 → 로깅이 앱을 크래시시키지 않음
  */
 
@@ -18,7 +18,7 @@ import { logger, localNow } from '../../utils/logger.js';
 const LOG_DIR = join(process.cwd(), 'data', 'process-logs');
 const FILE_PREFIX = 'process-';
 const FILE_EXT = '.jsonl';
-const RETENTION_DAYS = 30;
+const RETENTION_DAYS = 7;
 // JSONL 배치 flush: 250ms 또는 50건마다 디스크 기록. event loop block 최소화.
 const FLUSH_THRESHOLD = 50;
 const FLUSH_INTERVAL_MS = 250;
