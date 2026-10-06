@@ -82,9 +82,13 @@ jobs:
           if (!(Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force }
 
           # 전체 동기화: 로컬(git) = 서버. 서버 전용 파일/디렉토리만 보호.
+          # /XD는 이름만 쓰면 하위 어디서든 같은 이름의 폴더를 제외한다(node_modules\caniuse-lite\data 등).
+          # 그래서 서버 전용 폴더는 원본/서버 양쪽 전체 경로로 지정한다. (.git만 이름 그대로)
+          $keep = @("data", "logs", "vector-data", "vector-data-agent", "vector-config\aggregator")
+          $xd = @(".git") + ($keep | ForEach-Object { "$src\$_"; "$dst\$_" })
           robocopy $src $dst /MIR /NFL /NDL /NJH /NJS /NC /NS `
             /XF ".env" "ai-config.json" "ai-system-prompt.txt" "parse-fields.json" "table-registry.json" `
-            /XD ".git" "data" "logs" "vector-data" "vector-data-agent" "vector-config\aggregator"
+            /XD $xd
 
           if ($LASTEXITCODE -le 7) { exit 0 } else { exit $LASTEXITCODE }
 
