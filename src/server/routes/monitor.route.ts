@@ -98,12 +98,12 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
 
   /** 통합 모니터링 데이터 */
   app.get('/api/monitor/overview', async (_request, reply) => {
-    const [equipments, tableStats, recentErrors, recentLogs, vectorStatus, oracleStatus] =
+    // 처리 로그(JSONL)는 읽지 않는다 — 대시보드 폴링마다 하루치 파일을 동기 파싱하면
+    // 이벤트 루프가 막혀 POST /api/logs 적재까지 지연된다. 로그/오류는 /api/monitor/logs·errors 로 조회.
+    const [equipments, tableStats, vectorStatus, oracleStatus] =
       await Promise.allSettled([
         heartbeatService.getAllStatuses(),
         getTableStats(),
-        getRecentErrors(),
-        getRecentLogs(),
         getVectorStatus(),
         checkOracle(),
       ]);
@@ -161,8 +161,9 @@ export const monitorRoute: FastifyPluginAsync = async (app) => {
         return mergeEquipmentDescriptions(result);
       })(),
       tables: tableStats.status === 'fulfilled' ? tableStats.value : [],
-      recentErrors: recentErrors.status === 'fulfilled' ? recentErrors.value : [],
-      recentLogs: recentLogs.status === 'fulfilled' ? recentLogs.value : [],
+      // 응답 형태 호환용 — overview 에서는 더 이상 채우지 않는다
+      recentErrors: [],
+      recentLogs: [],
     });
   });
 
@@ -3040,14 +3041,6 @@ async function cleanupOrphanedRegistry() {
 // 서버 시작 시 1회 정리
 cleanupOrphanedRegistry();
 
-function getRecentErrors() {
-  return errorLogRepository.query({ status: 'ERROR', limit: 20 }).logs;
-}
-
-function getRecentLogs() {
-  return errorLogRepository.query({ limit: 100 }).logs;
-}
-
 /** 시스템 메모리 사용량 조회 */
 function getMemoryInfo() {
   const total = totalmem();
@@ -3079,8 +3072,20 @@ function getCpuInfo() {
   return { percent: cachedCpuPercent, cores: cores.length, model: cores[0]?.model ?? '' };
 }
 
+type DiskInfo = { total: number; used: number; free: number; percent: number };
+const DISK_INFO_TTL_MS = 60_000;
+let diskInfoCache: { at: number; value: DiskInfo | null } | null = null;
+
+/** 디스크 용량은 천천히 변하므로 60초 캐시 — execSync(powershell)가 폴링마다 이벤트 루프를 막지 않게 한다 */
+function getDiskInfo(): DiskInfo | null {
+  if (diskInfoCache && Date.now() - diskInfoCache.at < DISK_INFO_TTL_MS) return diskInfoCache.value;
+  const value = loadDiskInfo();
+  diskInfoCache = { at: Date.now(), value };
+  return value;
+}
+
 /** 서버 디스크 사용량 조회 (C: 드라이브 기준, Linux는 /) */
-function getDiskInfo(): { total: number; used: number; free: number; percent: number } | null {
+function loadDiskInfo(): DiskInfo | null {
   try {
     if (platform() === 'win32') {
       const out = execSync(
