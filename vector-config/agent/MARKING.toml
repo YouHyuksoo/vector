@@ -37,16 +37,17 @@ include = [
 ]
 read_from = "beginning"
 encoding.charset = "utf-8"
-fingerprint.strategy = "checksum"
-fingerprint.bytes = 256
-remove_after_secs = 30
+fingerprint.strategy = "device_and_inode"
+remove_after_secs = 5
 ignore_checkpoints = true
+oldest_first = true
+max_read_bytes = 65536
 
 [sources.resend_logs.multiline]
 start_pattern = '^.'
 condition_pattern = '.*'
 mode = "continue_through"
-timeout_ms = 10000
+timeout_ms = 2000
 
 # ── [설비 설정] ──
 [transforms.add_metadata]
