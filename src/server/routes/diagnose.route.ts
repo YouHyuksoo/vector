@@ -128,18 +128,44 @@ async function getVectorMetrics(): Promise<{ sources: { id: string; received: nu
   }
 }
 
-/** Oracle 연결 + 최근 처리량(LOG_* 테이블 전체 분당 INSERT) + lag */
-async function getDbStats(): Promise<{
+type DbStats = {
   connected: boolean;
   insertPerMin: number | null;
   perTable: { table: string; cnt: number }[];
   lagHours: number | null;
   latestStartTime: string | null;
   latestCreatedAt: string | null;
-}> {
+};
+
+/** 진단 페이지가 5초마다 폴링하므로 Oracle 집계는 캐시·단일 실행으로 보호한다 (대형 LOG_* 풀 스캔 중첩 방지) */
+const DB_STATS_TTL_MS = 60_000;
+const DB_COUNT_TIMEOUT_MS = 8_000;
+const SLOW_TABLE_SKIP_MS = 30 * 60_000;
+let dbStatsCache: { at: number; value: DbStats } | null = null;
+let dbStatsInflight: Promise<DbStats> | null = null;
+/** CREATED_AT 인덱스가 없어 타임아웃 난 대형 테이블 — 일정 시간 집계에서 제외 */
+const slowTableUntil = new Map<string, number>();
+
+async function getDbStats(): Promise<DbStats> {
+  if (dbStatsCache && Date.now() - dbStatsCache.at < DB_STATS_TTL_MS) return dbStatsCache.value;
+  if (dbStatsInflight) return dbStatsInflight;
+  dbStatsInflight = loadDbStats()
+    .then((value) => {
+      if (value.connected) dbStatsCache = { at: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      dbStatsInflight = null;
+    });
+  return dbStatsInflight;
+}
+
+/** Oracle 연결 + 최근 처리량(LOG_* 테이블 전체 분당 INSERT) + lag */
+async function loadDbStats(): Promise<DbStats> {
   try {
     const conn = await getConnection();
     try {
+      (conn as unknown as { callTimeout: number }).callTimeout = DB_COUNT_TIMEOUT_MS;
       // 등록 테이블 목록 (LOG_*만 — 동적 INSERT 대상)
       const regRes = await conn.execute<{ TABLE_NAME: string }>(
         `SELECT TABLE_NAME FROM USER_TABLES WHERE TABLE_NAME LIKE 'LOG\\_%' ESCAPE '\\'`,
@@ -149,7 +175,12 @@ async function getDbStats(): Promise<{
       // 각 테이블 최근 1분 INSERT 수 합산
       const perTable: { table: string; cnt: number }[] = [];
       let total = 0;
+      let skippedSlow = false;
       for (const t of tables) {
+        if ((slowTableUntil.get(t) ?? 0) > Date.now()) {
+          skippedSlow = true;
+          continue;
+        }
         try {
           const r = await conn.execute<{ CNT: number }>(
             `SELECT COUNT(*) AS CNT FROM ${t} WHERE CREATED_AT >= SYSDATE - 1/24/60`,
@@ -157,7 +188,13 @@ async function getDbStats(): Promise<{
           const cnt = r.rows?.[0]?.CNT ?? 0;
           if (cnt > 0) perTable.push({ table: t, cnt });
           total += cnt;
-        } catch {
+        } catch (err) {
+          // DPY-4024(thin)/DPI-1067(thick)/ORA-03156 = callTimeout 초과 → 풀 스캔 테이블로 보고 한동안 제외
+          if (/DPY-4024|DPI-1067|ORA-03156|call timeout/i.test(String((err as Error)?.message))) {
+            slowTableUntil.set(t, Date.now() + SLOW_TABLE_SKIP_MS);
+            skippedSlow = true;
+            logger.warn({ table: t }, 'diagnose: 최근 1분 집계 타임아웃 — 30분간 제외');
+          }
           /* CREATED_AT 컬럼 없는 테이블 등 무시 */
         }
       }
@@ -184,13 +221,15 @@ async function getDbStats(): Promise<{
 
       return {
         connected: true,
-        insertPerMin: total,
+        // 제외된 대형 테이블이 있으면 합계가 과소집계라 stuck 오판 방지를 위해 0건일 때만 null 처리
+        insertPerMin: skippedSlow && total === 0 ? null : total,
         perTable: perTable.sort((a, b) => b.cnt - a.cnt).slice(0, 10),
         lagHours,
         latestStartTime,
         latestCreatedAt,
       };
     } finally {
+      (conn as unknown as { callTimeout: number }).callTimeout = 0; // 풀 재사용 시 다른 작업에 타임아웃이 남지 않게 복원
       await conn.close();
     }
   } catch (err) {
@@ -284,7 +323,7 @@ function judge(input: {
   }
 
   // 처리 stuck — 실질 적체가 있고 INSERT가 거의 0
-  if (unsent > 500 && (input.insertPerMin ?? 0) < 5) {
+  if (unsent > 500 && input.insertPerMin != null && input.insertPerMin < 5) {
     bump('critical');
     reasons.push(`처리 stuck — Vector unsent ${unsent.toLocaleString()}건인데 분당 INSERT ${input.insertPerMin ?? 0}건`);
   }
