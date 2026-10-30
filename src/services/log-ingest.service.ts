@@ -125,7 +125,8 @@ class LogIngestService {
 
   async processLog(log: LogRecord): Promise<void> {
     // SPI 비표준 행(패드 측정값 파일 등) 제외 — 이미 Aggregator 버퍼에 쌓인 이벤트도 여기서 즉시 걸러 적체를 푼다
-    if (log.target_table === 'LOG_SPI' && Array.isArray(log.data?.ROWS)) {
+    // LOG_SPI_VD 도 같은 위치 파싱이라 헤더 없는 "바코드,PASS,숫자" 조각 파일이 칸이 밀려 들어온다.
+    if ((log.target_table === 'LOG_SPI' || log.target_table === 'LOG_SPI_VD') && Array.isArray(log.data?.ROWS)) {
       const rows = log.data.ROWS as unknown[];
       const standard = rows.filter(isStandardSpiRow);
       const valid = standard.filter(hasSpiBarcode);
