@@ -24,7 +24,7 @@ const envSchema = z.object({
   ORACLE_POOL_MIN: z.coerce.number().default(8),
   ORACLE_POOL_MAX: z.coerce.number().default(40),
 
-  RAW_LOG_BASE_PATH: z.string().default('C:\\data\\raw-logs'),
+  RAW_LOG_BASE_PATH: z.string().default('E:\\data\\raw-logs'),
 
   HEARTBEAT_TTL_SECONDS: z.coerce.number().default(60),
   AGENT_MONITOR_PORT: z.coerce.number().default(9090),

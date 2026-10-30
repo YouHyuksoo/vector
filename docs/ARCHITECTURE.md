@@ -36,7 +36,7 @@ Vector Log Collection System은 설비 PC의 결과 로그를 중앙 서버로 �
         ▼
 Node.js Fastify API
   ├─ Zod 검증
-  ├─ raw 파일 저장: C:\data\raw-logs
+  ├─ raw 파일 저장: E:\data\raw-logs
   ├─ 처리 로그 저장: data/process-logs/*.jsonl
   ├─ 설비 하트비트/레지스트리 관리
   └─ Oracle 직접 적재
@@ -248,7 +248,7 @@ raw 파일 저장은 `src/server/routes/log-ingest.route.ts`의 `saveRawLogFile(
 기본 경로:
 
 ```text
-C:\data\raw-logs\{equipment_type}\{equipment_id}\{yyyy-MM-dd}\{filename}
+E:\data\raw-logs\{equipment_type}\{equipment_id}\{yyyy-MM-dd}\{filename}
 ```
 
 동작:
@@ -464,7 +464,7 @@ Agent Manager는 30초마다 TOML의 `equipment_id`, `equipment_type`, `line_cod
 | `ORACLE_CONNECT_STRING` | 필수 | Oracle 접속 문자열 |
 | `ORACLE_POOL_MIN` | `8` | Oracle pool min |
 | `ORACLE_POOL_MAX` | `40` | Oracle pool max |
-| `RAW_LOG_BASE_PATH` | `C:\data\raw-logs` | raw 파일 저장 루트 |
+| `RAW_LOG_BASE_PATH` | `E:\data\raw-logs` | raw 파일 저장 루트 |
 | `HEARTBEAT_TTL_SECONDS` | `60` | heartbeat online TTL |
 | `AGENT_MONITOR_PORT` | `9090` | Agent Manager 포트 |
 
@@ -523,7 +523,7 @@ Windows에서 Vector 중지는 즉시 kill을 기본으로 쓰지 않는다. 먼
 |---|---|
 | Backend API 지연/다운 | Vector `sinks.to_api.buffer` disk buffer |
 | Oracle INSERT 실패 | `data/process-logs/*.jsonl` ERROR + raw_data |
-| raw 원문 | `C:\data\raw-logs` |
+| raw 원문 | `E:\data\raw-logs` |
 | 하트비트 마지막 상태 | `data/heartbeat-snapshot.json` |
 | 설비 등록/배제 | `data/equipment-registry.json` |
 

@@ -140,7 +140,7 @@ Backend 또는 Oracle이 느리면 disk buffer가 이벤트를 보존한다. buf
 raw 파일 기본 경로:
 
 ```text
-C:\data\raw-logs\{equipment_type}\{equipment_id}\{yyyy-MM-dd}\{filename}
+E:\data\raw-logs\{equipment_type}\{equipment_id}\{yyyy-MM-dd}\{filename}
 ```
 
 동일 파일 write는 per-file promise chain으로 직렬화하고, 서로 다른 파일은 병렬 저장한다. `SELECTIVE`는 append, 그 외 유형은 같은 경로에 overwrite한다.
