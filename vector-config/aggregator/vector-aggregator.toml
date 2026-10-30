@@ -343,6 +343,12 @@ if .equipment_type == "SPI" {
     }
   }
 
+  # 표준 결과 파일(master 헤더 + Panel 구간)만 적재한다.
+  # 헤더 없는 "바코드,PASS,숫자" 조각 파일(*_OK_1.CSV, *_OK_2.CSV)은 위 위치 파싱이 맞지 않아
+  # INSPECTION_DATE 가 날짜 형식이 아니다 → 행을 비워 Node 가 건너뛰게 한다.
+  if !match(master_data.INSPECTION_DATE, r'^\d{4}-\d{2}-\d{2}$') {
+    .data.ROWS = []
+  }
 } else if .equipment_type == "AOI" {  # ── AOI (Automated Optical Inspection) ──
   .target_table = "LOG_AOI"
   if .log_type == "INSPECTION" {
